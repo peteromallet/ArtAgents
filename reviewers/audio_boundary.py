@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-import asset_cache
-import enriched_arrangement
-from arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
+from artagents import asset_cache
+from artagents import enriched_arrangement
+from artagents.arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
 from reviewers import Reviewer
-from text_match import segments_in_range, token_set_similarity, tokenize
+from artagents.text_match import segments_in_range, token_set_similarity, tokenize
 
 BOILERPLATE_TOKENS = {"um", "uh"}
 BOILERPLATE_BIGRAMS = {("you", "know"), ("i", "mean"), ("sort", "of"), ("kind", "of")}

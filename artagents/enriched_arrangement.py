@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-import timeline
-from text_match import segments_in_range
+from . import timeline
+from .text_match import segments_in_range
 
 
 class ZoneKind(str, Enum):

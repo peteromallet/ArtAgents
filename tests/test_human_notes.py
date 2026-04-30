@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import arrange
-import editor_review
-import human_notes
-import timeline
+from artagents import arrange
+from artagents import editor_review
+from artagents import human_notes
+from artagents import timeline
 
 
 class FakeClaudeClient:

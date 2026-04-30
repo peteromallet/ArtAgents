@@ -9,8 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-TOOLS_DIR = Path(__file__).resolve().parent
-WORKSPACE_ROOT = TOOLS_DIR.parent
+from ._paths import REPO_ROOT, WORKSPACE_ROOT
+
+TOOLS_DIR = REPO_ROOT
 THEMES_ROOT = WORKSPACE_ROOT / "themes"
 
 

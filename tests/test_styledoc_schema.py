@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import theme_schema
-from theme_schema import ThemeValidationError, load_theme, resolve_theme_asset
+from artagents import theme_schema
+from artagents.theme_schema import ThemeValidationError, load_theme, resolve_theme_asset
 
 
 ROOT = Path(__file__).resolve().parents[2]

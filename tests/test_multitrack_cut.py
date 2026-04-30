@@ -6,10 +6,10 @@ from argparse import Namespace
 from pathlib import Path
 from unittest import mock
 
-import cut
-import timeline
-import validate
-from arrangement_rules import ROLE_DURATION_BOUNDS
+from artagents import cut
+from artagents import timeline
+from artagents import validate
+from artagents.arrangement_rules import ROLE_DURATION_BOUNDS
 
 
 ROOT = Path(__file__).resolve().parents[1]

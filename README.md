@@ -1,6 +1,6 @@
 The `tools/` directory is a small, file-based toolkit for turning a long source recording into a hype cut without adding a framework or pipeline runner. The current canonical flow is pool-based: source analysis runs once per source into `pool.json`, then each new `brief.txt` composes its own `arrangement.json`, cut artifacts, and optional render without rerunning the expensive LLM passes.
 
-Each CLI still reads and writes plain files on disk so you can inspect intermediate JSON, run stages independently, and rerun only the step you need. The top-level orchestrator is now `pipeline.py --video SRC --brief BRIEF --out DIR`, which builds source-level artifacts in `DIR/` and brief-level artifacts in `DIR/briefs/<slug>/`.
+Each CLI still reads and writes plain files on disk so you can inspect intermediate JSON, run stages independently, and rerun only the step you need. The implementation lives in the `artagents/` package; root-level `*.py` files are compatibility launchers for existing `python3 pipeline.py ...` and `python3 cut.py ...` workflows. The top-level orchestrator is `pipeline.py --video SRC --brief BRIEF --out DIR`, which builds source-level artifacts in `DIR/` and brief-level artifacts in `DIR/briefs/<slug>/`.
 
 ## Pure-generative and no-audio modes
 

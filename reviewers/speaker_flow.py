@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import enriched_arrangement
+from artagents import enriched_arrangement
 from reviewers import Reviewer
 
 

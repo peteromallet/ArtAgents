@@ -7,7 +7,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-import timeline
+from artagents import timeline
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples"

@@ -5,11 +5,11 @@ import unittest
 from argparse import Namespace
 from pathlib import Path
 
-import cut
-import refine
-import timeline
-import validate
-from arrangement_rules import TRIM_BOUND_EXTENSION_SEC
+from artagents import cut
+from artagents import refine
+from artagents import timeline
+from artagents import validate
+from artagents.arrangement_rules import TRIM_BOUND_EXTENSION_SEC
 
 
 class RefineTest(unittest.TestCase):

@@ -12,7 +12,7 @@ TOOLS_ROOT = Path(__file__).resolve().parents[1]
 if str(TOOLS_ROOT) not in sys.path:
     sys.path.insert(0, str(TOOLS_ROOT))
 
-import timeline  # noqa: E402
+from artagents import timeline  # noqa: E402
 
 
 pytestmark = [pytest.mark.standalone, pytest.mark.hype_cut_invariants]

@@ -4,8 +4,8 @@ import sys
 import unittest
 from pathlib import Path
 
-import effects_catalog
-import timeline
+from artagents import effects_catalog
+from artagents import timeline
 
 
 ROOT = Path(__file__).resolve().parents[1]

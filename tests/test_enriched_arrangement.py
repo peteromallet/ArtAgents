@@ -2,9 +2,9 @@ import json
 from pathlib import Path
 import unittest
 
-import enriched_arrangement
+from artagents import enriched_arrangement
 
-from _fixture_case import make_brief_case
+from tests.helpers.fixture_case import make_brief_case
 
 
 def make_clip(

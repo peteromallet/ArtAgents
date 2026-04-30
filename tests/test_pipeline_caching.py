@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import pipeline
+from artagents import pipeline
 
 
 ROOT = Path(__file__).resolve().parents[1]

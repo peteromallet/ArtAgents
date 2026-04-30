@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import enriched_arrangement
-from arrangement_rules import MAX_VISUAL_HOLD_RATIO, MIN_OVERLAY_COVERAGE_SEC
+from artagents import enriched_arrangement
+from artagents.arrangement_rules import MAX_VISUAL_HOLD_RATIO, MIN_OVERLAY_COVERAGE_SEC
 from reviewers import Reviewer
 
 

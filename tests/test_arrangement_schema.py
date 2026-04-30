@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import timeline
+from artagents import timeline
 
 
 class ArrangementSchemaTest(unittest.TestCase):

@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-import render_remotion
-import timeline
+from artagents import render_remotion
+from artagents import timeline
 
 
 @pytest.mark.slow

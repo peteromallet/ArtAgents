@@ -1,8 +1,8 @@
 import unittest
 from unittest import mock
 
-import arrange
-import timeline
+from artagents import arrange
+from artagents import timeline
 
 
 class StubClaudeClient:
@@ -66,7 +66,7 @@ class ArrangeVoiceInjectionTest(unittest.TestCase):
         }
         client = StubClaudeClient()
 
-        with mock.patch("arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("artagents.arrangement_rules.compile_arrangement_plan", return_value=[]):
             arrange.build_arrangement(
                 fixture_pool(),
                 "Use the first quote.",

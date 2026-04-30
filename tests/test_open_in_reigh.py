@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import open_in_reigh
+from artagents import open_in_reigh
 
 
 ROOT = Path(__file__).resolve().parents[1]

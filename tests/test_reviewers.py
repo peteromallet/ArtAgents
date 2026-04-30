@@ -1,7 +1,7 @@
 from pathlib import Path
 import unittest
 
-import enriched_arrangement
+from artagents import enriched_arrangement
 from reviewers.overlay_fit import OverlayFitReviewer
 from reviewers.speaker_flow import SpeakerFlowReviewer
 from reviewers.visual_quality import VisualQualityReviewer

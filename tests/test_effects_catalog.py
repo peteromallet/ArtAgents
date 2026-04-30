@@ -8,7 +8,7 @@ import unittest
 import importlib.util
 from pathlib import Path
 
-import effects_catalog
+from artagents import effects_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]

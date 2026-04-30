@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import quote_scout
+from artagents import quote_scout
 
 
 def has_key_named_brief(value) -> bool:

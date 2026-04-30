@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 import unittest
 
-import inspect_cut
+from artagents import inspect_cut
 
-from _fixture_case import make_brief_case
+from tests.helpers.fixture_case import make_brief_case
 
 
 class InspectCutTest(unittest.TestCase):

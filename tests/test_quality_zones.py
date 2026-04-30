@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-import enriched_arrangement
-import quality_zones
+from artagents import enriched_arrangement
+from artagents import quality_zones
 
 
 class QualityZonesTest(unittest.TestCase):

@@ -15,18 +15,105 @@ import re
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, List, Literal, TypedDict, Union
 
-from banodoco_timeline_schema import (
-    AssetEntry as SharedAssetEntry,
-    Theme as SharedTheme,
-    ThemeOverrides as SharedThemeOverrides,
-    TimelineClip as SharedTimelineClip,
-    TimelineConfig as SharedTimelineConfig,
-    TimelineOutput as SharedTimelineOutput,
-    materialize_output as _materialize_output,
-)
-from banodoco_timeline_schema import validate_timeline as _shared_validate_timeline
+try:
+    from banodoco_timeline_schema import (
+        AssetEntry as SharedAssetEntry,
+        Theme as SharedTheme,
+        ThemeOverrides as SharedThemeOverrides,
+        TimelineClip as SharedTimelineClip,
+        TimelineConfig as SharedTimelineConfig,
+        TimelineOutput as SharedTimelineOutput,
+        materialize_output as _materialize_output,
+    )
+    from banodoco_timeline_schema import validate_timeline as _shared_validate_timeline
+except ImportError:
+    class SharedTimelineOutput(TypedDict, total=False):
+        resolution: str
+        fps: float
+        file: str
+        background: str
+        background_scale: float
+
+    class SharedTimelineClip(TypedDict, total=False):
+        id: str
+        at: float
+        track: str
+        clipType: str
+        asset: str
+        from_: float
+        to: float
+        speed: float
+        hold: float
+        volume: float
+        x: float
+        y: float
+        width: float
+        height: float
+        cropTop: float
+        cropBottom: float
+        cropLeft: float
+        cropRight: float
+        opacity: float
+        params: dict[str, Any]
+        text: "TextClipData"
+        entrance: "AnimationReferenceList"
+        exit: "AnimationReferenceList"
+        continuous: "AnimationReferenceList"
+        transition: "ClipTransitionReference"
+        effects: list["TimelineEffect"]
+        source_uuid: str
+        generation: dict[str, Any]
+        pool_id: str
+        clip_order: int
+
+    class SharedThemeOverrides(TypedDict, total=False):
+        visual: dict[str, Any]
+        generation: dict[str, Any]
+        voice: dict[str, Any]
+        audio: dict[str, Any]
+        pacing: dict[str, Any]
+
+    class SharedTheme(TypedDict, total=False):
+        visual: dict[str, Any]
+        generation: dict[str, Any]
+        voice: dict[str, Any]
+        audio: dict[str, Any]
+        pacing: dict[str, Any]
+
+    class SharedTimelineConfig(TypedDict, total=False):
+        theme: str
+        theme_overrides: SharedThemeOverrides
+        clips: list[SharedTimelineClip]
+        tracks: list[dict[str, Any]]
+        pinnedShotGroups: list[dict[str, Any]]
+        output: SharedTimelineOutput
+
+    class SharedAssetEntry(TypedDict, total=False):
+        file: str
+        url: str
+        etag: str
+        content_sha256: str
+        url_expires_at: str
+        type: str
+        duration: float
+        resolution: str
+        fps: float
+        generationId: str
+
+    def _materialize_output(config: SharedTimelineConfig, theme: dict[str, Any]) -> SharedTimelineOutput:
+        canvas = theme.get("visual", {}).get("canvas", {}) if isinstance(theme, dict) else {}
+        width = int(canvas.get("width", 1920)) if isinstance(canvas, dict) else 1920
+        height = int(canvas.get("height", 1080)) if isinstance(canvas, dict) else 1080
+        fps = float(canvas.get("fps", 30)) if isinstance(canvas, dict) else 30.0
+        return {"resolution": f"{width}x{height}", "fps": fps, "file": "output.mp4"}
+
+    def _shared_validate_timeline(config: Any, *, strict: bool = True) -> None:
+        if not isinstance(config, dict):
+            raise ValueError("Timeline must be a JSON object")
+        if not isinstance(config.get("clips"), list):
+            raise ValueError("Timeline.clips must be a list")
 
 TimelineClip = SharedTimelineClip
 TimelineConfig = SharedTimelineConfig
@@ -59,8 +146,8 @@ class AnimationReferenceObject(TypedDict, total=False):
     easing: str
     params: dict[str, Any]
 
-AnimationReference = str | AnimationReferenceObject
-AnimationReferenceList = AnimationReference | list[AnimationReference]
+AnimationReference = Union[str, AnimationReferenceObject]
+AnimationReferenceList = Union[AnimationReference, List[AnimationReference]]
 
 class AudioBindingValue(TypedDict):
     source: AudioBindingSource
