@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@workspace-effects/*": ["../../effects/*"],
+      "@theme-effects/*": ["_active_theme/effects/*"],
+      "@workspace-animations/*": ["../../animations/*"],
+      "@theme-animations/*": ["_active_theme/animations/*"],
+      "@workspace-transitions/*": ["../../transitions/*"],
+      "@theme-transitions/*": ["_active_theme/transitions/*"],
+      "react": ["node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["node_modules/@types/react/jsx-runtime.d.ts"],
+      "remotion": ["node_modules/remotion"]
+    },
+    "typeRoots": ["../node_modules/@types"],
+    "lib": ["DOM", "ES2020"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "src",
+    "_active_theme/effects/**/*.{ts,tsx}",
+    "_active_theme/animations/**/*.{ts,tsx}",
+    "_active_theme/transitions/**/*.{ts,tsx}",
+    "../../effects/**/*.{ts,tsx}",
+    "../../animations/**/*.{ts,tsx}",
+    "../../transitions/**/*.{ts,tsx}",
+    "../../themes/*/effects/**/*.{ts,tsx}",
+    "../../themes/*/animations/**/*.{ts,tsx}",
+    "../../themes/*/transitions/**/*.{ts,tsx}"
+  ]
+}

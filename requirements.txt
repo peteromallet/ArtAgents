@@ -1,0 +1,8 @@
+openai>=1.55,<3
+scenedetect[opencv-headless]==0.6.4
+anthropic>=0.40.0
+google-genai>=1.15.0  # Lower bound matches the live environment verified during Sprint 3 planning.
+python-dotenv>=1.0.0  # Lower bound matches the live environment verified during Sprint 3 planning.
+filelock>=3.13
+jsonschema>=4.0
+# pyannote.audio==3.3.2

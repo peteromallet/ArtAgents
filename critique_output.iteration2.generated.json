@@ -1,0 +1,173 @@
+{
+  "checks": [
+    {
+      "id": "issue_hints",
+      "question": "Did the work fully address the issue hints, user notes, and approved plan requirements?",
+      "guidance": "Cross-check the result against explicit user notes, critique corrections, and watch items. Flag anything the implementation ignored, contradicted, or only partially covered.",
+      "findings": [
+        {
+          "detail": "The revision does fix the earlier mismatch by no longer pretending reigh-app has a checked-in file import directory, and the updated test invocation from `tools/` matches the live repo layout. That is a real improvement over the prior plan.",
+          "flagged": false
+        },
+        {
+          "detail": "The revised bridge is still a substantive change from the original deliverable: it now makes manual SQL handoff the primary path instead of actually getting the timeline into a reigh-app-importable location. That divergence is understandable given the repository, but it is still a plan-vs-brief tension that should stay visible to the gate.",
+          "flagged": true
+        },
+        {
+          "detail": "I checked whether the new `--print-sql` path would really complete the handoff, and it does not fully address the user-facing requirement yet. `cut.py` writes absolute local filesystem paths into `hype.assets.json` (`tools/cut.py:297-310`), but reigh-app's `SupabaseDataProvider.resolveAssetUrl()` only accepts HTTP URLs directly and otherwise resolves the value as a key in the `timeline-assets` Supabase bucket (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:207-223`), so pasting the JSON into `public.timelines` would still leave media assets unresolved unless they are uploaded and the registry paths are transformed.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "Checked the actual reigh-app integration path and found that the editor is not file-backed. `useTimelinesList()` lists and creates rows in `public.timelines` with `project_id`, `user_id`, default `config`, and default `asset_registry` (`reigh-app/src/tools/video-editor/hooks/useTimelinesList.ts:11-55`), while `SupabaseDataProvider` only loads and saves `config` and `asset_registry` from that table (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:51-109,192-204`; schema in `reigh-app/supabase/migrations/20260325090000_create_video_editor_tables.sql:1-27`). The plan's `open_in_reigh.py` copy-to-`public/timelines` or `public/demos` bridge does not match that storage model, so against the current repository it would produce inert files rather than something the editor can open.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "I ran the plan's stated regression command, `python3 -m unittest discover tools/tests`, from the actual git root `/Users/peteromalley/Documents/banodoco-workspace`, and it failed with `ModuleNotFoundError` for `cut`, `render_remotion`, and `timeline`. That happens because the checked-in tests import those modules directly from `tools/` (`tools/tests/test_cut_timeline_resume.py:7`, `tools/tests/test_audio_render.py:7-8`), so the validation section does not currently line up with the repository's executable test layout.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "correctness",
+      "question": "Are the proposed changes technically correct?",
+      "guidance": "Look for logic errors, invalid assumptions, broken invariants, schema mismatches, or behavior that would fail at runtime. When the fix adds a conditional branch, check whether it handles all relevant cases \u2014 not just the one reported in the issue.",
+      "findings": [
+        {
+          "detail": "The revised cut-step cache is now technically aligned with the repository: `cut.py` co-produces timeline, assets, and metadata together, and the plan now caches that step only when all three files exist. That resolves the earlier partial-sentinel bug cleanly.",
+          "flagged": false
+        },
+        {
+          "detail": "The new `--print-sql` contract has a concrete correctness problem: it defaults `--timeline-id` to `<name>`, but `public.timelines.id` is a UUID column in the checked-in schema (`reigh-app/supabase/migrations/20260325090000_create_video_editor_tables.sql:1-9`). A default statement like `WHERE id = 'hype'` would not target a real row and is likely to error on PostgreSQL's UUID comparison unless the user overrides it with an actual timeline UUID.",
+          "flagged": true
+        },
+        {
+          "detail": "The manual SQL path is also technically incomplete for asset playback. The live provider resolves non-HTTP asset `file` values through `storage.from('timeline-assets').getPublicUrl(...)` (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:217-223`), while `cut.py` currently serializes absolute local paths into the registry (`tools/cut.py:297-310`). Even if the config and registry are pasted into a `timelines` row successfully, the editor will not be able to load those local paths as media URLs.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The proposed cache contract for the `cut` step is technically unsafe because it uses only `hype.timeline.json` as the sentinel even though `cut.py` writes `hype.timeline.json`, `hype.assets.json`, and `hype.metadata.json` as one unit (`tools/cut.py:763-769`). Later planned steps consume the extra outputs as required inputs (`tools/render_remotion.py:62-99` requires `--assets`, and the bridge copies `hype.assets.json`), so a partial prior run or manual deletion of assets/metadata would still be treated as 'cached' and cause downstream breakage.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "I also checked the six underlying CLIs and they are genuinely thin argparse entrypoints that read and write files on disk, so a subprocess orchestrator is a technically reasonable way to compose them. The mismatch is not in the wrapper approach itself; it is in the specific cache and bridge assumptions above.",
+          "flagged": false,
+          "status": "n/a"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "question": "Search for related code that handles the same concept. Is the reported issue a symptom of something broader?",
+      "guidance": "Look at how the changed function is used across the codebase. Does the fix only address one caller's scenario while others remain broken? Flag missing required work or out-of-scope edits. A minimal patch is often right, but check whether the underlying problem is bigger than what the issue describes.",
+      "findings": [
+        {
+          "detail": "The prior scope concern around `shots.py` is now reasonably contained. The plan explicitly documents that `shots.json` only feeds `metadata.sources[primary_asset].shots_ref` in `cut.py` (`tools/cut.py:468-472`) and adds `--skip shots` as an escape hatch, which matches the current repo behavior.",
+          "flagged": false
+        },
+        {
+          "detail": "The reigh handoff problem is broader than writing `config` and `asset_registry` into `public.timelines`. The supporting code path for usable assets also includes `uploadAsset()` plus `registerAsset()`, which uploads media into the `timeline-assets` bucket and stores bucket-relative paths (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:226-270`). The revised plan still treats the bridge as a row-update problem only, so it misses the broader storage/upload side of the integration.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The reigh integration problem is broader than probe order. The editor loads timeline data through `loadTimelineJsonFromProvider(provider, timelineId)`, which calls `provider.loadTimeline(timelineId)` and `provider.loadAssetRegistry(timelineId)` (`reigh-app/src/tools/video-editor/lib/timeline-data.ts:388-402`), so the real integration boundary is a provider-backed timeline row, not a filesystem drop target. Treating the problem as 'find the right folder under `public/`' narrows the issue incorrectly and misses the live persistence layer.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "I searched `cut.py` for `args.shots` and found it is only used to annotate `metadata.sources[primary_asset].shots_ref` (`tools/cut.py:468-472`); it is not consumed by selection, timeline construction, or rendering. That means the proposed always-on `shots.py` stage adds ffmpeg work and files to the default pipeline, but in the current repo it does not change the picks, `hype.timeline.json`, or `hype.mp4` outputs.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "all_locations",
+      "question": "Does the change touch all locations AND supporting infrastructure?",
+      "guidance": "Search for all instances of the symbol/pattern being changed. Also ask: does this feature require setup, registration, or integration code beyond the core logic? Missing glue code causes test failures even when the core fix is correct.",
+      "findings": [
+        {
+          "detail": "I verified that the revised validation commands now match the repository's supporting test infrastructure: from `tools/`, `python3 -m unittest discover tests` succeeds against the current suite, which fixes the earlier repo-root command mismatch.",
+          "flagged": false
+        },
+        {
+          "detail": "The revised bridge still does not touch all of the supporting infrastructure that the live editor needs for a working import. Beyond the `public.timelines` row, reigh-app also expects asset references that can be resolved through `resolveAssetUrl()` and, for locally introduced media, the upload/register flow in `SupabaseDataProvider` (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:207-270`). Without that supporting path, the plan only migrates half of the data the editor needs.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "I checked the real reigh-app tree and none of the proposed probe targets currently exist. `find /Users/peteromalley/Documents/reigh-workspace/reigh-app/public -maxdepth 2 -type d` returned only `thumbs`, `introduction-images`, `fonts`, and `lovable-uploads`, and there is no root-level `timelines/` or `demos/` directory either. The plan therefore does not touch any existing import location, and it also omits the supporting infrastructure that the current editor actually needs: creating or updating a row in `public.timelines` under the authenticated user's project.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "The supporting test infrastructure is also incomplete as written. In this repository the working regression command is `python3 -m unittest discover tests` from the `tools/` directory, whereas the planned repo-root command fails because the tests import sibling modules directly. Since the sprint success criteria rely on those commands, the plan needs to name the command that matches the current package/import layout.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "callers",
+      "question": "Find the callers of the changed function. What arguments do they actually pass? Does the fix handle all of them?",
+      "guidance": "Grep for call sites. For each caller, check what values it passes \u2014 especially edge cases like None, zero, empty, or composite inputs. Then ask: should this change be here, or in a caller, callee, or new method?",
+      "findings": [
+        {
+          "detail": "The revised plan correctly tracks the live timeline-loading callers: `loadTimelineJsonFromProvider()` passes a `timelineId` into `provider.loadTimeline()` and `provider.loadAssetRegistry()`, and the plan now acknowledges that the bridge is a manual handoff instead of a fake filesystem import. That part of the earlier caller mismatch is fixed.",
+          "flagged": false
+        },
+        {
+          "detail": "A new caller mismatch remains in the SQL helper. The real callers operate on a true timeline UUID from `useTimelinesList()` / `loadTimelineJsonFromProvider()`, but the plan says `--timeline-id` defaults to `<name>` for `--print-sql`; that default does not match the actual caller argument type used throughout reigh-app and would generate a broken `WHERE id = ...` clause unless manually overridden.",
+          "flagged": true
+        },
+        {
+          "detail": "The asset URL caller contract is still not handled end-to-end. `resolveAssetUrl(file)` only treats HTTP URLs as already usable and otherwise assumes `file` is a Supabase storage key (`reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:213-223`), while the bridge hands off the `file` values emitted by `cut.py`, which are absolute local paths (`tools/cut.py:297-310`). The revised plan therefore still does not satisfy the actual argument shapes that the asset-resolution caller receives at runtime.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The live editor callers do not pass filesystem paths at all. `loadTimelineJsonFromProvider()` passes a `timelineId` into `provider.loadTimeline()` and `provider.loadAssetRegistry()` (`reigh-app/src/tools/video-editor/lib/timeline-data.ts:392-400`), and `useTimelinesList()` creates new timeline rows by passing `project_id`, `user_id`, default `config`, and default `asset_registry` into Supabase (`reigh-app/src/tools/video-editor/hooks/useTimelinesList.ts:32-52`). A bridge that only copies `hype.timeline.json` and `hype.assets.json` into the repo filesystem does not handle the actual caller arguments the current editor flow requires.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "On the tools side, the downstream caller contract for rendering already expects a pair of files, not a single timeline sentinel. `render_remotion.render()` takes both `timeline_path` and `assets_path` (`tools/render_remotion.py:62-99`), so the proposed `cut` cache strategy does not handle all of the inputs that its immediate caller needs after a resume or partial rerun.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "id": "FLAG-004",
+      "concern": "Reigh bridge: Manual SQL handoff still leaves asset paths incompatible with the live editor, which resolves non-HTTP `file` values through Supabase storage keys rather than absolute local filesystem paths.",
+      "category": "correctness",
+      "severity_hint": "likely-significant",
+      "evidence": "`tools/cut.py:297-310` writes absolute resolved paths into `asset_registry`, while `reigh-app/src/tools/video-editor/data/SupabaseDataProvider.ts:207-223` resolves non-HTTP values with `storage.from('timeline-assets').getPublicUrl(...)`."
+    },
+    {
+      "id": "FLAG-005",
+      "concern": "SQL handoff: `--print-sql` defaults `--timeline-id` to `<name>`, but the target `public.timelines.id` column is UUID-typed, so the default emitted `UPDATE` statement does not target a valid caller-compatible identifier.",
+      "category": "correctness",
+      "severity_hint": "likely-significant",
+      "evidence": "The revised plan specifies `--timeline-id ID` defaulting to `<name>`, while `reigh-app/supabase/migrations/20260325090000_create_video_editor_tables.sql:1-9` defines `public.timelines.id uuid primary key`."
+    }
+  ],
+  "verified_flag_ids": [
+    "FLAG-001",
+    "FLAG-002",
+    "FLAG-003"
+  ],
+  "disputed_flag_ids": []
+}

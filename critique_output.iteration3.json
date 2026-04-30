@@ -1,0 +1,113 @@
+{
+  "checks": [
+    {
+      "id": "issue_hints",
+      "question": "Did the work fully address the issue hints, user notes, and approved plan requirements?",
+      "guidance": "Cross-check the result against explicit user notes, critique corrections, and watch items. Flag anything the implementation ignored, contradicted, or only partially covered.",
+      "findings": [
+        {
+          "detail": "I checked the revised plan against the prior contract/layout issues and against the live repo layout. The picks contract is now the brief-canonical bare array, the repo-root import/path assumptions are corrected to `from timeline import ...` plus `examples/`, and the explicit `--video` invariants now match the current `cut.py` control flow, so those earlier concerns look genuinely fixed.",
+          "flagged": false
+        },
+        {
+          "detail": "The revised metadata plan still diverges from the brief's `sources` shape in one concrete way: Step 6 builds `sources = sources_meta` from probed codec only, even though the brief explicitly calls out `transcript_ref`, `scenes_ref`, and `shots_ref` under `sources`, and the current CLI already has those paths available via `--scenes`, optional `--transcript`, and optional `--shots` (`cut.py:15-20`). Those fields are optional, but omitting them entirely is still a flagged provenance gap against the user-provided schema sketch.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "correctness",
+      "question": "Are the proposed changes technically correct?",
+      "guidance": "Look for logic errors, invalid assumptions, broken invariants, schema mismatches, or behavior that would fail at runtime. When the fix adds a conditional branch, check whether it handles all relevant cases — not just the one reported in the issue.",
+      "findings": [
+        {
+          "detail": "The previous `--video`-contract and validator-strictness problems do look fixed in this revision. The plan now explicitly re-requires `--video` for the no-picks/plain-text/render branches, and it strengthens `validate_timeline` / `validate_registry` with unknown-key rejection instead of continuing to rely on required-fields-only checks.",
+          "flagged": false
+        },
+        {
+          "detail": "A new correctness gap appears around codec persistence on cache-hit reruns. The revised Step 4 says ffprobe is skipped when `file`, `duration`, `resolution`, and `fps` are already present in the registry, but `codec` cannot live in `AssetRegistryEntry` because the current schema has no such field (`timeline.py:136-143`), and Step 6 builds `metadata.sources` only from `sources_meta`. Without also loading prior `hype.metadata.json`, a cache hit would drop `sources.<key>.codec` from the newly emitted metadata sidecar or force an unnecessary re-probe.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "question": "Search for related code that handles the same concept. Is the reported issue a symptom of something broader?",
+      "guidance": "Look at how the changed function is used across the codebase. Does the fix only address one caller's scenario while others remain broken? Flag missing required work or out-of-scope edits. A minimal patch is often right, but check whether the underlying problem is bigger than what the issue describes.",
+      "findings": [
+        {
+          "detail": "I re-checked the broader picks ecosystem and the revised plan now contains that scope cleanly. `gemini_picks.py`, `gemini_review.py`, `gemini_refine.py`, and `remix.py` still consume the old `picks.json` shape with `global_start` / `global_end`, and the plan explicitly documents this as an intentional Sprint 1 overlap rather than leaving it implicit.",
+          "flagged": false
+        },
+        {
+          "detail": "Within `cut.py`, the widened `select_ranges` and per-asset `write_edl` plan now cover the broader internal data-flow problem that caused the first-round scope flags. I did not find another unaddressed same-concept subsystem beyond the metadata-source provenance gap called out separately.",
+          "flagged": false
+        }
+      ]
+    },
+    {
+      "id": "all_locations",
+      "question": "Does the change touch all locations AND supporting infrastructure?",
+      "guidance": "Search for all instances of the symbol/pattern being changed. Also ask: does this feature require setup, registration, or integration code beyond the core logic? Missing glue code causes test failures even when the core fix is correct.",
+      "findings": [
+        {
+          "detail": "I checked the revised plan against the actual repo touch points in `cut.py`, `timeline.py`, and the repo root. This iteration now explicitly covers parser wiring, `main()`, `select_ranges()`, `write_edl()`, strict validators, metadata helpers, fixtures under `examples/`, no-picks ranking, and the README, which resolves the missing-glue problems from earlier critiques.",
+          "flagged": false
+        },
+        {
+          "detail": "The one remaining supporting-infrastructure omission is metadata-source persistence rather than a missing file edit. Because Step 6 only uses `sources_meta` built during the current run, the plan still lacks the glue needed to preserve `codec` across registry cache hits or to populate the available `transcript_ref` / `scenes_ref` / `shots_ref` provenance fields from the already-parsed CLI inputs.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "callers",
+      "question": "Find the callers of the changed function. What arguments do they actually pass? Does the fix handle all of them?",
+      "guidance": "Grep for call sites. For each caller, check what values it passes — especially edge cases like None, zero, empty, or composite inputs. Then ask: should this change be here, or in a caller, callee, or new method?",
+      "findings": [
+        {
+          "detail": "I re-checked the caller chain inside `main()` and the prior caller issues are addressed in the revised plan: the no-picks branch now has an explicit `--video` invariant, and the manual-picks branch explicitly threads per-pick `asset`, `keep_audio`, `rationale`, and `caption` through `select_ranges()`, `write_edl()`, and the JSON emitters.",
+          "flagged": false
+        },
+        {
+          "detail": "The remaining caller-level gap is the metadata path: `build_metadata(selected, registry, sources_meta, args)` is the place where CLI-supplied provenance like `args.transcript`, `args.scenes`, and `args.shots` should be attached, but the revised plan still passes only `sources_meta` derived from probe results. That means the caller contract into metadata emission is still narrower than the brief's provenance shape and narrower than the information already available at the call site.",
+          "flagged": true
+        }
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "id": "FLAG-007",
+      "concern": "Metadata provenance: the revised plan still does not thread the available `--transcript`, `--scenes`, and `--shots` paths into `hype.metadata.json` even though the brief's `sources` shape calls out `transcript_ref`, `scenes_ref`, and `shots_ref` and current `cut.py` already accepts those inputs.",
+      "category": "completeness",
+      "severity_hint": "likely-moderate",
+      "evidence": "Current `cut.py:15-20` already parses `--scenes`, optional `--transcript`, and optional `--shots`, but revised Step 6 says `sources = sources_meta` and only gives `codec` as the example payload."
+    },
+    {
+      "id": "FLAG-008",
+      "concern": "Metadata cache: `sources.<key>.codec` is not recoverable on ffprobe cache hits because codec is excluded from `AssetRegistryEntry` by schema and the revised plan does not load prior metadata before rebuilding the sidecar.",
+      "category": "correctness",
+      "severity_hint": "likely-significant",
+      "evidence": "The current schema in `timeline.py:136-143` has no `codec` field, revised Step 4 skips ffprobe on matching `{file,duration,resolution,fps}` cache hits, and revised Step 6 builds `metadata.sources` only from per-run `sources_meta`."
+    }
+  ],
+  "verified_flag_ids": [
+    "issue_hints-1",
+    "issue_hints-2",
+    "correctness-1",
+    "correctness-2",
+    "correctness-3",
+    "scope-1",
+    "scope-2",
+    "all_locations-1",
+    "all_locations-2",
+    "callers-1",
+    "callers-2",
+    "FLAG-005",
+    "FLAG-006",
+    "all_locations",
+    "callers"
+  ],
+  "disputed_flag_ids": []
+}

@@ -1,0 +1,177 @@
+{
+  "checks": [
+    {
+      "id": "issue_hints",
+      "question": "Did the work fully address the issue hints, user notes, and approved plan requirements?",
+      "guidance": "Cross-check the result against explicit user notes, critique corrections, and watch items. Flag anything the implementation ignored, contradicted, or only partially covered.",
+      "findings": [
+        {
+          "detail": "I re-checked the revised Step 2 and Step 6 against the live `render_remotion.py` asset-resolution behavior and the checked-in example registry, and the earlier `--timeline` asset-copy issue is actually fixed at the plan level. The new same-dir vs different-`--out` split matches the repo facts: keeping the registry byte-identical only when the assets file stays in the same directory preserves relative paths, and rebasing to absolute paths before writing a copied registry is compatible with `render_remotion._resolve_assets()`.",
+          "flagged": false
+        },
+        {
+          "detail": "A new repo-level requirement gap is introduced by the revised Gemini test plan. Step 6 now makes `tests.test_gemini_schema` part of the must-pass path and imports the real `gemini_*` modules, but the checked-in `requirements.txt` still does not declare either `google.genai` or `python-dotenv` even though all three Gemini tools import both at module import time. The plan mentions a skip guard for `google.genai`, but it does not add dependency plumbing or guard the `dotenv` import, so the revised validation story is still only partially wired to the repository's declared environment.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The plan's chosen answer to its own open question about `--timeline` asset handling is risky against the checked-in repo: it says resume mode should copy `hype.assets.json` into `--out` byte-identically and even assert that in `test_cut_timeline_resume.py`, but the committed golden registry uses relative file entries (`examples/hype.assets.json` stores `main.mp4` and `broll.mp4` as bare relative paths) and `render_remotion._resolve_assets()` resolves non-absolute paths relative to the assets file location. I verified this with a temp copy of the example registry: after saving it into another directory, `(out_dir / 'main.mp4').exists()` is false, so the copied registry would break the resume render path when `--out` differs from the timeline directory.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "The deliverables say all three `gemini_*` tools must emit or consume the Sprint 1 structured picks format and that rationale should flow into metadata, but the proposed test plan does not actually exercise those code paths. Step 6.2 hand-constructs Python dicts and feeds them to `cut.normalize_pick()` instead of invoking `gemini_picks.py` or `gemini_refine.py`, and there is no planned unit test for `gemini_review.py` reading structured picks, so the repo could still ship stale `global_start`/`global_end` output or stale sidecar files while the new tests stay green.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "correctness",
+      "question": "Are the proposed changes technically correct?",
+      "guidance": "Look for logic errors, invalid assumptions, broken invariants, schema mismatches, or behavior that would fail at runtime. When the fix adds a conditional branch, check whether it handles all relevant cases — not just the one reported in the issue.",
+      "findings": [
+        {
+          "detail": "The revised plan does close the two earlier parser/schema correctness holes. It now explicitly rejects `--output-resolution` and `--output-fps` in `--timeline` mode, which matches the real parser surface in `cut.py`, and it explicitly tightens `gemini_picks.QUERY_SCHEMA` so `reason` becomes required instead of optional.",
+          "flagged": false
+        },
+        {
+          "detail": "The revised manual smoke command in Validation Order is still not technically valid for this repository's current `cut.py` caller contract. Structured picks that reference `asset=\"main\"` require either `--video` or `--asset main=...`; I confirmed with a minimal invocation that `python3 cut.py --scenes <scenes.json> --picks <structured-picks.json> --out <out>` fails immediately with `Missing asset path mappings for picks: 'main'`. As written, that smoke step cannot reach the resume-mode behavior it claims to validate.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The resume-mode asset-copy plan is technically unsound for this repository's current fixtures. `render_remotion.py:20-30` resolves each asset path relative to `assets_path.parent` when the registry entry is not absolute, and `examples/hype.assets.json:4-13` uses relative filenames; that means `cut.py --timeline examples/hype.timeline.json --out /tmp/resume --render` would read `/tmp/resume/hype.assets.json`, resolve `main.mp4` as `/tmp/resume/main.mp4`, and fail unless the implementation rebases paths or keeps rendering against the source registry instead of a byte-identical copy.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "The proposed `--timeline` conflict handling is incomplete relative to the actual parser surface. `cut.py:39-40` already exposes `--output-resolution` and `--output-fps`, but Step 2 only plans to reject `--scenes`, `--video`, `--picks`, `--shots`, `--transcript`, `--top-k`, `--primary-asset`, and `--asset`; on a mode whose headline behavior is 'load the timeline as-is' and byte-round-trip it unchanged, leaving output-mutating flags accepted is a silent footgun.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "The rationale contract is still only partially specified in the Gemini plan. `gemini_picks.py:83-100` currently allows `reason` to be omitted because the response schema requires only `start_seconds_in_clip`, `end_seconds_in_clip`, and `caption`, and Step 4.2 only talks about rewriting the final `picks.json` writer. Unless the response schema and prompt contract are tightened too, Sprint 3 can still emit structured picks with missing `rationale`, which undermines the required `pick_rationale` provenance flow into `hype.metadata.json`.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "question": "Search for related code that handles the same concept. Is the reported issue a symptom of something broader?",
+      "guidance": "Look at how the changed function is used across the codebase. Does the fix only address one caller's scenario while others remain broken? Flag missing required work or out-of-scope edits. A minimal patch is often right, but check whether the underlying problem is bigger than what the issue describes.",
+      "findings": [
+        {
+          "detail": "The previous scope concern around multi-source review context is genuinely resolved in the revised text. The live `gemini_review.py` currently only includes source time ranges in `build_pick_context`, and the plan now explicitly adds `asset=` to those prompt lines, which is the broader repo-level context the brief required for multi-source cuts.",
+          "flagged": false
+        },
+        {
+          "detail": "The helper-based Gemini tests are a real improvement, but they still stop short of the new multi-source CLI surface. The revision changes both `gemini_picks.py` and `gemini_refine.py` to add `--asset KEY=PATH` parsing and unmapped-asset rejection, yet Step 6 only exercises pure helpers like `build_pick_record()` and `apply_refinement()`; it does not cover the actual CLI parsing or missing-asset error paths that make the multi-source behavior work in practice.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "I checked the local Remotion audio surfaces in `remotion/src/AudioTrack.tsx`, `remotion/src/VisualClip.tsx`, and `remotion/src/HypeComposition.tsx`, plus the vendored `_reference/reigh-app` counterparts. The repo already has the broad audio primitives Sprint 3 needs: visual clips respect clip and track volume, dedicated audio tracks are rendered and sorted by `clip.at`, and playback rate is already applied on both visual and audio media, so I do not see a broader composition rewrite hidden behind this sprint's audio consolidation work.",
+          "flagged": false,
+          "status": "n/a"
+        },
+        {
+          "detail": "The multi-source Gemini requirement is slightly broader than a pure field rename. `gemini_review.py:118-148` currently builds its reviewer context from source start/end only, and the plan only proposes swapping those fields to `start`/`end`; it still does not include the pick's `asset` key anywhere in the review prompt. That means the review tool would parse the new shape, but it would not actually 'reference assets by registry key' for multi-source cuts, which is the repo-level behavior the brief called out.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    },
+    {
+      "id": "all_locations",
+      "question": "Does the change touch all locations AND supporting infrastructure?",
+      "guidance": "Search for all instances of the symbol/pattern being changed. Also ask: does this feature require setup, registration, or integration code beyond the core logic? Missing glue code causes test failures even when the core fix is correct.",
+      "findings": [
+        {
+          "detail": "The validation pathing fix is real. From the `tools/` cwd in this repository, `python3 -m unittest discover tests` succeeds and `python3 -m unittest discover tools/tests` fails, so the revised plan now matches the actual test package layout instead of the earlier broken invocation.",
+          "flagged": false
+        },
+        {
+          "detail": "Supporting infrastructure is still incomplete for the new Gemini tests. The checked-in `requirements.txt` only lists `openai` and `scenedetect`, but `gemini_picks.py`, `gemini_refine.py`, and `gemini_review.py` all import `dotenv` and `google.genai` at module import time. Because the revision makes those modules part of the must-pass test path without updating repo-managed dependencies or broadening the import guards, the plan still leaves an environment/setup hole outside the core logic changes.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The validation section does not line up with the actual repository layout for this step. The project directory here is already `/Users/peteromalley/Documents/banodoco-workspace/tools`, there is a top-level `tests/` package, and I verified that `python3 -m unittest discover tools/tests` fails with `ImportError: Start directory is not importable: 'tools/tests'`, while `python3 -m unittest tests.test_schema_contract` succeeds. The planned commands should be rewritten to use `tests...` and `discover tests` from this repo root.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "I searched live code for `remix.py` references and found only the tool itself plus one README note; there are no Python imports of `remix` in the checked-in `tools/` code. That means the removal work is correctly bounded to deleting `remix.py` and updating documentation, without hidden registration or import glue elsewhere in this repository.",
+          "flagged": false,
+          "status": "n/a"
+        }
+      ]
+    },
+    {
+      "id": "callers",
+      "question": "Find the callers of the changed function. What arguments do they actually pass? Does the fix handle all of them?",
+      "guidance": "Grep for call sites. For each caller, check what values it passes — especially edge cases like None, zero, empty, or composite inputs. Then ask: should this change be here, or in a caller, callee, or new method?",
+      "findings": [
+        {
+          "detail": "The two concrete caller mismatches from iteration 1 are resolved at the plan level. The revision now rebases non-absolute registry paths before the `render_remotion.render(...)` call, which fits that callee's actual path-resolution rules, and it explicitly drops `refined_from` so `cut.normalize_pick()` is no longer asked to silently tolerate extra structured-picks fields.",
+          "flagged": false
+        },
+        {
+          "detail": "The manual smoke still misses the real `cut.py` caller contract for structured picks. Today `resolve_asset_paths()` requires a file-path mapping for every referenced asset key; for `asset=\"main\"` that means `--video` or `--asset main=...`. The revised smoke command omits both, so its first `cut.py` call is still documented with arguments that fail before the resume-mode path or the renderer is exercised.",
+          "flagged": true
+        }
+      ],
+      "prior_findings": [
+        {
+          "detail": "The critical caller for resume-mode rendering is `render_remotion.render(...)`, and the plan explicitly routes it through `out_dir/'hype.assets.json'` after copying the registry. In this codebase that caller behavior matters more than the `save_registry()` round-trip, because `render_remotion._resolve_assets()` rebases every relative asset path from the provided assets file's directory; with the current example registry, any caller that passes a copied registry in a different output directory will hand Remotion broken file paths.",
+          "flagged": true,
+          "status": "addressed"
+        },
+        {
+          "detail": "The structured-picks callers are currently `cut.normalize_pick()`, `gemini_refine.py`, and `gemini_review.py`. The plan updates the latter two off `global_*`, but it also keeps a `refined_from` object inside refined picks even though the documented canonical picks shape in `README.md` and the Sprint 3 brief is just `{asset,start,end,rationale?,keep_audio?,caption?}`. `cut.normalize_pick()` ignores unknown keys rather than validating them away, so this caller path would silently tolerate schema drift instead of proving the refined output really matches the declared format.",
+          "flagged": true,
+          "status": "addressed"
+        }
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "id": "FLAG-006",
+      "concern": "Dependencies: the revised Gemini test plan relies on undeclared `google.genai` and `python-dotenv` packages.",
+      "category": "completeness",
+      "severity_hint": "likely-significant",
+      "evidence": "`requirements.txt` only lists `openai==1.51.0` and `scenedetect[opencv-headless]==0.6.4`, while `gemini_picks.py`, `gemini_refine.py`, and `gemini_review.py` all import `from dotenv import load_dotenv` and `from google import genai` at module import time."
+    },
+    {
+      "id": "FLAG-007",
+      "concern": "Validation flow: the revised manual smoke command still omits the asset-path mapping required by `cut.py` structured picks.",
+      "category": "correctness",
+      "severity_hint": "likely-minor",
+      "evidence": "A minimal repo-local run of `python3 cut.py --scenes <scenes.json> --picks <structured-picks.json> --out <out>` fails with `Missing asset path mappings for picks: 'main'`; the revised Validation Order step 5 omits both `--video` and `--asset main=...`."
+    }
+  ],
+  "verified_flag_ids": [
+    "FLAG-001",
+    "FLAG-002",
+    "FLAG-003",
+    "FLAG-004",
+    "FLAG-005",
+    "issue_hints-1",
+    "issue_hints-2",
+    "correctness-1",
+    "correctness-2",
+    "correctness-3",
+    "scope",
+    "all_locations",
+    "callers-1",
+    "callers-2"
+  ],
+  "disputed_flag_ids": []
+}

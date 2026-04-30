@@ -1,0 +1,45 @@
+{
+  "theme": "banodoco-default",
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "visual",
+      "label": "Video"
+    },
+    {
+      "id": "a1",
+      "kind": "audio",
+      "label": "Audio"
+    }
+  ],
+  "clips": [
+    {
+      "id": "clip_001",
+      "at": 0.0,
+      "track": "v1",
+      "clipType": "media",
+      "asset": "main",
+      "to": 6.0,
+      "from": 2.0
+    },
+    {
+      "id": "clip_002",
+      "at": 4.0,
+      "track": "v1",
+      "clipType": "media",
+      "asset": "broll",
+      "to": 13.0,
+      "volume": 0.0,
+      "from": 10.0
+    },
+    {
+      "id": "clip_003",
+      "at": 7.0,
+      "track": "v1",
+      "clipType": "media",
+      "asset": "main",
+      "to": 22.0,
+      "from": 20.0
+    }
+  ]
+}

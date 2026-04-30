@@ -1,0 +1,244 @@
+{
+  "version": 4,
+  "timestamp": "2026-04-21T19:26:35Z",
+  "hash": "sha256:3241addf54c97d47180d604cac858712ced427befaeb387920a147dc8bdb1615",
+  "changes_summary": "One focused fix. Closed the `hype.metadata.json` provenance gap that iteration 3 left implicit \u2014 the four open flags (FLAG-007 / `correctness` / `all_locations` / `callers`) were all the same concern: `cut.py:522-586` today writes pick-centric per-clip metadata and `validate.py:113-167` reads `caption_kind` + `source_transcript_text` from it, but v3 never specified the replacement schema. Added the new `hype.metadata.json` schema as a bullet under \u00a78.a `cut.py` extend (NOT a new subsection \u2014 gate warned against \u00a78 expansion). Schema: per-clip entries keyed by timeline `clip_id` carrying `pool_id`, `pool_kind`, `source_ids`, `caption_kind` (derived: dialogue\u2192\"dialogue\", visual/reaction/applause/music\u2192\"visual\", text-overlay\u2192\"text\"), `source_transcript_text` (derived per clip kind: dialogue joins transcript segments; text copies `text_overlay.content`; visual is null), `arrangement_notes`, `score`. Top-level `pipeline.pool_provenance` replaces `pipeline.picks_provenance` with sha256s of pool/arrangement/brief plus slugs. Critically, `validate.py`'s caller contract is preserved \u2014 same field names, only derivation changes \u2014 so the three validation classes (dialogue/visual/text) fall out of `caption_kind` naturally and validate.py's extension is purely internal routing. Added Step 1 reads for `cut.py:522-586` + `validate.py:113-167` + `README.md:147-176`. Added \u00a78.e rewrite target for `README.md:147-176` (the current `hype.metadata.json` documentation). Added \u00a712 non-goal \"no render_remotion.py props changes in v1\" per gate guidance to not expand into a fourth downstream integration gap (which would trigger ESCALATE). Added Step 9 cross-consistency lock for the metadata contract. No new \u00a78 subsections; scope remains a design doc.",
+  "flags_addressed": [
+    "FLAG-007",
+    "correctness",
+    "all_locations",
+    "callers"
+  ],
+  "questions": [
+    "The \u00a78.a metadata schema adds the `\"text\"` value to `caption_kind`, expanding today's de-facto `dialogue | visual | null` set. Is this enum expansion acceptable, or should text clips reuse `\"visual\"` + a separate flag (e.g. `is_text_overlay: true`) to keep the enum closed?",
+    "`pipeline.pool_provenance` carries sha256 hashes of `pool.json`, `arrangement.json`, and `brief.txt` for traceability. Is sha256 the right choice, or would a shorter content hash (blake3 / git-like 7-char truncation) suffice given this is a design doc, not a security boundary?",
+    "The schema uses `pool_id: null` for text-overlay clips (they have no pool entry). Alternative: generate synthetic pool entries with `kind:\"text\"` at arrange-time so every clip has a real `pool_id`. Which is cleaner \u2014 synthetic entries with mandatory `pool_id`, or nullable `pool_id` for text?"
+  ],
+  "success_criteria": [
+    {
+      "criterion": "File exists at exactly `tools/docs/design/pool-based-architecture.md`",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "Document has exactly the 12 required sections in the required order: (1) Problem Statement, (2) Architecture Overview + ASCII diagram, (3) pool.json schema + ADOS worked example, (4) Per-stage specs, (5) arrangement.json schema + example, (6) Multitrack timeline mapping, (7) Scoring + filtering rubrics, (8) Migration plan, (9) Cost + time estimates, (10) Failure modes + graceful degradation, (11) Open questions, (12) v1 Non-goals",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a71 names all four structural problems, quotes the clip_004 ADOS example verbatim, and labels it as observed from prior authoring work",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a72 ASCII diagram shows INGEST \u2192 POOL BUILDER \u2192 ARRANGE \u2192 ASSEMBLE \u2192 RENDER \u2192 VALIDATE, labels Claude vs Gemini vs deterministic, marks `quote_scout.py` as taking no brief input, and includes `hype.metadata.json` as part of ASSEMBLE output",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a73 defines the pool.json envelope with `scores {triage?, deep?, quotability?}` (not `relevance`) and three worked entries: dialogue from `runs/ados_2026/picks.json` clip_003, visual from `runs/ados_2026/picks.json:26-33`, applause from `runs/ados_loose/transcript.json` segments 185\u2013186",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a74 has specs for five stages, each tagged per-source or per-brief. Dialogue scout spec reads ONLY `transcript.json`, emits brief-agnostic `quotability`",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a75 arrangement.json schema uses only pool_id references, notes per-brief subdirectory, shows 3\u20134 clip example",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a76 callout quotes `tools/timeline.py:16,22` verbatim and states v1/v2/text are local names while TrackKind stays ['visual','audio'] and ClipType stays ['media','hold','text','effect-layer']",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a77 names pool-time quotability (0.4), arrange-time relevance (0.5), triage keep (3/5), deep minimum (0.4), dialogue overlap (0.4), visual duration window [0.8s, 6.0s], and composer excluded:true filter rules",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78 contains exactly five labelled subsections (a\u2013e). No new subsections beyond these five",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78.a specifies the new `hype.metadata.json` schema with: per-clip entries keyed by timeline `clip_id`, fields `pool_id`, `pool_kind`, `source_ids`, `caption_kind`, `source_transcript_text`, `arrangement_notes`, `score`; explicit `caption_kind` derivation table (dialogue\u2192\"dialogue\", visual/reaction/applause/music\u2192\"visual\", text-overlay\u2192\"text\"); explicit `source_transcript_text` derivation rules per clip kind; top-level `pipeline.pool_provenance` (replacing `pipeline.picks_provenance`) with sha256s of pool/arrangement/brief; AND a caller-contract-preservation statement saying `validate.py`'s field names stay the same and only derivation changes",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78.b lists `validation.json` as `validate`'s sentinel, scout classified as per-source with no brief input, and caching invariant stated",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78.c per-brief directory tree includes `arrangement.json`, `hype.timeline.json`, `hype.assets.json`, `hype.metadata.json`, `hype.mp4`, `validation.json`",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78.d uses `redesign or descope` (not `retarget`) for `gemini_review.py` / `gemini_refine.py`, recommends descope to v2, and cites line-range evidence for timestamp coupling",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a78.e names `tools/README.md:147-176` (the current `hype.metadata.json` description) as a rewrite target alongside `:16-45` and `:178-255`",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a79 names ADOS scale (2h / 704 / 1015), separates per-source pool cost from per-brief arrange cost, tags costs \"as of early 2026\"",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a710 lists at least 5 failure modes each with a named fallback",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a711 lists at least 5 substantive open questions",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "\u00a712 lists v1 non-goals including: no new reigh-app fields; no cross-source b-roll library; no cross-brief pool sharing; no sidechain ducking; no auto-cut-to-beat; no new transitions; no web UI; no v1 redesign of review/refine; no brief-aware scout pass in v1; no render_remotion.py props changes in v1",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "No new reigh-app TrackKind or ClipType values are invented anywhere in the doc",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "No prompt sketch or schema asks any LLM to emit numeric timestamps",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "The doc does not use the word `retarget` in connection with `gemini_review.py` or `gemini_refine.py`",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "The \u00a74 `quote_scout` spec does not list `brief.txt` or `brief_text` as an input (grep-checkable)",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "`validation.json` appears as the `validate` sentinel in BOTH \u00a78.b and \u00a78.c",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "Scout's tier is consistent across \u00a72, \u00a74, \u00a77, \u00a78.b, \u00a78.c \u2014 everywhere per-source and brief-agnostic",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "`hype.metadata.json` schema in \u00a78.a is internally consistent: `caption_kind` enum is exactly `\"dialogue\" | \"visual\" | \"text\"`; `pipeline.pool_provenance` replaces `pipeline.picks_provenance`; the validate caller-contract-preservation statement appears immediately alongside or after the schema block",
+      "priority": "must",
+      "requires": [
+        "read_files"
+      ]
+    },
+    {
+      "criterion": "Document word count is under ~6000 words (verified via `wc -w`)",
+      "priority": "should",
+      "requires": [
+        "read_files",
+        "run_shell"
+      ]
+    },
+    {
+      "criterion": "Document is written as a design doc in markdown. No Python files are added or edited under `tools/`",
+      "priority": "must",
+      "requires": [
+        "read_files",
+        "parse_diff"
+      ]
+    },
+    {
+      "criterion": "\u00a76 reigh-app contract callout reads as a hard contract immediately adjacent to the verbatim `tools/timeline.py` line quotes",
+      "priority": "should",
+      "requires": [
+        "subjective_judgment"
+      ]
+    },
+    {
+      "criterion": "\u00a78.a metadata contract reads as a hard contract with explicit derivation tables, not hand-wavy prose",
+      "priority": "should",
+      "requires": [
+        "subjective_judgment"
+      ]
+    }
+  ],
+  "assumptions": [
+    "`hype.metadata.json` replacement schema is specified in \u00a78.a as a bullet under the `cut.py` extend, NOT as a new \u00a78 subsection. The gate warned against \u00a78 scope expansion and this respects that guidance.",
+    "`validate.py`'s caller contract (field names `caption_kind` and `source_transcript_text`, keyed by clip id) is preserved verbatim. The \u00a78.a extension only changes how `cut.py` *derives* those fields from `pool.json` + `arrangement.json` + `transcript.json` instead of from `picks.json`. This keeps the validate extension surgical (switch on `caption_kind`), not a rewrite.",
+    "`caption_kind` enum tightens from `nullable dialogue|visual` (today) to `dialogue | visual | text` in the new schema. Reaction, applause, and music pool kinds all map to `caption_kind: \"visual\"` because they validate the same way (duration-only, no transcript match). Text-overlay clips get `caption_kind: \"text\"` to trigger exact-string validation.",
+    "`source_transcript_text` derivation is kind-driven: dialogue clips join `transcript.segments[segment_ids].text`; text-typed clips copy `text_overlay.content`; visual/reaction/applause/music clips get `null`. This preserves the existing validate.py tolerance for null-text `caption_kind==\"visual\"` cases.",
+    "`pipeline.pool_provenance` replaces `pipeline.picks_provenance` in the metadata sidecar, carrying `{pool_sha256, arrangement_sha256, brief_sha256, source_slug, brief_slug}` so any rendered clip is deterministically traceable back to pool + arrangement + brief.",
+    "`render_remotion.py` and the reigh-app Remotion props are explicitly out of scope for v1 per gate guidance \u2014 adding a fourth downstream integration gap would trigger ESCALATE. The metadata schema uses `clip_id` keying which the existing Remotion bridge already exposes, so this is compatible by construction.",
+    "Settled decisions SD-001 through SD-014 from gate metadata carry forward unchanged; only the metadata schema is new in this revision.",
+    "The `hype.metadata.json` schema specification adds roughly 250 words to \u00a78. Trim order if over ~6000 words: \u00a74 prompt sketches \u2192 \u00a79 cost commentary \u2192 \u00a71 auxiliary vignette. Do NOT trim the metadata contract or the scout-brief-agnostic language.",
+    "The doc remains a design document only. No code is edited. The metadata schema is specified as a schema block + derivation rules + caller-contract-preservation paragraph, not as Python code."
+  ],
+  "delta_from_previous_percent": 46.96,
+  "structure_warnings": []
+}

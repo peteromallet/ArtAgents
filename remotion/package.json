@@ -1,0 +1,31 @@
+{
+  "name": "tools-remotion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "bundle": "remotion bundle src/index.ts",
+    "render": "remotion render",
+    "smoke": "node __smoke__/bundle.mjs",
+    "gen-types": "python3 ../scripts/gen_remotion_types.py && python3 ../scripts/gen_effect_registry.py"
+  },
+  "dependencies": {
+    "@banodoco/timeline-composition": "file:../../packages/timeline-composition",
+    "@banodoco/timeline-theme-2rp": "file:../../packages/timeline-theme-2rp",
+    "@remotion/cli": "4.0.448",
+    "@remotion/google-fonts": "^4.0.452",
+    "@remotion/layout-utils": "^4.0.448",
+    "@remotion/media": "4.0.448",
+    "@remotion/renderer": "4.0.448",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.448"
+  },
+  "devDependencies": {
+    "@remotion/bundler": "4.0.448",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.8.3"
+  }
+}

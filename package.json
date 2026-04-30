@@ -1,0 +1,5 @@
+{
+  "name": "tools-workspace",
+  "private": true,
+  "description": "Workspace marker — keeps codex sandbox from narrowing to tools/remotion/. Not a real npm package."
+}

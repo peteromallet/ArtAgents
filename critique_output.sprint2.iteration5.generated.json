@@ -1,0 +1,76 @@
+{
+  "checks": [
+    {
+      "id": "issue_hints",
+      "findings": [
+        {
+          "detail": "Checked `plan_v5.md`, `plan_v5.meta.json`, `_reference/README.md`, and the vendored `TimelineRenderer.tsx` / `VisualClip.tsx`. The prior v4 gap is resolved: the plan now explicitly covers the regular visual path, the viewport path, visual-track reversal, and track-level `opacity` / `scale` wrapping, so the earlier `FLAG-020` compatibility miss is genuinely addressed.",
+          "flagged": false
+        },
+        {
+          "detail": "I then compared the new v5 regular-branch wording to the actual vendored helper it claims to mirror. The plan now introduces a new divergence from the reigh-app-compatible rendering goal: Canonical contract #7 and Step 3.7 say `getClipBoxStyle()` for the regular branch returns absolute `left/top/width/height` based on the clip or composition, but the vendored `VisualClip.tsx:43-58` returns `{width: '100%', height: '100%', objectFit: fit, opacity}` for non-manual, no-override clips. That means the newly added fix path still does not match the renderer behavior it is supposed to port.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "correctness",
+      "findings": [
+        {
+          "detail": "Compared the new `getClipBoxStyle` contract in `plan_v5.md:22,57,60` and `plan_v5.meta.json:92,106,319` against `_reference/reigh-app/src/tools/video-editor/compositions/VisualClip.tsx:43-58,119-124`. In the reference code, the regular branch uses a non-absolute full-frame style (`width: '100%'`, `height: '100%'`, `objectFit: fit`) and only switches to absolute bounds when `fit === 'manual'` or a position/crop override exists. The plan instead hard-codes absolute `left/top/width/height` even for the regular branch, so if implemented literally it can change layout for ordinary contain/cover clips.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "scope",
+      "findings": [
+        {
+          "detail": "Checked the broader impact of the v5 rewrite. The remaining issue is no longer a missing feature surface from `TimelineRenderer.tsx`; it is a narrower semantic mismatch introduced by the new extracted helper. By splitting `getClipBoxStyle` into a standalone `src/lib/box-style.ts` that does not exist in the vendored `lib/` tree, the plan created a new compatibility boundary, and that newly invented boundary is currently specified incorrectly for the regular branch.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "all_locations",
+      "findings": [
+        {
+          "detail": "I verified that the earlier visual-track omissions are now named in the correct locations: `HypeComposition.tsx` owns track-level wrapping and reversal, and `VisualClip.tsx` now owns both render branches. That part of the plan is materially improved versus v4.",
+          "flagged": false
+        },
+        {
+          "detail": "The new box-style mismatch is also propagated across multiple plan surfaces, not isolated to one sentence. The wrong regular-branch helper contract now appears in Canonical contract #7, Step 3.7, Step 3.9, the box-style success criterion in `plan_v5.meta.json:106`, and the matching assumptions entry in `plan_v5.meta.json:319`, so the plan package is internally consistent about the wrong behavior rather than only having a one-line typo.",
+          "flagged": true
+        }
+      ]
+    },
+    {
+      "id": "callers",
+      "findings": [
+        {
+          "detail": "Checked the actual callers of `getClipBoxStyle` in the vendored `VisualClip.tsx`. The helper is only used when `!useViewportLayout`, meaning clips with no position overrides and `track.fit !== 'manual'`; for exactly those caller shapes the reference returns a full-frame `width: '100%'` / `height: '100%'` style. The plan's replacement helper instead says those same callers get absolute `left/top/width/height` from clip or composition bounds, so the caller contract is still mis-specified even after the broader track-wrapping fix landed.",
+          "flagged": true
+        }
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "id": "FLAG-021",
+      "concern": "Regular visual branch: the new `getClipBoxStyle` contract in v5 does not match the vendored helper for non-viewport clips, so ordinary `cover`/`contain` media can still render differently from reigh-app.",
+      "category": "correctness",
+      "severity_hint": "significant",
+      "evidence": "`_reference/reigh-app/src/tools/video-editor/compositions/VisualClip.tsx:43-58,119-124` returns `{width: '100%', height: '100%', objectFit: fit, opacity}` for the regular `!useViewportLayout` path. `plan_v5.md:22,57,60` and `plan_v5.meta.json:106,319` instead define `getClipBoxStyle` for that same path as absolute `left/top/width/height` based on clip or composition bounds."
+    }
+  ],
+  "verified_flag_ids": [
+    "issue_hints",
+    "correctness-1",
+    "correctness-2",
+    "scope",
+    "all_locations",
+    "callers",
+    "FLAG-020"
+  ],
+  "disputed_flag_ids": []
+}
