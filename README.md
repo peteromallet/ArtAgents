@@ -14,7 +14,21 @@ right existing nodes or newly built nodes.
 Copy this into a coding agent:
 
 ```text
-Use the ArtAgents repo. Read README.md and SKILL.md first, run git status --short, keep generated files under runs/, do not commit secrets or media, and run: python3 pipeline.py --brief brief.txt --out runs/example --render. While working, call out friction points, suggest fixes, and recommend PRs to the original upstream repos when the right fix belongs there rather than as a local workaround.
+Use the ArtAgents repo:
+https://github.com/banodoco/ArtAgents
+
+First read README.md and SKILL.md, then run:
+git status --short
+
+Keep generated files under runs/.
+Do not commit secrets or media.
+
+Run:
+python3 pipeline.py --brief brief.txt --out runs/example --render
+
+While working, call out friction points, suggest fixes, and recommend PRs to
+the original upstream repos when the durable fix belongs there rather than as
+a local workaround.
 ```
 
 ## Quick Start
