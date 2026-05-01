@@ -9,6 +9,7 @@ import html
 import json
 import os
 import re
+import fcntl
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -18,6 +19,7 @@ SECRET_VALUE_RE = re.compile(
     r"(sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{12,}|hf_[A-Za-z0-9]{12,}|AIza[0-9A-Za-z_-]{12,})"
 )
 MAX_TEXT_PREVIEW = 500
+PARENT_IDS_ENV = "ARTAGENTS_AUDIT_PARENT_IDS"
 
 
 def _utc_now() -> str:
@@ -54,6 +56,13 @@ def redact(value: Any) -> Any:
             return SECRET_VALUE_RE.sub("<redacted>", value)
         return value
     return value
+
+
+def _env_parent_ids() -> list[str]:
+    raw = os.environ.get(PARENT_IDS_ENV, "").strip()
+    if not raw:
+        return []
+    return [item for item in raw.split(",") if item]
 
 
 def _file_metadata(path: Path) -> dict[str, Any]:
@@ -135,7 +144,12 @@ class AuditContext:
         }
         self.audit_dir.mkdir(parents=True, exist_ok=True)
         with self.ledger_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, sort_keys=True) + "\n")
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                handle.write(json.dumps(payload, sort_keys=True) + "\n")
+                handle.flush()
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
     def register_asset(
         self,
@@ -257,15 +271,17 @@ def load_ledger(run_dir: Path | str) -> list[dict[str, Any]]:
     if not ledger_path.is_file():
         raise FileNotFoundError(f"audit ledger not found: {ledger_path}")
     events = []
-    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+    for line_number, line in enumerate(ledger_path.read_text(encoding="utf-8").splitlines(), start=1):
         if line.strip():
-            events.append(json.loads(line))
+            event = json.loads(line)
+            event["_ledger_line"] = line_number
+            events.append(event)
     return events
 
 
 def build_graph(events: list[dict[str, Any]]) -> dict[str, Any]:
     nodes: dict[str, dict[str, Any]] = {}
-    edges: list[dict[str, str]] = []
+    edges_by_key: dict[tuple[str, str], dict[str, str]] = {}
     decisions: list[dict[str, Any]] = []
     for event in events:
         event_type = event.get("event")
@@ -273,17 +289,19 @@ def build_graph(events: list[dict[str, Any]]) -> dict[str, Any]:
             node_id = str(event["asset_id"])
             nodes[node_id] = {**event, "id": node_id, "node_type": "asset"}
             for parent in event.get("parents") or []:
-                edges.append({"from": str(parent), "to": node_id})
+                edges_by_key[(str(parent), node_id)] = {"from": str(parent), "to": node_id}
         elif event_type == "node.created":
             node_id = str(event["node_id"])
             nodes[node_id] = {**event, "id": node_id, "node_type": "node"}
             for parent in event.get("parents") or []:
-                edges.append({"from": str(parent), "to": node_id})
+                edges_by_key[(str(parent), node_id)] = {"from": str(parent), "to": node_id}
             for output in event.get("outputs") or []:
-                edges.append({"from": node_id, "to": str(output)})
+                edges_by_key[(node_id, str(output))] = {"from": node_id, "to": str(output)}
         elif event_type == "decision.created":
             decisions.append(event)
-    return {"nodes": list(nodes.values()), "edges": edges, "decisions": decisions, "events": events}
+    ordered_nodes = sorted(nodes.values(), key=lambda node: (str(node.get("stage") or ""), int(node.get("_ledger_line", 0)), str(node.get("id"))))
+    ordered_edges = sorted(edges_by_key.values(), key=lambda edge: (edge["from"], edge["to"]))
+    return {"nodes": ordered_nodes, "edges": ordered_edges, "decisions": decisions, "events": events}
 
 
 def _render_preview(node: dict[str, Any], run_dir: Path) -> str:
@@ -399,12 +417,13 @@ def register_output(
     context = AuditContext.from_env()
     if context is None:
         return None
+    parent_ids = list(parents) or _env_parent_ids()
     return context.register_asset(
         kind=kind,
         path=path,
         label=label,
         stage=stage,
-        parents=parents,
+        parents=parent_ids,
         metadata=metadata,
     )
 
@@ -420,7 +439,7 @@ def register_outputs(
     context = AuditContext.from_env()
     if context is None:
         return []
-    parent_ids = list(parents)
+    parent_ids = list(parents) or _env_parent_ids()
     output_ids = [
         context.register_asset(kind=kind, path=path, label=label, parents=parent_ids, stage=stage, metadata=metadata)
         for kind, path, label in outputs
