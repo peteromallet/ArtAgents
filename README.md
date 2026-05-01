@@ -1,7 +1,5 @@
 # ArtAgents
 
-![ArtAgents orchestration: conductors route work to player agents](docs/assets/artagents-orchestration.svg)
-
 ArtAgents is a file-based toolkit for producing Reigh-compatible video edits,
 event-talk renders, generative timelines, and image/video assets.
 
