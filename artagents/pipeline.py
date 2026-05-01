@@ -22,9 +22,9 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from . import editor_review
 from . import asset_cache
-from .audit import AuditContext
+from .audit import AuditContext, PARENT_IDS_ENV
 from . import timeline
-from ._paths import REPO_ROOT, WORKSPACE_ROOT
+from ._paths import REPO_ROOT, WORKSPACE_ROOT, cli_script_path
 
 
 STEP_ORDER = (
@@ -375,7 +375,7 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def script_path(name: str) -> str:
-    return str((REPO_ROOT / name).resolve())
+    return str(cli_script_path(name))
 
 
 def add_extra_args(args: argparse.Namespace, step_name: str, cmd: list[str]) -> list[str]:
@@ -829,6 +829,9 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
         env = os.environ.copy()
         if getattr(args, "audit", None) is not None:
             env["ARTAGENTS_AUDIT_RUN_DIR"] = str(args.out)
+            parent_ids = getattr(args, "audit_parent_ids", [])
+            if parent_ids:
+                env[PARENT_IDS_ENV] = ",".join(parent_ids)
         if getattr(args, "no_audit", False):
             env["ARTAGENTS_AUDIT_DISABLED"] = "1"
         process = subprocess.Popen(
@@ -849,7 +852,9 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
     if returncode != 0:
         print_log_tail(step.name, log_path)
     elif getattr(args, "audit", None) is not None:
-        _register_step_outputs(step, cmd, args, log_path)
+        output_ids = _register_step_outputs(step, cmd, args, log_path)
+        if output_ids:
+            args.audit_parent_ids = output_ids
     return returncode
 
 
@@ -874,8 +879,9 @@ def _asset_kind_for_sentinel(name: str) -> str:
     }.get(name, Path(name).suffix.lstrip(".") or "artifact")
 
 
-def _register_step_outputs(step: Step, cmd: list[str], args: argparse.Namespace, log_path: Path) -> None:
+def _register_step_outputs(step: Step, cmd: list[str], args: argparse.Namespace, log_path: Path) -> list[str]:
     audit: AuditContext = args.audit
+    parent_ids = list(getattr(args, "audit_parent_ids", []))
     output_ids: list[str] = []
     for path in sentinel_paths(step, args):
         if not path.exists():
@@ -885,6 +891,7 @@ def _register_step_outputs(step: Step, cmd: list[str], args: argparse.Namespace,
                 kind=_asset_kind_for_sentinel(path.name),
                 path=path,
                 label=f"{step.name}: {path.name}",
+                parents=parent_ids,
                 stage=step.name,
                 registration_source="pipeline_fallback",
             )
@@ -893,16 +900,19 @@ def _register_step_outputs(step: Step, cmd: list[str], args: argparse.Namespace,
         kind="log",
         path=log_path,
         label=f"{step.name} log",
+        parents=parent_ids,
         stage=step.name,
         registration_source="pipeline_fallback",
     )
     audit.register_node(
         stage=step.name,
         label=f"Pipeline step: {step.name}",
+        parents=parent_ids,
         metadata={"command": cmd_safe(cmd)},
         outputs=[*output_ids, log_id],
         registration_source="pipeline_fallback",
     )
+    return output_ids or [log_id]
 
 
 def cmd_safe(cmd: list[str]) -> list[str]:
@@ -1194,6 +1204,7 @@ def _register_run_inputs(args: argparse.Namespace) -> None:
             "skips": args.skip,
         },
     )
+    args.audit_parent_ids = parents
 
 
 def main(argv: list[str] | None = None) -> int:

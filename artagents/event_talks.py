@@ -75,7 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     render.add_argument("--logo", type=Path)
     render.add_argument("--sponsor", type=Path, action="append", default=[])
-    render.add_argument("--character-sequence", type=str, help="Optional ffmpeg image2 pattern for a transparent PNG character animation, e.g. frames/%03d.png.")
+    render.add_argument("--character-sequence", type=str, help="Optional ffmpeg image2 pattern for a transparent PNG character animation, e.g. frames/%%03d.png.")
     render.add_argument("--width", type=int, default=1920)
     render.add_argument("--height", type=int, default=1080)
     render.add_argument("--fps", type=int, default=30)

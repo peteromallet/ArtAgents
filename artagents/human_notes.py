@@ -22,7 +22,7 @@ from .editor_review import (
 )
 from .llm_clients import ClaudeClient, build_claude_client
 from .timeline import load_arrangement, load_pool
-from ._paths import REPO_ROOT
+from ._paths import cli_script_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -80,7 +80,7 @@ def _pool_ids(pool: dict[str, Any]) -> set[str]:
 
 
 def _script_path(name: str) -> str:
-    return str((REPO_ROOT / name).resolve())
+    return str(cli_script_path(name))
 
 
 def _parse_asset_entry(parser: argparse.ArgumentParser, raw: str) -> tuple[str, Path | str]:

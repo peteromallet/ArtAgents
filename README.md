@@ -3,9 +3,9 @@
 ArtAgents is a file-based toolkit for producing Reigh-compatible video edits,
 event-talk renders, generative timelines, and image/video assets.
 
-The main implementation lives in the `artagents/` Python package. The root-level
-`*.py` files are intentionally small compatibility launchers so existing commands
-such as `python3 pipeline.py ...` keep working.
+The main implementation lives in the `artagents/` Python package. `pipeline.py`
+is kept at the repository root as the primary entry point; lower-level tool
+launchers live under `bin/`.
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ python3 pipeline.py --brief brief.txt --theme 2rp --out runs/generative --render
 Render an event-talk manifest:
 
 ```bash
-python3 event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
+python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
 Generated outputs belong under `runs/`. That directory is ignored by git and can
@@ -41,13 +41,15 @@ artagents/conductors/      Workflow orchestration layer
 reviewers/                 Focused audio/visual review helpers
 remotion/                  Remotion renderer project
 scripts/                   Development and code-generation scripts
+bin/                       Compatibility launchers for direct tool commands
 examples/                  Small Reigh-compatible timeline examples
 _reference/                Reference files copied from Reigh contracts
 runs/                      Ignored local outputs and generated artifacts
 ```
 
-Root launchers such as `pipeline.py`, `cut.py`, `generate_image.py`, and
-`visual_understand.py` just call the matching module under `artagents/`.
+`pipeline.py` and the `bin/*.py` launchers just call matching modules under
+`artagents/`. Prefer `pipeline.py` for normal workflows and `bin/<tool>.py` when
+you need to run a single stage directly.
 
 ## Conductors And Performers
 
@@ -133,14 +135,14 @@ python3 pipeline.py audit --run runs/example --json
 Typical event-talk workflow:
 
 ```bash
-python3 transcribe.py --audio talk.wav --out runs/event/transcript --env-file /path/to/.env
-python3 event_talks.py ados-sunday-template --out runs/event/talks.json
-python3 event_talks.py search-transcript --transcript runs/event/transcript/transcript.json
-python3 event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
+python3 bin/transcribe.py --audio talk.wav --out runs/event/transcript --env-file /path/to/.env
+python3 bin/event_talks.py ados-sunday-template --out runs/event/talks.json
+python3 bin/event_talks.py search-transcript --transcript runs/event/transcript/transcript.json
+python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
 For polished long-form event videos, keep the default
-`event_talks.py render --renderer remotion-wrapper`. It renders intro/outro
+`bin/event_talks.py render --renderer remotion-wrapper`. It renders intro/outro
 cards through Remotion and uses ffmpeg for the long media pass.
 
 ## Understanding Tools
@@ -148,15 +150,15 @@ cards through Remotion and uses ffmpeg for the long media pass.
 Use these tools when editorial decisions need model help:
 
 ```bash
-python3 visual_understand.py --video source.mp4 --at 0,20,40 --query "Which frames are title cards?"
-python3 audio_understand.py --audio quote.wav --query "Is this quote strong enough for an opener?"
-python3 video_understand.py --video source.mp4 --at 01:20,03:45 --window-sec 20 --query "Which moment works better?"
+python3 bin/visual_understand.py --video source.mp4 --at 0,20,40 --query "Which frames are title cards?"
+python3 bin/audio_understand.py --audio quote.wav --query "Is this quote strong enough for an opener?"
+python3 bin/video_understand.py --video source.mp4 --at 01:20,03:45 --window-sec 20 --query "Which moment works better?"
 ```
 
 Outputs should be written under `runs/`, for example:
 
 ```bash
-python3 visual_understand.py \
+python3 bin/visual_understand.py \
   --video source.mp4 \
   --at 0,20,40 \
   --query "Which frames should be cut?" \
@@ -168,7 +170,7 @@ python3 visual_understand.py \
 Generate GPT Image assets:
 
 ```bash
-python3 generate_image.py \
+python3 bin/generate_image.py \
   --prompt "A clean editorial still of a red triangle on white" \
   --n 2 \
   --size 1024x1024 \
@@ -181,7 +183,7 @@ python3 generate_image.py \
 Generate and slice a sprite sheet:
 
 ```bash
-python3 sprite_sheet.py \
+python3 bin/sprite_sheet.py \
   --animation "8-frame idle bounce" \
   --subject "small black five-point star mascot" \
   --frames 8 \
@@ -196,7 +198,7 @@ python3 sprite_sheet.py \
 Normal renders go through the wrapper, not raw `npx remotion render`:
 
 ```bash
-python3 render_remotion.py \
+python3 bin/render_remotion.py \
   --timeline runs/example/briefs/my-brief/hype.timeline.json \
   --assets runs/example/briefs/my-brief/hype.assets.json \
   --out runs/example/briefs/my-brief/render.mp4

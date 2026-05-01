@@ -19,7 +19,7 @@ class CompatibilityWrapperTest(unittest.TestCase):
     def test_root_event_talks_launcher_calls_package_main(self) -> None:
         with mock.patch("artagents.event_talks.main", return_value=0) as package_main:
             with self.assertRaises(SystemExit) as raised:
-                runpy.run_path(str(ROOT / "event_talks.py"), run_name="__main__")
+                runpy.run_path(str(ROOT / "bin" / "event_talks.py"), run_name="__main__")
 
         self.assertEqual(raised.exception.code, 0)
         package_main.assert_called_once_with()
@@ -27,7 +27,7 @@ class CompatibilityWrapperTest(unittest.TestCase):
     def test_root_thumbnail_maker_launcher_calls_package_main(self) -> None:
         with mock.patch("artagents.thumbnail_maker.main", return_value=0) as package_main:
             with self.assertRaises(SystemExit) as raised:
-                runpy.run_path(str(ROOT / "thumbnail_maker.py"), run_name="__main__")
+                runpy.run_path(str(ROOT / "bin" / "thumbnail_maker.py"), run_name="__main__")
 
         self.assertEqual(raised.exception.code, 0)
         package_main.assert_called_once_with()

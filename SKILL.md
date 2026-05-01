@@ -5,7 +5,7 @@ description: "Use for the ArtAgents repo: file-based hype-cut/video pipeline wor
 
 # ArtAgents
 
-ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root; root-level scripts are compatibility launchers for `artagents/*` modules.
+ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `pipeline.py` stays at the root as the primary entry point; direct stage launchers live under `bin/` and call `artagents/*` modules.
 
 ## First Checks
 
@@ -36,10 +36,10 @@ python3 pipeline.py --brief brief.txt --theme <theme-id> --out runs/<name> --ren
 Event talk splitting:
 
 ```bash
-python3 transcribe.py --audio talk.wav --out runs/event/transcript --env-file /path/to/.env
-python3 event_talks.py ados-sunday-template --out runs/event/talks.json
-python3 event_talks.py search-transcript --transcript runs/event/transcript/transcript.json
-python3 event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
+python3 bin/transcribe.py --audio talk.wav --out runs/event/transcript --env-file /path/to/.env
+python3 bin/event_talks.py ados-sunday-template --out runs/event/talks.json
+python3 bin/event_talks.py search-transcript --transcript runs/event/transcript/transcript.json
+python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
 ArtAgents has two first-class workflow roles: conductors and performers. Conductors are the coordination layer. Performers are the human-facing actions a conductor can call. Use `performers` for executable units such as rendering, external tools, and uploading to YouTube. Do not introduce another workflow role for this layer; coordination belongs to conductors, execution belongs to performers. New code should import from `artagents.performers`.
@@ -57,14 +57,14 @@ python3 pipeline.py conductors run builtin.hype --out runs/<name> --brief brief.
 python3 pipeline.py conductors run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
 ```
 
-The legacy root launchers remain supported:
+The main root launcher remains supported, and direct stage launchers live under `bin/`:
 
 ```bash
 python3 pipeline.py --video SRC.mp4 --brief brief.txt --out runs/<name> --render
-python3 event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
+python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
-For polished long event-talk videos, keep `event_talks.py render` on its default `--renderer remotion-wrapper`: Remotion renders the animated intro/outro cards, while ffmpeg handles the long media pass, lower-third, corner logo, and final concat. Card renders are cached beside the card MP4s and are invalidated by talk metadata, dimensions, duration, and brand asset mtimes; use `--force-card-render` when iterating on card animation code. Full `--renderer remotion` writes Reigh-style timeline/assets JSON and renders the whole talk through `render_remotion.py`, but it can be slow and disk-heavy for 10+ minute talks and now preflights free disk. `--renderer ffmpeg-proof` is only for quick boundary/proof checks, not final branded output.
+For polished long event-talk videos, keep `bin/event_talks.py render` on its default `--renderer remotion-wrapper`: Remotion renders the animated intro/outro cards, while ffmpeg handles the long media pass, lower-third, corner logo, and final concat. Card renders are cached beside the card MP4s and are invalidated by talk metadata, dimensions, duration, and brand asset mtimes; use `--force-card-render` when iterating on card animation code. Full `--renderer remotion` writes Reigh-style timeline/assets JSON and renders the whole talk through `bin/render_remotion.py`, but it can be slow and disk-heavy for 10+ minute talks and now preflights free disk. `--renderer ffmpeg-proof` is only for quick boundary/proof checks, not final branded output.
 
 ## Remotion Renderer
 
@@ -75,10 +75,10 @@ npx skills add remotion-dev/skills
 npx remotion skills add
 ```
 
-Use it for general Remotion background, but follow ArtAgents contracts first. The Remotion project is `remotion/`; normal ArtAgents renders go through `python3 render_remotion.py`, not raw `npx remotion render`, because the wrapper builds props, resolves themes, serves assets with HTTP Range support, and avoids bundling large media.
+Use it for general Remotion background, but follow ArtAgents contracts first. The Remotion project is `remotion/`; normal ArtAgents renders go through `python3 bin/render_remotion.py`, not raw `npx remotion render`, because the wrapper builds props, resolves themes, serves assets with HTTP Range support, and avoids bundling large media.
 
 ```bash
-python3 render_remotion.py \
+python3 bin/render_remotion.py \
   --timeline runs/<name>/briefs/<brief>/hype.timeline.json \
   --assets runs/<name>/briefs/<brief>/hype.assets.json \
   --out runs/<name>/briefs/<brief>/render.mp4
@@ -91,16 +91,16 @@ npm run smoke
 npm run gen-types
 ```
 
-Run `gen-types` after effect/theme primitive changes. For long event talks, prefer `event_talks.py render --renderer remotion-wrapper`; use full `--renderer remotion` only when the whole talk must go through timeline/assets rendering.
+Run `gen-types` after effect/theme primitive changes. For long event talks, prefer `bin/event_talks.py render --renderer remotion-wrapper`; use full `--renderer remotion` only when the whole talk must go through timeline/assets rendering.
 
-Guardrails: `TimelineComposition` lives in `remotion/src/Root.tsx`; use `calculateMetadata` for timeline/theme-derived duration, dimensions, fps, or props; keep props JSON-serializable; use explicit frame math and clamped `interpolate()` timing; consume registry URLs prepared by `render_remotion.py`; preserve `_reference/README.md` semantics; do not put large media in `remotion/public/` or commit generated renders.
+Guardrails: `TimelineComposition` lives in `remotion/src/Root.tsx`; use `calculateMetadata` for timeline/theme-derived duration, dimensions, fps, or props; keep props JSON-serializable; use explicit frame math and clamped `interpolate()` timing; consume registry URLs prepared by `bin/render_remotion.py`; preserve `_reference/README.md` semantics; do not put large media in `remotion/public/` or commit generated renders.
 
 ## Generate Image Tool
 
-Use `generate_image.py` for GPT Image API asset generation inside ArtAgents:
+Use `bin/generate_image.py` for GPT Image API asset generation inside ArtAgents:
 
 ```bash
-python3 generate_image.py \
+python3 bin/generate_image.py \
   --prompt "A minimal editorial still of a red triangle on white" \
   --n 2 \
   --size 1024x1024 \
@@ -129,10 +129,10 @@ Current GPT Image defaults:
 
 ## Visual Understanding Tool
 
-Use `visual_understand.py` when you need a cheap visual read on one image or a batch of sampled video frames. It can pass a single image directly, or build a numbered contact sheet from up to 20 images/frames before querying an OpenAI vision model.
+Use `bin/visual_understand.py` when you need a cheap visual read on one image or a batch of sampled video frames. It can pass a single image directly, or build a numbered contact sheet from up to 20 images/frames before querying an OpenAI vision model.
 
 ```bash
-python3 visual_understand.py \
+python3 bin/visual_understand.py \
   --video source.mp4 \
   --at 0,20,40,60,80,100,120,140 \
   --query "Which numbered frames are holding/title screens to remove, and which should be kept?" \
@@ -145,7 +145,7 @@ Defaults: `--mode fast` (`gpt-4o-mini`), `detail=low`, `cols=4`, `max-images=20`
 Use crop review when deciding vertical/social framing from one image or sampled frame:
 
 ```bash
-python3 visual_understand.py \
+python3 bin/visual_understand.py \
   --video source.mp4 \
   --at 140 \
   --crop-aspect 9:16 \
@@ -158,10 +158,10 @@ python3 visual_understand.py \
 If you do not know which frames to query, do not guess manually. Reuse or generate asset-level analysis first:
 
 ```bash
-python3 scenes.py --video source.mp4 --out runs/event/scenes.json
-python3 shots.py --video source.mp4 --scenes runs/event/scenes.json --out runs/event/shots
-python3 event_talks.py find-holding-screens --video source.mp4 --out runs/event/holding-screens.json
-python3 boundary_candidates.py \
+python3 bin/scenes.py --video source.mp4 --out runs/event/scenes.json
+python3 bin/shots.py --video source.mp4 --scenes runs/event/scenes.json --out runs/event/shots
+python3 bin/event_talks.py find-holding-screens --video source.mp4 --out runs/event/holding-screens.json
+python3 bin/boundary_candidates.py \
   --asset-key main \
   --video source.mp4 \
   --manifest runs/event/talks.json \
@@ -176,12 +176,12 @@ Store source-derived analysis at asset level. `hype.metadata.json` already uses 
 
 ## Audio Understanding Tool
 
-Use `audio_understand.py` when the edit question depends on how something sounds, not just what was said: emotional force, excitement, speed, pauses, laughter, applause, music/SFX, clipping, echo, room tone, or whether a quote has a clean in/out.
+Use `bin/audio_understand.py` when the edit question depends on how something sounds, not just what was said: emotional force, excitement, speed, pauses, laughter, applause, music/SFX, clipping, echo, room tone, or whether a quote has a clean in/out.
 
 Single source:
 
 ```bash
-python3 audio_understand.py \
+python3 bin/audio_understand.py \
   --audio quote.wav \
   --query "Is this quote emotionally strong enough for an opener? Is the speaker too slow?" \
   --out runs/audio-understanding/quote-review.json \
@@ -191,7 +191,7 @@ python3 audio_understand.py \
 Comparison sources:
 
 ```bash
-python3 audio_understand.py \
+python3 bin/audio_understand.py \
   --audio quote-a.wav \
   --audio quote-b.wav \
   --audio quote-c.wav \
@@ -203,14 +203,14 @@ For comparison, the tool builds a numbered audition reel: it says "Number 1", pl
 
 For video, pass `--video source.mp4 --at 01:20,03:45 --window-sec 20` to extract windows around candidate moments. Multiple windows also default to a numbered audition reel. Use `--audition-reel never` when you want per-window independent analysis.
 
-Philosophical rule: transcript is factual text evidence; direct audio understanding is listening evidence. Use `transcribe.py` for exact words and speaker timing, then use `audio_understand.py` for embodied editorial judgment: urgency, hesitation, charm, tension, crowd response, music shape, and whether the cut feels alive.
+Philosophical rule: transcript is factual text evidence; direct audio understanding is listening evidence. Use `bin/transcribe.py` for exact words and speaker timing, then use `bin/audio_understand.py` for embodied editorial judgment: urgency, hesitation, charm, tension, crowd response, music shape, and whether the cut feels alive.
 
 ## Video Understanding Tool
 
-Use `video_understand.py` when the edit question depends on synchronized picture and sound rather than frames alone or audio alone: gestures, speaker presence, camera movement, visual continuity, crowd reaction, music shape, production quality, and whether the moment lands as a complete video beat.
+Use `bin/video_understand.py` when the edit question depends on synchronized picture and sound rather than frames alone or audio alone: gestures, speaker presence, camera movement, visual continuity, crowd reaction, music shape, production quality, and whether the moment lands as a complete video beat.
 
 ```bash
-python3 video_understand.py \
+python3 bin/video_understand.py \
   --video source.mp4 \
   --at 01:20,03:45 \
   --window-sec 20 \
@@ -221,22 +221,22 @@ python3 video_understand.py \
 
 Defaults: `--mode fast` (`gemini-2.5-flash`) with extracted upload clips under `runs/video-understanding/video-windows`. Use `--mode best` (`gemini-2.5-pro`) when the synchronized evidence is subtle or high-stakes. If no `--at` or `--start/--end` is provided, the tool chunks the source into bounded windows. Keep generated clips and JSON answers under `runs/`.
 
-Use the unified `understand.py` dispatcher when you want one entry point:
+Use the unified `bin/understand.py` dispatcher when you want one entry point:
 
 ```bash
-python3 understand.py image --image frame.jpg --query "What is happening here?"
-python3 understand.py audio --audio quote.wav
-python3 understand.py video --video source.mp4 --at 01:20
+python3 bin/understand.py image --image frame.jpg --query "What is happening here?"
+python3 bin/understand.py audio --audio quote.wav
+python3 bin/understand.py video --video source.mp4 --at 01:20
 ```
 
 Philosophical rule: visual understanding is frame/contact-sheet evidence, audio understanding is listening evidence, video understanding is synchronized sight-and-sound evidence, and transcript remains factual text evidence.
 
 ## Sprite Sheet Setting
 
-Use `sprite_sheet.py` when the user wants an animation asset, sprite sheet, chopped frames, or a preview video:
+Use `bin/sprite_sheet.py` when the user wants an animation asset, sprite sheet, chopped frames, or a preview video:
 
 ```bash
-python3 sprite_sheet.py \
+python3 bin/sprite_sheet.py \
   --animation "8-frame idle bounce: squash down, stretch up, settle back to neutral" \
   --subject "small black five-point star mascot" \
   --cols 4 \
@@ -271,7 +271,7 @@ Transparent output defaults to chroma key for `gpt-image-2`: the prompt asks for
 To remove/slice after generation without another API call:
 
 ```bash
-python3 sprite_sheet.py \
+python3 bin/sprite_sheet.py \
   --input-sheet runs/sprites/star-idle/sprite_sheet.png \
   --animation "existing 30-frame run cycle" \
   --subject "same character" \
@@ -289,7 +289,7 @@ If characters drift out of frame after slicing, inspect `sprite_manifest.json` f
 For proper high-quality upscaling, upscale after transparency extraction and normalization, not before slicing and not from the final video. Use FAL Clarity Upscaler:
 
 ```bash
-python3 sprite_sheet.py \
+python3 bin/sprite_sheet.py \
   --input-sheet runs/sprites/star-idle/sprite_sheet.png \
   --animation "existing 30-frame run cycle" \
   --subject "same character" \
@@ -314,7 +314,7 @@ For web delivery, prefer the default WebP atlas plus `sprite_web_manifest.json` 
 
 - `pipeline.py --brief ...` is the canonical top-level flow.
 - Performers execute one unit; conductors orchestrate performers and may call declared child conductors. Performers must not call conductors.
-- `cut.py` emits `hype.timeline.json`, `hype.assets.json`, `hype.metadata.json`, and `hype.edl.csv`.
+- `bin/cut.py` emits `hype.timeline.json`, `hype.assets.json`, `hype.metadata.json`, and `hype.edl.csv`.
 - Reigh-facing JSON should round-trip through existing helpers and tests.
 - Source-cut timelines preserve legacy `clipType="text"` overlays.
 - Pure-generative timelines may use extended `clipType` values and `params`.

@@ -16,7 +16,7 @@ from .audit import AuditContext
 from .llm_clients import build_claude_client
 from .timeline import load_arrangement, load_metadata, load_pool
 from .transcribe import load_api_key
-from ._paths import REPO_ROOT
+from ._paths import cli_script_path
 
 EDITOR_ACTIONS = (
     "accept",
@@ -512,7 +512,7 @@ def inspect_cut_text(brief_dir: Path, *, runner: Any | None = None) -> str:
     if runner is None:
         runner = subprocess.run
     result = runner(
-        [sys.executable, str(REPO_ROOT / "inspect_cut.py"), str(brief_dir), "--no-color"],
+        [sys.executable, str(cli_script_path("inspect_cut.py")), str(brief_dir), "--no-color"],
         check=False,
         capture_output=True,
         text=True,

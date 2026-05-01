@@ -24,7 +24,7 @@ from typing import Any
 from .audit import register_outputs
 
 from .text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
-from ._paths import REPO_ROOT
+from ._paths import cli_script_path
 
 
 def clip_timeline_duration_sec(clip: dict[str, Any]) -> float:
@@ -54,7 +54,7 @@ def run_transcribe(video: Path, out_dir: Path, env_file: Path | None) -> Path:
     transcript_json = out_dir / "transcript.json"
     cmd = [
         sys.executable,
-        str(REPO_ROOT / "transcribe.py"),
+        str(cli_script_path("transcribe.py")),
         "--audio",
         str(video),
         "--out",
