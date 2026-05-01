@@ -18,6 +18,10 @@ rg --files
 
 Do not overwrite unrelated local changes. Large source media and generated artifacts should stay out of git under `runs/` or another ignored output directory.
 
+## Upstream Friction
+
+When a workflow is awkward, brittle, undocumented, or requires a local workaround, tell the user directly. Suggest the smallest durable fix and, when the issue belongs in an original upstream repository rather than ArtAgents, recommend creating a PR there with the concrete file or behavior to change.
+
 ## Core Workflows
 
 Source video hype cut:
@@ -56,6 +60,16 @@ python3 pipeline.py conductors validate
 python3 pipeline.py conductors run builtin.hype --out runs/<name> --brief brief.txt --dry-run -- --target-duration 12 --from cut
 python3 pipeline.py conductors run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
 ```
+
+## Reigh Data Tool
+
+Use `artagents/skills/reigh-data/SKILL.md` before fetching live Reigh project, shot, task, timeline, image, or video data. The canonical command is:
+
+```bash
+python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
+```
+
+This calls the PAT-authenticated `reigh-data-fetch` Edge Function in `reigh-app`; do not add direct Supabase table queries in ArtAgents for this data.
 
 The main root launcher remains supported, and direct stage launchers live under `bin/`:
 

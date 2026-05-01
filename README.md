@@ -9,6 +9,12 @@ launchers live under `bin/`.
 
 ## Quick Start
 
+Copy this into your coding agent when you want it to run ArtAgents for you:
+
+```text
+Use the ArtAgents repo. Read README.md and SKILL.md first, run git status --short, keep generated files under runs/, do not commit secrets or media, and run: python3 pipeline.py --brief brief.txt --out runs/example --render. While working, call out friction points, suggest fixes, and recommend PRs to the original upstream repos when the right fix belongs there rather than as a local workaround.
+```
+
 Create a source-video hype cut:
 
 ```bash
@@ -89,6 +95,12 @@ python3 pipeline.py conductors list
 python3 pipeline.py conductors inspect builtin.hype --json
 python3 pipeline.py conductors validate
 python3 pipeline.py conductors run builtin.hype --out runs/example --brief brief.txt --dry-run -- --target-duration 12
+```
+
+Fetch canonical Reigh data through the app Edge Function:
+
+```bash
+python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
 ```
 
 Repo-local installed external assets and environments belong under `.artagents/`,
@@ -261,4 +273,4 @@ another ignored output directory.
 
 ## License
 
-MIT. See `LICENSE`.
+Open Source Native License (OSNL) v0.2. See `LICENSE` for the full terms.

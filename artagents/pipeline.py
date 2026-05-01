@@ -1236,6 +1236,10 @@ def main(argv: list[str] | None = None) -> int:
         from . import audit
 
         return audit.main(raw[1:])
+    if raw and raw[0] == "reigh-data":
+        from . import reigh_data
+
+        return reigh_data.main(raw[1:])
     args = resolve_args(argv)
     keep_env = os.environ.get("HYPE_KEEP_DOWNLOADS", "").strip().lower() in {"1", "true", "yes"}
     keep_flag = bool(getattr(args, "keep_downloads", False))
