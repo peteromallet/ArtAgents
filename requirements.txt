@@ -5,4 +5,6 @@ google-genai>=1.15.0  # Lower bound matches the live environment verified during
 python-dotenv>=1.0.0  # Lower bound matches the live environment verified during Sprint 3 planning.
 filelock>=3.13
 jsonschema>=4.0
+pillow>=10.0
+fal-client>=0.7.0
 # pyannote.audio==3.3.2

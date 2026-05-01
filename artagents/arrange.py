@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import AuditContext
 from .llm_clients import ClaudeClient, build_claude_client
 from .theme_schema import load_theme
 from ._paths import WORKSPACE_ROOT
@@ -804,6 +805,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not is_all_generative_arrangement(arrangement, pool):
         validate_arrangement_duration_window(arrangement)
     save_arrangement(arrangement, out_path, _eligible_pool_ids(pool, include_generative=args.allow_generative_effects))
+    audit = AuditContext.from_env()
+    if audit is not None:
+        pool_id = audit.register_asset(kind="pool", path=pool_path, label="Input pool", stage="arrange")
+        brief_id = audit.register_prompt_ref(path=brief_path, label="Brief", stage="arrange")
+        arrangement_id = audit.register_asset(
+            kind="arrangement",
+            path=out_path,
+            label="Arrangement",
+            parents=[pool_id, brief_id],
+            stage="arrange",
+            metadata={
+                "model": args.model,
+                "clips": len(arrangement.get("clips", [])),
+                "revise": bool(args.revise),
+                "source_slug": source_slug,
+                "brief_slug": brief_slug,
+            },
+        )
+        audit.register_decision(
+            stage="arrange",
+            label="Selected arrangement clips",
+            selected=[str(clip.get("uuid") or clip.get("order")) for clip in arrangement.get("clips", [])],
+            metadata={"arrangement_asset": arrangement_id},
+        )
+        audit.register_node(stage="arrange", label="Build arrangement", parents=[pool_id, brief_id], outputs=[arrangement_id])
     print(out_path)
     return 0
 

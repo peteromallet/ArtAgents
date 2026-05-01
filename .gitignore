@@ -1,6 +1,7 @@
 # Secrets and local environment
 .env
 .env.*
+this.env
 !.env.example
 *.pem
 *.key
@@ -11,6 +12,8 @@
 
 # Python
 __pycache__/
+.venv/
+venv/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
@@ -29,9 +32,16 @@ remotion/out/
 
 # Generated runtime artifacts
 runs/
+.artagents/
 */cache/
 */out/
 *.log
+*.mp4
+*.mov
+*.wav
+*.jpg
+*.jpeg
+*.png
 
 # Local workspace/tool state
 .DS_Store

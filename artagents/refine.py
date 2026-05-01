@@ -43,6 +43,7 @@ from .timeline import (
     validate_arrangement_duration_window,
 )
 from .transcribe import load_api_key
+from .audit import register_outputs
 
 BOILERPLATE_TOKENS = {"um", "uh"}
 BOILERPLATE_BIGRAMS = {("you", "know"), ("i", "mean"), ("sort", "of"), ("kind", "of")}
@@ -576,6 +577,20 @@ def write_outputs(enriched: enriched_arrangement.EnrichedArrangement, registry: 
         clip_entry["source_transcript_text_after"] = clips_by_order.get(order, {}).get("source_transcript_text")
     report["per_clip"] = [copy.deepcopy(entry) for entry in report["auto_fixes"]["audio_boundary"]]
     (args.out / "refine.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="refine",
+        outputs=[
+            ("arrangement", args.arrangement, "Refined arrangement"),
+            ("timeline", args.timeline, "Refined timeline"),
+            ("metadata", args.metadata, "Refined metadata"),
+            ("refinement", args.out / "refine.json", "Refinement report"),
+        ],
+        metadata={
+            "iterations_run": report.get("iterations_run"),
+            "converged": report.get("converged"),
+            "audio_boundary_fixes": len(report.get("auto_fixes", {}).get("audio_boundary", [])),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None, *, transcriber: SnippetTranscriber | None = None) -> int:

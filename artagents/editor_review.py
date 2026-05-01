@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .arrange import pool_digest
+from .audit import AuditContext
 from .llm_clients import build_claude_client
 from .timeline import load_arrangement, load_metadata, load_pool
 from .transcribe import load_api_key
@@ -669,6 +670,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "editor_review.json"
     out_path.write_text(json.dumps(review, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    audit = AuditContext.from_env()
+    if audit is not None:
+        review_id = audit.register_asset(
+            kind="editor_review",
+            path=out_path,
+            label="Editor review",
+            stage="editor_review",
+            metadata={
+                "model": args.model,
+                "iteration": int(args.iteration),
+                "verdict": review.get("verdict"),
+                "notes": len(review.get("notes", [])),
+            },
+        )
+        selected = [str(note.get("clip_uuid") or note.get("clip_order")) for note in review.get("notes", [])]
+        audit.register_decision(
+            stage="editor_review",
+            label=f"Editor verdict: {review.get('verdict')}",
+            selected=selected,
+            metadata={"review_asset": review_id, "ship_confidence": review.get("ship_confidence")},
+        )
+        audit.register_node(stage="editor_review", label="Review rendered cut", outputs=[review_id])
     print(out_path)
     return 0
 

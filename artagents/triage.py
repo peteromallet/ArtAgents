@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import register_outputs
 from .llm_clients import ClaudeClient, build_claude_client
 
 TRIAGE_VERSION = 1
@@ -247,6 +248,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "scene_triage.json"
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="triage",
+        outputs=[("scene_triage", out_path, "Scene triage")],
+        metadata={"model": args.model, "grid_size": args.grid_size},
+    )
     print(out_path)
     return 0
 

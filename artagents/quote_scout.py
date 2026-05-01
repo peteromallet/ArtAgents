@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import register_outputs
 from .llm_clients import ClaudeClient, build_claude_client
 
 QUOTE_CANDIDATES_VERSION = 1
@@ -130,6 +131,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "quote_candidates.json"
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="quote_scout",
+        outputs=[("quote_candidates", out_path, "Quote candidates")],
+        metadata={"model": args.model, "candidates": len(payload.get("candidates", []))},
+    )
     print(out_path)
     return 0
 

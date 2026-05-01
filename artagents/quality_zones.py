@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Sequence
 
+from .audit import register_outputs
 from . import enriched_arrangement
 
 _SILENCE_START_RE = re.compile(r"silence_start[:=]\s*([0-9.]+)")
@@ -108,6 +109,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     ).to_payload()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="quality_zones",
+        outputs=[("quality_zones", out_path, "Quality zones")],
+        metadata={"zones": len(payload.get("zones", [])), "cached": cached is not None},
+    )
     print(f"zones={len(payload['zones'])} cached={str(cached is not None).lower()} out={out_path}")
     return 0
 

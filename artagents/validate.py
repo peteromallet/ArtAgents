@@ -21,6 +21,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .audit import register_outputs
+
 from .text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
 from ._paths import REPO_ROOT
 
@@ -111,6 +113,11 @@ def main() -> int:
             )
             + "\n",
             encoding="utf-8",
+        )
+        register_outputs(
+            stage="validate",
+            outputs=[("validation", out_path, "Validation report")],
+            metadata={"skipped_no_audio": True},
         )
         print("validate: skipped because timeline has no audio track")
         return 0
@@ -204,6 +211,11 @@ def main() -> int:
         "clips": results,
     }
     out_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="validate",
+        outputs=[("validation", out_path, "Validation report")],
+        metadata=report.get("summary", {}),
+    )
 
     total_checked = passes + fails
     print(

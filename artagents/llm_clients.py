@@ -204,18 +204,60 @@ def _read_env_value(env_path: Path, key: str) -> str:
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
+        if stripped.startswith("export "):
+            stripped = stripped[len("export ") :].strip()
         env_key, env_value = stripped.split("=", 1)
         if env_key.strip() == key:
             return env_value.strip().strip('"').strip("'")
     return ""
 
 
+def _candidate_env_files(env_file: Path | None) -> list[Path]:
+    repo_root = Path(__file__).resolve().parents[1]
+    workspace = repo_root.parent
+    candidates: list[Path] = []
+    if env_file is not None:
+        candidates.append(env_file)
+    candidates.extend(
+        [
+            Path.cwd() / "this.env",
+            Path.cwd() / ".env",
+            Path(__file__).resolve().parent / "this.env",
+            Path(__file__).resolve().parent / ".env",
+            repo_root / "this.env",
+            repo_root / ".env",
+            workspace / "this.env",
+            workspace / ".env",
+            workspace / "reigh-app" / "this.env",
+            workspace / "reigh-app" / ".env",
+            workspace / "reigh-worker" / "this.env",
+            workspace / "reigh-worker" / ".env",
+            workspace / "reigh-worker-orchestrator" / "this.env",
+            workspace / "reigh-worker-orchestrator" / ".env",
+            Path.home() / "this.env",
+            Path.home() / ".env",
+            Path.home() / ".codex" / "this.env",
+            Path.home() / ".codex" / ".env",
+            Path.home() / ".claude" / "this.env",
+            Path.home() / ".claude" / ".env",
+            Path.home() / ".hermes" / "this.env",
+            Path.home() / ".hermes" / ".env",
+        ]
+    )
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.expanduser().resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(resolved)
+    return unique
+
+
 def _load_api_key(env_file: Path | None, key: str) -> str:
-    if env_file is not None and (value := _read_env_value(Path(env_file), key)):
-        return value
     if value := os.environ.get(key, "").strip():
         return value
-    for candidate in (Path(__file__).resolve().parent / ".env", Path(__file__).resolve().parent.parent / ".env", Path.home() / ".env"):
+    for candidate in _candidate_env_files(env_file):
         if value := _read_env_value(candidate, key):
             return value
     raise SystemExit(f"{key} not found")

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import register_outputs
 from .llm_clients import GeminiClient, build_gemini_client
 
 SCENE_DESCRIPTIONS_VERSION = 1
@@ -267,6 +268,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     out_path = out_dir / "scene_descriptions.json"
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="scene_describe",
+        outputs=[("scene_descriptions", out_path, "Scene descriptions")],
+        metadata={"model": args.model, "top_n": args.top_n},
+    )
     print(out_path)
     return 0
 

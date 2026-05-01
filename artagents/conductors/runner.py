@@ -1,0 +1,480 @@
+"""Execution helpers for ArtAgents conductor definitions."""
+
+from __future__ import annotations
+
+import importlib
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import Any, Mapping
+
+from artagents.contracts.schema import Output
+from artagents.performers.runner import _has_value, _stringify_value
+
+from .registry import ConductorRegistry, load_default_registry
+from .schema import ConductorDefinition, ConductorValidationError
+
+
+_PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+class ConductorRunnerError(ConductorValidationError):
+    """Raised when a conductor cannot be prepared or executed."""
+
+
+@dataclass(frozen=True)
+class ConductorRunRequest:
+    conductor_id: str
+    out: Path | str | None = None
+    inputs: Mapping[str, Any] = field(default_factory=dict)
+    outputs: Mapping[str, Any] = field(default_factory=dict)
+    brief: Path | str | None = None
+    conductor_args: tuple[str, ...] = ()
+    dry_run: bool = False
+    python_exec: str | None = None
+    verbose: bool = False
+
+
+@dataclass(frozen=True)
+class ConductorRunError:
+    message: str
+    kind: str = "runtime"
+
+    def to_dict(self) -> dict[str, str]:
+        return {"kind": self.kind, "message": self.message}
+
+
+@dataclass(frozen=True)
+class ConductorPlanStep:
+    id: str
+    kind: str = "command"
+    command: tuple[str, ...] = ()
+    description: str = ""
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "id": self.id,
+            "kind": self.kind,
+            "command": list(self.command),
+        }
+        if self.description:
+            payload["description"] = self.description
+        if self.metadata:
+            payload["metadata"] = dict(self.metadata)
+        return payload
+
+
+@dataclass(frozen=True)
+class ConductorPlan:
+    steps: tuple[ConductorPlanStep, ...] = ()
+    summary: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"steps": [step.to_dict() for step in self.steps]}
+        if self.summary:
+            payload["summary"] = self.summary
+        return payload
+
+
+@dataclass(frozen=True)
+class ConductorRunResult:
+    conductor_id: str
+    kind: str
+    runtime_kind: str
+    command: tuple[str, ...] = ()
+    planned_commands: tuple[tuple[str, ...], ...] = ()
+    cwd: str | None = None
+    env: Mapping[str, str] = field(default_factory=dict)
+    returncode: int | None = None
+    dry_run: bool = False
+    outputs: Mapping[str, Any] = field(default_factory=dict)
+    errors: tuple[ConductorRunError, ...] = ()
+    plan: ConductorPlan | None = None
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors and (self.returncode is None or self.returncode == 0)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "conductor_id": self.conductor_id,
+            "kind": self.kind,
+            "runtime_kind": self.runtime_kind,
+            "command": list(self.command),
+            "planned_commands": [list(command) for command in self.planned_commands],
+            "cwd": self.cwd,
+            "env": dict(self.env),
+            "returncode": self.returncode,
+            "dry_run": self.dry_run,
+            "outputs": dict(self.outputs),
+            "errors": [error.to_dict() for error in self.errors],
+            "plan": self.plan.to_dict() if self.plan is not None else None,
+            "ok": self.ok,
+        }
+
+
+def run_conductor(request: ConductorRunRequest, registry: ConductorRegistry | None = None) -> ConductorRunResult:
+    active_registry = registry or load_default_registry()
+    conductor = active_registry.get(request.conductor_id)
+    values = _request_values(request)
+    _validate_out_requirement(conductor, request)
+    _validate_required_inputs(conductor, values)
+    if conductor.runtime.kind == "python":
+        return _ensure_dry_run_plan(_run_python_conductor(conductor, request))
+    if conductor.runtime.kind == "command":
+        return _ensure_dry_run_plan(_run_command_conductor(conductor, request, values))
+    raise ConductorRunnerError(f"unsupported conductor runtime kind {conductor.runtime.kind!r}")
+
+
+def build_conductor_command(request: ConductorRunRequest, registry: ConductorRegistry | None = None) -> tuple[str, ...]:
+    active_registry = registry or load_default_registry()
+    conductor = active_registry.get(request.conductor_id)
+    values = _request_values(request)
+    _validate_out_requirement(conductor, request)
+    _validate_required_inputs(conductor, values)
+    if conductor.runtime.kind != "command":
+        raise ConductorRunnerError(f"conductor {conductor.id!r} does not use a command runtime")
+    command, _, _ = _expand_command_runtime(conductor, request, values)
+    return command
+
+
+def _run_python_conductor(conductor: ConductorDefinition, request: ConductorRunRequest) -> ConductorRunResult:
+    runtime = conductor.runtime
+    if not runtime.module or not runtime.function:
+        raise ConductorRunnerError(f"conductor {conductor.id!r} has an invalid Python runtime")
+    try:
+        module = importlib.import_module(runtime.module)
+    except Exception as exc:
+        raise ConductorRunnerError(f"failed to import conductor runtime module {runtime.module!r}: {exc}") from exc
+    target = getattr(module, runtime.function, None)
+    if not callable(target):
+        raise ConductorRunnerError(f"conductor runtime target {runtime.module}.{runtime.function} is not callable")
+    try:
+        raw_result = target(request, conductor)
+    except ConductorRunnerError:
+        raise
+    except Exception as exc:
+        raise ConductorRunnerError(f"conductor {conductor.id!r} Python runtime failed: {exc}") from exc
+    return _normalize_python_result(conductor, request, raw_result)
+
+
+def _run_command_conductor(
+    conductor: ConductorDefinition,
+    request: ConductorRunRequest,
+    values: Mapping[str, Any],
+) -> ConductorRunResult:
+    command, cwd, env = _expand_command_runtime(conductor, request, values)
+    if request.dry_run:
+        planned_commands = (command,)
+        return ConductorRunResult(
+            conductor_id=conductor.id,
+            kind=conductor.kind,
+            runtime_kind="command",
+            command=command,
+            planned_commands=planned_commands,
+            cwd=cwd,
+            env=env,
+            returncode=None,
+            dry_run=True,
+            plan=_plan_from_commands(planned_commands, prefix=conductor.id),
+        )
+    completed = subprocess.run(
+        list(command),
+        cwd=cwd,
+        env={**os.environ, **env},
+        check=False,
+    )
+    return ConductorRunResult(
+        conductor_id=conductor.id,
+        kind=conductor.kind,
+        runtime_kind="command",
+        command=command,
+        planned_commands=(command,),
+        cwd=cwd,
+        env=env,
+        returncode=completed.returncode,
+    )
+
+
+def _expand_command_runtime(
+    conductor: ConductorDefinition,
+    request: ConductorRunRequest,
+    values: Mapping[str, Any],
+) -> tuple[tuple[str, ...], str | None, dict[str, str]]:
+    command_spec = conductor.runtime.command
+    if command_spec is None:
+        raise ConductorRunnerError(f"conductor {conductor.id!r} has no command runtime")
+    placeholders = _placeholder_values(conductor, request, values)
+    argv: list[str] = []
+    for part in command_spec.argv:
+        if part == "{conductor_args}":
+            argv.extend(request.conductor_args)
+        else:
+            argv.append(_expand_placeholders(part, placeholders))
+    cwd = _expand_placeholders(command_spec.cwd, placeholders) if command_spec.cwd else None
+    env = {key: _expand_placeholders(value, placeholders) for key, value in command_spec.env.items()}
+    return tuple(argv), cwd, env
+
+
+def _normalize_python_result(
+    conductor: ConductorDefinition,
+    request: ConductorRunRequest,
+    raw_result: Any,
+) -> ConductorRunResult:
+    if isinstance(raw_result, ConductorRunResult):
+        return _ensure_dry_run_plan(raw_result)
+    if raw_result is None:
+        return _ensure_dry_run_plan(ConductorRunResult(
+            conductor_id=conductor.id,
+            kind=conductor.kind,
+            runtime_kind="python",
+            returncode=None if request.dry_run else 0,
+            dry_run=request.dry_run,
+        ))
+    if isinstance(raw_result, int):
+        return _ensure_dry_run_plan(ConductorRunResult(
+            conductor_id=conductor.id,
+            kind=conductor.kind,
+            runtime_kind="python",
+            returncode=None if request.dry_run else raw_result,
+            dry_run=request.dry_run,
+        ))
+    if isinstance(raw_result, dict):
+        return _result_from_mapping(conductor, request, raw_result)
+    raise ConductorRunnerError(
+        f"conductor {conductor.id!r} returned unsupported result type {type(raw_result).__name__}; "
+        "expected ConductorRunResult, dict, int, or None"
+    )
+
+
+def _result_from_mapping(
+    conductor: ConductorDefinition,
+    request: ConductorRunRequest,
+    raw: Mapping[str, Any],
+) -> ConductorRunResult:
+    command = _tuple_of_strings(raw.get("command", ()), "command")
+    planned_commands = _planned_commands(raw.get("planned_commands", (command,) if command else ()))
+    errors = tuple(
+        error if isinstance(error, ConductorRunError) else ConductorRunError(str(error))
+        for error in raw.get("errors", ())
+    )
+    returncode = raw.get("returncode")
+    if request.dry_run and returncode is not None:
+        returncode = None
+    elif returncode is not None:
+        returncode = int(returncode)
+    plan = _plan_from_raw(raw.get("plan")) if "plan" in raw else None
+    return _ensure_dry_run_plan(ConductorRunResult(
+        conductor_id=str(raw.get("conductor_id") or conductor.id),
+        kind=str(raw.get("kind") or conductor.kind),
+        runtime_kind=str(raw.get("runtime_kind") or "python"),
+        command=command,
+        planned_commands=planned_commands,
+        cwd=_optional_string(raw.get("cwd")),
+        env={str(key): str(value) for key, value in dict(raw.get("env", {})).items()},
+        returncode=returncode,
+        dry_run=bool(raw.get("dry_run", request.dry_run)),
+        outputs=dict(raw.get("outputs", {})),
+        errors=errors,
+        plan=plan,
+    ))
+
+
+def _ensure_dry_run_plan(result: ConductorRunResult) -> ConductorRunResult:
+    if not result.dry_run or result.plan is not None:
+        return result
+    return replace(result, plan=_plan_from_commands(result.planned_commands, prefix=result.conductor_id))
+
+
+def _plan_from_commands(commands: tuple[tuple[str, ...], ...], *, prefix: str) -> ConductorPlan:
+    steps = tuple(
+        ConductorPlanStep(
+            id=f"{prefix}.step_{index + 1}",
+            kind="command",
+            command=command,
+        )
+        for index, command in enumerate(commands)
+    )
+    return ConductorPlan(steps=steps)
+
+
+def _plan_from_raw(raw: Any) -> ConductorPlan | None:
+    if raw is None:
+        return None
+    if isinstance(raw, ConductorPlan):
+        return raw
+    if not isinstance(raw, Mapping):
+        raise ConductorRunnerError("plan must be an object")
+    raw_steps = raw.get("steps", ())
+    if not isinstance(raw_steps, (list, tuple)):
+        raise ConductorRunnerError("plan.steps must be a list")
+    return ConductorPlan(
+        steps=tuple(_plan_step_from_raw(item, f"plan.steps[{index}]") for index, item in enumerate(raw_steps)),
+        summary=str(raw.get("summary") or ""),
+    )
+
+
+def _plan_step_from_raw(raw: Any, path: str) -> ConductorPlanStep:
+    if isinstance(raw, ConductorPlanStep):
+        return raw
+    if not isinstance(raw, Mapping):
+        raise ConductorRunnerError(f"{path} must be an object")
+    step_id = raw.get("id")
+    if not isinstance(step_id, str) or not step_id.strip():
+        raise ConductorRunnerError(f"{path}.id must be a non-empty string")
+    return ConductorPlanStep(
+        id=step_id,
+        kind=str(raw.get("kind") or "command"),
+        command=_tuple_of_strings(raw.get("command", ()), f"{path}.command"),
+        description=str(raw.get("description") or ""),
+        metadata=dict(raw.get("metadata", {})),
+    )
+
+
+def _placeholder_values(conductor: ConductorDefinition, request: ConductorRunRequest, values: Mapping[str, Any]) -> dict[str, str]:
+    placeholders: dict[str, str] = {
+        "python_exec": str(values.get("python_exec") or request.python_exec or sys.executable),
+        "conductor_args": " ".join(request.conductor_args),
+        "verbose": str(bool(values.get("verbose", request.verbose))).lower(),
+    }
+    if request.out is not None:
+        placeholders["out"] = str(Path(request.out).expanduser().resolve())
+    brief = values.get("brief") or request.brief
+    if brief is not None:
+        placeholders["brief"] = str(Path(str(brief)).expanduser().resolve())
+    for key, value in values.items():
+        if value is None:
+            continue
+        if key == "verbose":
+            placeholders[key] = str(bool(value)).lower()
+        else:
+            placeholders[key] = _stringify_value(value)
+    for output in conductor.outputs:
+        output_path = _output_value(output, request, placeholders)
+        placeholders[output.name] = output_path
+        if output.placeholder:
+            placeholders[output.placeholder] = output_path
+    return placeholders
+
+
+def _output_value(output: Output, request: ConductorRunRequest, placeholders: Mapping[str, str]) -> str:
+    if output.name in request.outputs:
+        return _stringify_value(request.outputs[output.name])
+    if output.placeholder and output.placeholder in request.outputs:
+        return _stringify_value(request.outputs[output.placeholder])
+    if output.path_template:
+        return _expand_placeholders(output.path_template, placeholders)
+    if request.out is None:
+        raise ConductorRunnerError(f"--out is required to derive output {output.name!r}")
+    return str((Path(request.out).expanduser().resolve() / output.name).resolve())
+
+
+def _expand_placeholders(value: str, placeholders: Mapping[str, str]) -> str:
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key not in placeholders:
+            raise ConductorRunnerError(f"missing value for placeholder {{{key}}}")
+        return placeholders[key]
+
+    return _PLACEHOLDER_RE.sub(replace, value)
+
+
+def _validate_required_inputs(conductor: ConductorDefinition, values: Mapping[str, Any]) -> None:
+    missing = [
+        port.name
+        for port in conductor.inputs
+        if port.required and port.default is None and not _has_value(values.get(port.name))
+    ]
+    if missing:
+        raise ConductorRunnerError(f"conductor {conductor.id!r} missing required input(s): {', '.join(missing)}")
+
+
+def _validate_out_requirement(conductor: ConductorDefinition, request: ConductorRunRequest) -> None:
+    if request.out is not None:
+        return
+    if conductor.id == "builtin.thumbnail_maker":
+        return
+    if not request.dry_run:
+        raise ConductorRunnerError("--out is required for conductor execution")
+    if conductor.id == "builtin.event_talks":
+        return
+    if conductor.id == "builtin.hype":
+        raise ConductorRunnerError("--out is required for builtin.hype dry-run")
+    if conductor.runtime.kind == "command" and _command_runtime_requires_out(conductor, request):
+        raise ConductorRunnerError("--out is required for command runtime placeholders")
+
+
+def _command_runtime_requires_out(conductor: ConductorDefinition, request: ConductorRunRequest) -> bool:
+    command = conductor.runtime.command
+    if command is None:
+        return False
+    values = [*command.argv]
+    if command.cwd:
+        values.append(command.cwd)
+    values.extend(command.env.values())
+    if any(_uses_placeholder(value, "out") for value in values):
+        return True
+    for output in conductor.outputs:
+        if output.name in request.outputs or (output.placeholder and output.placeholder in request.outputs):
+            continue
+        if output.path_template is None or _uses_placeholder(output.path_template, "out"):
+            return True
+    return False
+
+
+def _uses_placeholder(value: str, placeholder: str) -> bool:
+    return placeholder in _PLACEHOLDER_RE.findall(value)
+
+
+def _request_values(request: ConductorRunRequest) -> dict[str, Any]:
+    values = dict(request.inputs)
+    if request.brief is not None and "brief" not in values:
+        values["brief"] = request.brief
+    if request.python_exec is not None and "python_exec" not in values:
+        values["python_exec"] = request.python_exec
+    values.setdefault("verbose", request.verbose)
+    return values
+
+
+def _planned_commands(raw: Any) -> tuple[tuple[str, ...], ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, (list, tuple)):
+        raise ConductorRunnerError("planned_commands must be a list of command lists")
+    commands: list[tuple[str, ...]] = []
+    for index, item in enumerate(raw):
+        commands.append(_tuple_of_strings(item, f"planned_commands[{index}]"))
+    return tuple(commands)
+
+
+def _tuple_of_strings(raw: Any, path: str) -> tuple[str, ...]:
+    if raw is None or raw == ():
+        return ()
+    if not isinstance(raw, (list, tuple)):
+        raise ConductorRunnerError(f"{path} must be a list")
+    result: list[str] = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, str):
+            raise ConductorRunnerError(f"{path}[{index}] must be a string")
+        result.append(item)
+    return tuple(result)
+
+
+def _optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+__all__ = [
+    "ConductorRunError",
+    "ConductorRunRequest",
+    "ConductorRunResult",
+    "ConductorRunnerError",
+    "build_conductor_command",
+    "run_conductor",
+]

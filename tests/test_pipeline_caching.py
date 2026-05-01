@@ -272,6 +272,21 @@ class PipelineCachingTest(unittest.TestCase):
             ],
         )
 
+    def test_legacy_invocation_uses_ordered_steps_and_not_performer_cli(self) -> None:
+        root = self.make_workspace()
+        with mock.patch("artagents.performers.cli.main", side_effect=AssertionError("performer CLI should not run")):
+            result, calls, _, _, _ = self.invoke(root, [])
+
+        self.assertEqual(result, 0)
+        self.assertEqual([name for name, _ in calls], POOL_NO_RENDER_STEPS)
+
+    def test_performers_list_dispatches_before_required_arguments(self) -> None:
+        with mock.patch("artagents.performers.cli.main", return_value=0) as performers_main:
+            result = pipeline.main(["performers", "list"])
+
+        self.assertEqual(result, 0)
+        performers_main.assert_called_once_with(["list"])
+
     def test_fully_cached_run_skips_all_steps(self) -> None:
         root = self.make_workspace()
         _, _, _, _, out_dir = self.invoke(root, ["--render"])

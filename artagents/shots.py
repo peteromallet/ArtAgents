@@ -9,6 +9,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import register_outputs
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -104,6 +106,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     shots = build_shots(video_path, scenes, out_dir, args.per_scene)
     shots_path = out_dir / "shots.json"
     shots_path.write_text(json.dumps(shots, indent=2), encoding="utf-8")
+    register_outputs(
+        stage="shots",
+        outputs=[("shots", shots_path, "Shot keyframes")],
+        metadata={"scenes": len(shots), "frames": sum(len(item.get("frames", [])) for item in shots)},
+    )
     print(f"wrote_shots={len(shots)} shots_json={shots_path}")
     return 0
 

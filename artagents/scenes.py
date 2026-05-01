@@ -10,6 +10,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
+from .audit import register_outputs
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -114,6 +116,11 @@ def write_outputs(
             writer.writerow(
                 [scene["index"], scene["start"], scene["end"], scene["duration"]]
             )
+    register_outputs(
+        stage="scenes",
+        outputs=[("scenes", json_path, "Scene list"), ("scenes_csv", csv_path, "Scene CSV")],
+        metadata={"scenes": len(scenes)},
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

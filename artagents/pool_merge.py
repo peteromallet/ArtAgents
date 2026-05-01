@@ -12,6 +12,7 @@ from typing import Any, Sequence
 
 from . import effects_catalog
 from . import timeline
+from .audit import register_outputs
 
 
 def _utc_now() -> str:
@@ -95,6 +96,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     merged = merge_pool(pool, theme=args.theme)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    register_outputs(
+        stage="pool_merge",
+        outputs=[("pool", args.out, "Merged pool")],
+        metadata={"entries": len(merged.get("entries", [])), "theme": args.theme},
+    )
     print(args.out)
     return 0
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from . import timeline
+from .audit import register_outputs
 
 AUDIO_EVENT_RE = re.compile(r"\b(applause|laughter|cheer|audience)\b", re.IGNORECASE)
 KIND_LETTER = {"dialogue": "d", "visual": "v", "reaction": "r", "applause": "a", "music": "m"}
@@ -202,6 +203,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "pool.json"
     timeline.save_pool(payload, out_path)
+    register_outputs(
+        stage="pool_build",
+        outputs=[("pool", out_path, "Candidate pool")],
+        metadata={"entries": len(payload.get("entries", [])), "source_slug": args.source_slug},
+    )
     print(out_path)
     return 0
 

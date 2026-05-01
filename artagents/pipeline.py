@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from . import editor_review
 from . import asset_cache
+from .audit import AuditContext
 from . import timeline
 from ._paths import REPO_ROOT, WORKSPACE_ROOT
 
@@ -153,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--keep-downloads",
         action="store_true",
         help="Keep URL downloads in the asset cache after the run (default: delete files this run minted; pre-existing cache entries are always preserved). Env override: HYPE_KEEP_DOWNLOADS=1.",
+        default=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--no-audit",
+        action="store_true",
+        help="Disable the run-local audit ledger under <out>/audit.",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -305,6 +312,7 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     os.environ["HYPE_DRIFT_MODE"] = args.drift
     args.python_exec = str(getattr(args, "python_exec", sys.executable))
     args.render = bool(getattr(args, "render", False))
+    args.no_audit = bool(getattr(args, "no_audit", False))
     default_theme = WORKSPACE_ROOT / "themes" / "banodoco-default" / "theme.json"
     theme_value = getattr(args, "theme", default_theme)
     args.theme = _resolve_theme_arg(theme_value)
@@ -818,12 +826,18 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
     logs_dir.mkdir(parents=True, exist_ok=True)
     log_path = logs_dir / f"{step.name}.log"
     with log_path.open("w", encoding="utf-8") as log_handle:
+        env = os.environ.copy()
+        if getattr(args, "audit", None) is not None:
+            env["ARTAGENTS_AUDIT_RUN_DIR"] = str(args.out)
+        if getattr(args, "no_audit", False):
+            env["ARTAGENTS_AUDIT_DISABLED"] = "1"
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             bufsize=1,
             text=True,
+            env=env,
         )
         assert process.stdout is not None
         for line in process.stdout:
@@ -834,7 +848,75 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
         returncode = process.wait()
     if returncode != 0:
         print_log_tail(step.name, log_path)
+    elif getattr(args, "audit", None) is not None:
+        _register_step_outputs(step, cmd, args, log_path)
     return returncode
+
+
+def _asset_kind_for_sentinel(name: str) -> str:
+    return {
+        "transcript.json": "transcript",
+        "scenes.json": "scenes",
+        "quality_zones.json": "quality_zones",
+        "shots.json": "shots",
+        "scene_triage.json": "scene_triage",
+        "scene_descriptions.json": "scene_descriptions",
+        "quote_candidates.json": "quote_candidates",
+        "pool.json": "pool",
+        "arrangement.json": "arrangement",
+        "hype.timeline.json": "timeline",
+        "hype.assets.json": "assets_registry",
+        "hype.metadata.json": "metadata",
+        "refine.json": "refinement",
+        "hype.mp4": "render",
+        "editor_review.json": "editor_review",
+        "validation.json": "validation",
+    }.get(name, Path(name).suffix.lstrip(".") or "artifact")
+
+
+def _register_step_outputs(step: Step, cmd: list[str], args: argparse.Namespace, log_path: Path) -> None:
+    audit: AuditContext = args.audit
+    output_ids: list[str] = []
+    for path in sentinel_paths(step, args):
+        if not path.exists():
+            continue
+        output_ids.append(
+            audit.register_asset(
+                kind=_asset_kind_for_sentinel(path.name),
+                path=path,
+                label=f"{step.name}: {path.name}",
+                stage=step.name,
+                registration_source="pipeline_fallback",
+            )
+        )
+    log_id = audit.register_asset(
+        kind="log",
+        path=log_path,
+        label=f"{step.name} log",
+        stage=step.name,
+        registration_source="pipeline_fallback",
+    )
+    audit.register_node(
+        stage=step.name,
+        label=f"Pipeline step: {step.name}",
+        metadata={"command": cmd_safe(cmd)},
+        outputs=[*output_ids, log_id],
+        registration_source="pipeline_fallback",
+    )
+
+
+def cmd_safe(cmd: list[str]) -> list[str]:
+    safe: list[str] = []
+    skip_next = False
+    for token in cmd:
+        if skip_next:
+            safe.append("<redacted>")
+            skip_next = False
+            continue
+        safe.append(token)
+        if token in {"--env-file", "--api-key", "--token", "--password"}:
+            skip_next = True
+    return safe
 
 
 def write_skip_log(step: Step, args: argparse.Namespace, message: str) -> None:
@@ -994,6 +1076,9 @@ def _prefetch_url_inputs(args: argparse.Namespace) -> None:
 
 def pool_main(args: argparse.Namespace) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
+    args.audit = None if args.no_audit else AuditContext.for_run(args.out)
+    if args.audit is not None:
+        _register_run_inputs(args)
     prepare_brief_artifacts(args)
     for label, url in _url_inputs(args):
         _preflight_url_expiry(label, url)
@@ -1049,6 +1134,68 @@ def pool_main(args: argparse.Namespace) -> int:
     return 0
 
 
+def _register_run_inputs(args: argparse.Namespace) -> None:
+    audit: AuditContext = args.audit
+    parents: list[str] = []
+    if args.video is not None:
+        parents.append(
+            audit.register_asset(
+                kind="source_video",
+                path=str(args.video),
+                label="Source video",
+                stage="pipeline.input",
+            )
+        )
+    if args.audio is not None:
+        parents.append(
+            audit.register_asset(
+                kind="source_audio",
+                path=str(args.audio),
+                label="Source audio",
+                stage="pipeline.input",
+            )
+        )
+    if args.brief is not None:
+        parents.append(
+            audit.register_asset(
+                kind="brief",
+                path=args.brief,
+                label="Brief",
+                stage="pipeline.input",
+            )
+        )
+    if args.theme is not None:
+        parents.append(
+            audit.register_asset(
+                kind="theme",
+                path=args.theme,
+                label="Theme",
+                stage="pipeline.input",
+            )
+        )
+    for key, path in args.asset_pairs:
+        parents.append(
+            audit.register_asset(
+                kind="source_asset",
+                path=str(path),
+                label=f"Source asset: {key}",
+                stage="pipeline.input",
+                metadata={"asset_key": key},
+            )
+        )
+    audit.register_node(
+        stage="pipeline.run",
+        label="Pipeline run",
+        parents=parents,
+        metadata={
+            "source_slug": args.source_slug,
+            "brief_slug": args.brief_slug,
+            "render": args.render,
+            "skips": args.skip,
+        },
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     raw = sys.argv[1:] if argv is None else list(argv)
     # `publish` is a sibling subcommand for shipping Banodoco-authored
@@ -1058,6 +1205,26 @@ def main(argv: list[str] | None = None) -> int:
         import publish
 
         return publish.main(raw[1:])
+    if raw and raw[0] == "publish-youtube":
+        import publish_youtube
+
+        return publish_youtube.main(raw[1:])
+    if raw and raw[0] == "upload-youtube":
+        import publish_youtube
+
+        return publish_youtube.main(raw[1:])
+    if raw and raw[0] == "performers":
+        from .performers import cli as performers_cli
+
+        return performers_cli.main(raw[1:])
+    if raw and raw[0] == "conductors":
+        from .conductors import cli as conductors_cli
+
+        return conductors_cli.main(raw[1:])
+    if raw and raw[0] == "audit":
+        from . import audit
+
+        return audit.main(raw[1:])
     args = resolve_args(argv)
     keep_env = os.environ.get("HYPE_KEEP_DOWNLOADS", "").strip().lower() in {"1", "true", "yes"}
     keep_flag = bool(getattr(args, "keep_downloads", False))

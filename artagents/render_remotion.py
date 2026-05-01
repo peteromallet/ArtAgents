@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from pathlib import Path
 
 from . import asset_cache
 from . import timeline
+from .audit import AuditContext
 from .theme_schema import ThemeValidationError, load_theme
 from ._paths import REPO_ROOT, WORKSPACE_ROOT
 
@@ -39,6 +41,12 @@ class _RangeHTTPRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:  # noqa: A002
         # Quiet the access log; one line per clip byte fetch is noise.
         return
+
+    def end_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Range, Content-Type")
+        super().end_headers()
 
     def send_head(self):
         path = self.translate_path(self.path)
@@ -87,16 +95,22 @@ class _RangeHTTPRequestHandler(SimpleHTTPRequestHandler):
     def copyfile(self, source, outputfile) -> None:
         limit = getattr(self, "_range_limit", None)
         if limit is None:
-            super().copyfile(source, outputfile)
+            try:
+                super().copyfile(source, outputfile)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
             return
         remaining = limit
         chunk = 64 * 1024
-        while remaining > 0:
-            buf = source.read(min(chunk, remaining))
-            if not buf:
-                break
-            outputfile.write(buf)
-            remaining -= len(buf)
+        try:
+            while remaining > 0:
+                buf = source.read(min(chunk, remaining))
+                if not buf:
+                    break
+                outputfile.write(buf)
+                remaining -= len(buf)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
 
 def _accepts_ranges(url: str) -> bool:
@@ -233,6 +247,17 @@ def _resolve_theme_path(theme_path: Path) -> Path:
 
 def _theme_for_props(theme_path: Path) -> dict:
     resolved = _resolve_theme_path(theme_path)
+    if not resolved.exists():
+        return {
+            "id": "banodoco-default",
+            "visual": {
+                "canvas": {
+                    "width": 1920,
+                    "height": 1080,
+                    "fps": 30,
+                }
+            },
+        }
     theme = load_theme(resolved)
     return {"id": theme["id"], "visual": theme["visual"]}
 
@@ -277,6 +302,20 @@ def _stderr_tail(stderr: str) -> str:
     return "\n".join(tail).strip()
 
 
+def _require_free_space(path: Path, min_free_gb: float | None) -> None:
+    if min_free_gb is None or min_free_gb <= 0:
+        return
+    target = path if path.exists() else path.parent
+    usage = shutil.disk_usage(target)
+    min_free = int(min_free_gb * 1024 * 1024 * 1024)
+    if usage.free < min_free:
+        free_gb = usage.free / (1024 * 1024 * 1024)
+        raise RuntimeError(
+            f"Remotion render needs at least {min_free_gb:.1f} GiB free at {target}; "
+            f"only {free_gb:.1f} GiB is available"
+        )
+
+
 def render(
     timeline_path: Path,
     assets_path: Path,
@@ -285,11 +324,13 @@ def render(
     project_dir: Path | None = None,
     composition_id: str = "TimelineComposition",
     theme_path: Path | None = None,
+    min_free_gb: float | None = None,
 ) -> Path:
     project_dir = project_dir or (REPO_ROOT / "remotion")
     _validate_project_dir(project_dir)
     _regenerate_primitive_registries(project_dir, theme_path)
     out_path = out_path.resolve()
+    _require_free_space(out_path.parent, min_free_gb)
     props_path = (out_path.parent / ".remotion-props.json").resolve()
     classified = _classify_assets(assets_path)
     server_root = _server_root_for(assets_path, classified).resolve()
@@ -340,6 +381,25 @@ def render(
     finally:
         server.shutdown()
         server.server_close()
+    audit = AuditContext.from_env()
+    if audit is not None:
+        timeline_id = audit.register_asset(kind="timeline", path=timeline_path, label="Render timeline", stage="render_remotion")
+        assets_id = audit.register_asset(kind="assets_registry", path=assets_path, label="Render asset registry", stage="render_remotion")
+        render_id = audit.register_asset(
+            kind="render",
+            path=out_path,
+            label="Rendered video",
+            parents=[timeline_id, assets_id],
+            stage="render_remotion",
+            metadata={"composition": composition_id},
+        )
+        audit.register_node(
+            stage="render_remotion",
+            label="Render Remotion timeline",
+            parents=[timeline_id, assets_id],
+            outputs=[render_id],
+            metadata={"composition": composition_id, "project_dir": str(project_dir)},
+        )
     return out_path
 
 
@@ -350,6 +410,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--project-dir", type=Path, default=REPO_ROOT / "remotion")
     parser.add_argument("--composition", default="TimelineComposition")
+    parser.add_argument("--min-free-gb", type=float, default=None, help="Abort before rendering unless this much free disk is available near --out.")
     parser.add_argument(
         "--theme",
         type=Path,
@@ -364,6 +425,7 @@ def main() -> int:
             project_dir=args.project_dir,
             composition_id=args.composition,
             theme_path=args.theme,
+            min_free_gb=args.min_free_gb,
         )
     except Exception as exc:  # pragma: no cover - CLI path
         print(str(exc), file=sys.stderr)

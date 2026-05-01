@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from . import asset_cache
+from .audit import AuditContext
 from .arrangement_rules import compile_arrangement_plan
 from .theme_schema import load_theme, theme_root
 from ._paths import PACKAGE_ROOT, REPO_ROOT, WORKSPACE_ROOT
@@ -888,6 +889,33 @@ def write_edl(
             )
     return edl_path
 
+
+def _register_cut_outputs(
+    *,
+    out_dir: Path,
+    stage: str,
+    parents: list[str] | None = None,
+    rendered_path: Path | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    audit = AuditContext.from_env()
+    if audit is None:
+        return
+    parent_ids = list(parents or [])
+    outputs = []
+    for kind, filename, label in (
+        ("edl", "hype.edl.csv", "Edit decision list"),
+        ("timeline", "hype.timeline.json", "Timeline"),
+        ("assets_registry", "hype.assets.json", "Asset registry"),
+        ("metadata", "hype.metadata.json", "Pipeline metadata"),
+    ):
+        path = out_dir / filename
+        if path.exists():
+            outputs.append(audit.register_asset(kind=kind, path=path, label=label, parents=parent_ids, stage=stage, metadata=metadata))
+    if rendered_path is not None and rendered_path.exists():
+        outputs.append(audit.register_asset(kind="render", path=rendered_path, label="Rendered hype video", parents=outputs, stage=stage, metadata=metadata))
+    audit.register_node(stage=stage, label="Build cut artifacts", parents=parent_ids, outputs=outputs, metadata=metadata or {})
+
 def ensure_resume_mode_args(args: argparse.Namespace) -> None:
     conflicts: list[tuple[str, Any]] = [
         ("--scenes", args.scenes),
@@ -1017,6 +1045,12 @@ def run_resume_mode(args: argparse.Namespace) -> int:
             project_dir=REPO_ROOT / "remotion",
         )
         summary = f"{summary} hype={hype_path}"
+    _register_cut_outputs(
+        out_dir=out_dir,
+        stage="cut.resume",
+        metadata={"mode": "timeline_resume", "render": bool(args.render), "renderer": args.renderer},
+        rendered_path=out_dir / "hype.mp4" if args.render else None,
+    )
     print(f"wrote {summary}")
     return 0
 
@@ -1152,6 +1186,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     save_timeline(timeline, timeline_path)
     save_registry(registry, assets_path)
     save_metadata(meta, metadata_path)
+    rendered_path = None
     if args.render:
         from .render_remotion import render as render_remotion
 
@@ -1161,12 +1196,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             out_dir / "hype.mp4",
             project_dir=REPO_ROOT / "remotion",
         )
+        rendered_path = hype_path
         print(
             f"wrote_edl={edl_path} timeline={timeline_path} assets={assets_path} metadata={metadata_path} "
             f"hype={hype_path}"
         )
     else:
         print(f"wrote_edl={edl_path} timeline={timeline_path} assets={assets_path} metadata={metadata_path}")
+    _register_cut_outputs(
+        out_dir=out_dir,
+        stage="cut",
+        metadata={"clips": len(timeline.get("clips", [])), "render": bool(args.render), "renderer": args.renderer},
+        rendered_path=rendered_path,
+    )
     return 0
 
 

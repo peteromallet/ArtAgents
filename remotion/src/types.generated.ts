@@ -346,6 +346,8 @@ export interface TimelineClip {
   y?: unknown;
 }
 
+export type Clip = TimelineClip;
+
 export interface TimelineConfig {
   clips: Clip[];
   output: unknown;

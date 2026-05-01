@@ -11,6 +11,9 @@ import subprocess
 from pathlib import Path
 from typing import Any, Sequence
 
+from artagents.generate_image import _candidate_env_files, _read_env_value
+from artagents.audit import AuditContext
+
 SILENCE_START_RE = re.compile(r"silence_start:\s*([0-9]+(?:\.[0-9]+)?)")
 SILENCE_END_RE = re.compile(r"silence_end:\s*([0-9]+(?:\.[0-9]+)?)")
 CUT_EPSILON_SEC = 0.05
@@ -19,31 +22,15 @@ PYANNOTE_PIPELINE = "pyannote/speaker-diarization-3.1"
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, check=True, capture_output=True, text=True)
 def read_env_value(env_path: Path, key: str) -> str:
-    if not env_path.is_file():
-        return ""
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        env_key, env_value = stripped.split("=", 1)
-        if env_key.strip() == key:
-            return env_value.strip().strip('"').strip("'")
-    return ""
+    return _read_env_value(env_path, key)
+
+
 def load_api_key(env_file: Path | None) -> str:
-    # Lookup order: explicit --env-file, then OPENAI_API_KEY env var, then
-    # a .env in the project root or user's home. No hardcoded workspace paths.
-    tried: list[str] = []
-    if env_file is not None:
-        env_file = env_file.resolve()
-        tried.append(f"--env-file {env_file}")
-        if key := read_env_value(env_file, "OPENAI_API_KEY"):
-            return key
-    tried.append("OPENAI_API_KEY environment variable")
+    # Lookup order: process env, explicit --env-file, then nearby this.env/.env files.
+    tried: list[str] = ["OPENAI_API_KEY environment variable"]
     if key := os.environ.get("OPENAI_API_KEY", "").strip():
         return key
-    for candidate in (Path(__file__).resolve().parent / ".env",
-                      Path(__file__).resolve().parent.parent / ".env",
-                      Path.home() / ".env"):
+    for candidate in _candidate_env_files(env_file):
         tried.append(str(candidate))
         if key := read_env_value(candidate, "OPENAI_API_KEY"):
             return key
@@ -233,19 +220,65 @@ def collect_transcript_segments(client: Any, chunks: list[dict[str, Any]], windo
         segments.extend(normalize_segment(segment, float(chunk["offset_sec"])) for segment in annotated)
     summary["segments_kept"] = len(segments)
     return segments, summary
-def write_transcripts(out_dir: Path, segments: list[dict[str, Any]]) -> dict[str, Path]:
+def write_transcripts(out_dir: Path, segments: list[dict[str, Any]], audit: AuditContext | None = None) -> dict[str, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path, srt_path, txt_path = out_dir / "transcript.json", out_dir / "transcript.srt", out_dir / "transcript.txt"
     json_path.write_text(json.dumps({"segments": segments}, indent=2), encoding="utf-8")
     srt_lines = [item for index, segment in enumerate(segments, start=1) for item in (str(index), f"{srt_timestamp(float(segment['start']))} --> {srt_timestamp(float(segment['end']))}", str(segment.get("text", "")), "")]
     srt_path.write_text("\n".join(srt_lines), encoding="utf-8")
     txt_path.write_text("\n".join(str(segment.get("text", "")) for segment in segments if str(segment.get("text", "")).strip()), encoding="utf-8")
+    if audit is not None:
+        parents: list[str] = []
+        transcript_id = audit.register_asset(
+            kind="transcript",
+            path=json_path,
+            label="Transcript JSON",
+            parents=parents,
+            stage="transcribe",
+            metadata={"segments": len(segments), "format": "json"},
+        )
+        audit.register_asset(
+            kind="transcript_text",
+            path=txt_path,
+            label="Transcript text",
+            parents=[transcript_id],
+            stage="transcribe",
+            metadata={"segments": len(segments), "format": "txt"},
+        )
+        audit.register_asset(
+            kind="subtitle",
+            path=srt_path,
+            label="Transcript SRT",
+            parents=[transcript_id],
+            stage="transcribe",
+            metadata={"segments": len(segments), "format": "srt"},
+        )
+        audit.register_node(
+            stage="transcribe",
+            label="Write transcripts",
+            outputs=[transcript_id],
+            metadata={"segments": len(segments)},
+        )
     return {"json": json_path, "srt": srt_path, "txt": txt_path}
-def transcribe_to_outputs(audio_path: Path, out_dir: Path, cache_dir: Path, client: Any, model: str, language: str, max_chunk_sec: float, vad_gate_enabled: bool, diarize_mode: str | None) -> tuple[dict[str, Path], dict[str, int], Path]:
+def transcribe_to_outputs(audio_path: Path, out_dir: Path, cache_dir: Path, client: Any, model: str, language: str, max_chunk_sec: float, vad_gate_enabled: bool, diarize_mode: str | None, audit: AuditContext | None = None) -> tuple[dict[str, Path], dict[str, int], Path]:
     chunks, windows, metadata_path = prepare_chunks(audio_path, cache_dir, max_chunk_sec)
     diarization = diarize_audio(audio_path, cache_dir, diarize_mode)
     segments, summary = collect_transcript_segments(client, chunks, windows, model, language, vad_gate_enabled, None if diarization is None else diarization["speaker_turns"])
-    return write_transcripts(out_dir, segments), summary, metadata_path
+    if audit is not None:
+        audit.register_asset(
+            kind="source_audio",
+            path=audio_path,
+            label="Transcription source audio",
+            stage="transcribe",
+        )
+        audit.register_asset(
+            kind="chunk_plan",
+            path=metadata_path,
+            label="Transcription chunk plan",
+            stage="transcribe",
+            metadata={"model": model, "language": language},
+        )
+    return write_transcripts(out_dir, segments, audit), summary, metadata_path
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     from . import asset_cache; args.audio = Path(asset_cache.resolve_input(args.audio, want="path"))
@@ -255,7 +288,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir, cache_dir = resolve_dirs(audio_path, args.out, args.cache_dir)
     from openai import OpenAI
     client = OpenAI(api_key=load_api_key(args.env_file))
-    paths, summary, metadata_path = transcribe_to_outputs(audio_path, out_dir, cache_dir, client, args.model, args.language, args.max_chunk_sec, not args.no_vad_gate, args.diarize)
+    audit = AuditContext.from_env()
+    paths, summary, metadata_path = transcribe_to_outputs(audio_path, out_dir, cache_dir, client, args.model, args.language, args.max_chunk_sec, not args.no_vad_gate, args.diarize, audit)
     print(" ".join([f"chunks={summary['chunks']}", f"skipped_silent={summary['skipped_silent']}", f"segments_kept={summary['segments_kept']}", f"segments_filtered={summary['segments_filtered']}", f"transcript_json={paths['json']}", f"metadata={metadata_path}"]))
     return 0
 if __name__ == "__main__":
