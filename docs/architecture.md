@@ -6,15 +6,17 @@ ArtAgents has three canonical public concepts:
 - **Executors** run concrete work.
 - **Elements** are render/custom building blocks such as effects, animations, and transitions.
 
-Canonical packages and commands are first-class. `python3 pipeline.py` is the
-single command gateway for normal work. Retained `bin/*.py` launchers route to
-canonical executor or orchestrator folders for specialized/manual use.
+Canonical packages and commands are first-class. `python3 -m artagents` is the
+executable package gateway for normal work. `python3 pipeline.py` remains a
+compatibility launcher. Retained `bin/*.py` launchers route to canonical
+executor or orchestrator folders for specialized/manual use.
 
 ## Onboarding Commands
 
 Run these from the repository root before editing:
 
 ```bash
+python3 -m artagents --help
 python3 pipeline.py --help
 git status --short
 python3 pipeline.py doctor
@@ -62,7 +64,8 @@ executor.
 
 | Module or entry point | Classification | Notes |
 | --- | --- | --- |
-| `pipeline.py` | System entry point | Root launcher that dispatches to package commands and the canonical hype orchestrator. |
+| `python3 -m artagents`, `artagents/__main__.py` | System entry point | Executable package gateway for all canonical commands. |
+| `pipeline.py` | Compatibility launcher | Root wrapper that dispatches to the executable package gateway. |
 | `artagents/pipeline.py` | System command and dispatcher | Cache-aware hype command support and source of `STEP_ORDER`; not a second orchestrator format. |
 | `artagents/orchestrators/hype` | Orchestrator | Canonical built-in hype orchestrator folder. |
 | `artagents/orchestrators/event_talks` | Orchestrator | Canonical event-talk discovery and rendering workflow folder. |

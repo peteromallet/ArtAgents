@@ -13,9 +13,11 @@ The public model has three canonical concepts:
 
 Use canonical commands for new work.
 
-`python3 pipeline.py` is the single command gateway. Use it to discover, inspect,
-validate, install, and run every orchestrator, executor, and element. The
-`bin/*.py` scripts are thin direct launchers for specialized/manual use.
+`python3 -m artagents` is the executable package gateway and single command gateway.
+Use it to discover, inspect, validate, install, and run every
+orchestrator, executor, and element. `python3 pipeline.py` remains a
+compatibility launcher, and the `bin/*.py` scripts are thin direct launchers for
+specialized/manual use.
 
 ## Agent Prompt
 
@@ -42,6 +44,7 @@ Run these from the repository root before making changes:
 
 ```bash
 python3 pipeline.py --help
+python3 -m artagents --help
 git status --short
 python3 pipeline.py doctor
 python3 pipeline.py orchestrators list
@@ -167,8 +170,9 @@ _reference/                Copied Reigh contract references
 runs/                      Ignored local outputs
 ```
 
-`pipeline.py` is the primary entry point. `bin/*.py` launchers call the matching
-canonical executor or orchestrator modules when you need a single stage directly.
+`python3 -m artagents` is the package entry point. `pipeline.py` remains a
+compatibility launcher, and `bin/*.py` launchers call the matching canonical
+executor or orchestrator modules when you need a single stage directly.
 `python3 pipeline.py doctor` also validates the canonical repo structure: public
 executor folders must contain `executor.yaml`, `run.py`, and `SKILL.md`; public
 orchestrator folders must contain `orchestrator.yaml`, `run.py`, and `SKILL.md`;

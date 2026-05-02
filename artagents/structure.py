@@ -16,6 +16,7 @@ INTERNAL_EXECUTOR_DIRS = {"__pycache__", "actions", "builtin", "bundled", "curat
 INTERNAL_ORCHESTRATOR_DIRS = {"__pycache__", "bundled", "curated"}
 TOP_LEVEL_ARTAGENTS_FILES = {
     "__init__.py",
+    "__main__.py",
     "_paths.py",
     "doctor.py",
     "pipeline.py",

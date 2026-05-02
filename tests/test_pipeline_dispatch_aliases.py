@@ -20,10 +20,10 @@ class PipelineDispatchAliasTest(unittest.TestCase):
 
         help_text = stdout.getvalue()
         self.assertIn("ArtAgents command gateway", help_text)
-        self.assertIn("python3 pipeline.py orchestrators {list,inspect,validate,run}", help_text)
-        self.assertIn("python3 pipeline.py executors {list,inspect,validate,install,run}", help_text)
-        self.assertIn("python3 pipeline.py elements {list,inspect,sync,fork,install,update}", help_text)
-        self.assertIn("pipeline.py is the primary entry point", help_text)
+        self.assertIn("python3 -m artagents orchestrators {list,inspect,validate,run}", help_text)
+        self.assertIn("python3 -m artagents executors {list,inspect,validate,install,run}", help_text)
+        self.assertIn("python3 -m artagents elements {list,inspect,sync,fork,install,update}", help_text)
+        self.assertIn("pipeline.py remains a compatibility launcher", help_text)
         self.assertNotIn("conductors", help_text)
         self.assertNotIn("performers", help_text)
 
@@ -77,6 +77,20 @@ class PipelineDispatchAliasTest(unittest.TestCase):
             with contextlib.redirect_stdout(stdout):
                 with self.assertRaises(SystemExit) as raised:
                     runpy.run_path(str(ROOT / "pipeline.py"), run_name="__main__")
+        finally:
+            sys.argv = old_argv
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("effects\ttext-card", stdout.getvalue())
+
+    def test_package_is_executable(self) -> None:
+        old_argv = sys.argv
+        stdout = io.StringIO()
+        try:
+            sys.argv = ["python3 -m artagents", "elements", "list", "--kind", "effects"]
+            with contextlib.redirect_stdout(stdout):
+                with self.assertRaises(SystemExit) as raised:
+                    runpy.run_module("artagents", run_name="__main__")
         finally:
             sys.argv = old_argv
 

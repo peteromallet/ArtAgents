@@ -148,7 +148,8 @@ Run only the inspect command that matches the thing you created.
 
 ## Review Checklist
 
-- The new capability is reachable through `python3 pipeline.py`.
+- The new capability is reachable through `python3 -m artagents` and the
+  compatibility `python3 pipeline.py` launcher.
 - The folder has the required manifest, `run.py`, and `SKILL.md` or element
   files.
 - The `SKILL.md` says when to use it and gives the canonical command.

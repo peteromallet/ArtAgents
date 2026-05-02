@@ -5,7 +5,7 @@ description: "Use for the ArtAgents repo: file-based hype-cut/video pipeline wor
 
 # ArtAgents
 
-ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `pipeline.py` is the single command gateway for normal work; use `pipeline.py orchestrators ...`, `pipeline.py executors ...`, and `pipeline.py elements ...` for discoverable tools. Direct launchers live under `bin/` for specialized/manual use and call canonical executor or orchestrator folder entrypoints.
+ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `python3 -m artagents` is the executable package gateway for normal work; `pipeline.py` remains a compatibility launcher. Use `python3 -m artagents orchestrators ...`, `python3 -m artagents executors ...`, and `python3 -m artagents elements ...` for discoverable tools. Direct launchers live under `bin/` for specialized/manual use and call canonical executor or orchestrator folder entrypoints.
 
 ## First Checks
 
@@ -51,10 +51,11 @@ python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir run
 
 ArtAgents has three canonical public concepts: orchestrators, executors, and elements. Orchestrators coordinate workflows. Executors run concrete work such as rendering, external tools, understanding actions, and uploading to YouTube. Elements are user-editable render building blocks such as effects, animations, and transitions.
 
-Entry point rule: start with `python3 pipeline.py --help`, then use
-`python3 pipeline.py orchestrators ...`, `python3 pipeline.py executors ...`,
-or `python3 pipeline.py elements ...`. Use `bin/*.py` only when a workflow
-section explicitly calls for a direct launcher.
+Entry point rule: start with `python3 -m artagents --help`, then use
+`python3 -m artagents orchestrators ...`,
+`python3 -m artagents executors ...`, or
+`python3 -m artagents elements ...`. Use `bin/*.py` only when a workflow section
+explicitly calls for a direct launcher.
 
 Runnable implementations have exactly one public folder format:
 `artagents/orchestrators/<slug>/{orchestrator.yaml,SKILL.md,run.py}` for

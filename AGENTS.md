@@ -27,15 +27,18 @@ element dependency commands, but it does not mutate the workspace unless
 
 ## Entry Point Rule
 
-Use `python3 pipeline.py` as the single command gateway for normal work. Reach
-workflows through `pipeline.py orchestrators ...`, concrete tools through
-`pipeline.py executors ...`, and render building blocks through
-`pipeline.py elements ...`. The `bin/*.py` files are thin direct launchers for
-specialized/manual use; do not treat them as a separate public API.
+Use `python3 -m artagents` as the executable package gateway for normal work.
+`python3 pipeline.py` remains a compatibility launcher. Reach workflows through
+`python3 -m artagents orchestrators ...`, concrete tools through
+`python3 -m artagents executors ...`, and render building blocks through
+`python3 -m artagents elements ...`. The `bin/*.py` files are thin direct
+launchers for specialized/manual use; do not treat them as a separate public
+API.
 
 Use canonical imports and commands for new work:
 
 ```bash
+python3 -m artagents --help
 python3 pipeline.py --help
 python3 pipeline.py orchestrators inspect builtin.hype --json
 python3 pipeline.py executors inspect builtin.render --json
