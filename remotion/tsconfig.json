@@ -7,12 +7,21 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@workspace-effects/*": ["../../effects/*"],
+      "@theme-elements-effects/*": ["_active_theme/elements/effects/*"],
       "@theme-effects/*": ["_active_theme/effects/*"],
-      "@workspace-animations/*": ["../../animations/*"],
+      "@override-elements-effects/*": ["../.artagents/elements/overrides/effects/*"],
+      "@managed-elements-effects/*": ["../.artagents/elements/managed/effects/*"],
+      "@bundled-elements-effects/*": ["../artagents/elements/bundled/effects/*"],
+      "@theme-elements-animations/*": ["_active_theme/elements/animations/*"],
       "@theme-animations/*": ["_active_theme/animations/*"],
-      "@workspace-transitions/*": ["../../transitions/*"],
+      "@override-elements-animations/*": ["../.artagents/elements/overrides/animations/*"],
+      "@managed-elements-animations/*": ["../.artagents/elements/managed/animations/*"],
+      "@bundled-elements-animations/*": ["../artagents/elements/bundled/animations/*"],
+      "@theme-elements-transitions/*": ["_active_theme/elements/transitions/*"],
       "@theme-transitions/*": ["_active_theme/transitions/*"],
+      "@override-elements-transitions/*": ["../.artagents/elements/overrides/transitions/*"],
+      "@managed-elements-transitions/*": ["../.artagents/elements/managed/transitions/*"],
+      "@bundled-elements-transitions/*": ["../artagents/elements/bundled/transitions/*"],
       "react": ["node_modules/@types/react/index.d.ts"],
       "react/jsx-runtime": ["node_modules/@types/react/jsx-runtime.d.ts"],
       "remotion": ["node_modules/remotion"]
@@ -28,13 +37,19 @@
   "include": [
     "src",
     "_active_theme/effects/**/*.{ts,tsx}",
+    "_active_theme/elements/effects/**/*.{ts,tsx}",
     "_active_theme/animations/**/*.{ts,tsx}",
+    "_active_theme/elements/animations/**/*.{ts,tsx}",
     "_active_theme/transitions/**/*.{ts,tsx}",
-    "../../effects/**/*.{ts,tsx}",
-    "../../animations/**/*.{ts,tsx}",
-    "../../transitions/**/*.{ts,tsx}",
+    "_active_theme/elements/transitions/**/*.{ts,tsx}",
+    "../.artagents/elements/overrides/**/*.{ts,tsx}",
+    "../.artagents/elements/managed/**/*.{ts,tsx}",
+    "../artagents/elements/bundled/**/*.{ts,tsx}",
     "../../themes/*/effects/**/*.{ts,tsx}",
+    "../../themes/*/elements/effects/**/*.{ts,tsx}",
     "../../themes/*/animations/**/*.{ts,tsx}",
-    "../../themes/*/transitions/**/*.{ts,tsx}"
+    "../../themes/*/elements/animations/**/*.{ts,tsx}",
+    "../../themes/*/transitions/**/*.{ts,tsx}",
+    "../../themes/*/elements/transitions/**/*.{ts,tsx}"
   ]
 }

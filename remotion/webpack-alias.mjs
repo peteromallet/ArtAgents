@@ -3,10 +3,11 @@ import {fileURLToPath} from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const WORKSPACE_EFFECTS_DIR = path.resolve(__dirname, '../../effects');
-const WORKSPACE_ANIMATIONS_DIR = path.resolve(__dirname, '../../animations');
-const WORKSPACE_TRANSITIONS_DIR = path.resolve(__dirname, '../../transitions');
 const ACTIVE_THEME_DIR = path.resolve(__dirname, '_active_theme');
+const ARTAGENTS_DIR = path.resolve(__dirname, '..');
+const OVERRIDE_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, '.artagents/elements/overrides');
+const MANAGED_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, '.artagents/elements/managed');
+const BUNDLED_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, 'artagents/elements/bundled');
 // Workspace-level effects/animations/transitions/themes/* live above the
 // Remotion project, so their nearest node_modules walks up past the
 // tools/remotion install. Add the Remotion project's node_modules to
@@ -15,12 +16,21 @@ const ACTIVE_THEME_DIR = path.resolve(__dirname, '_active_theme');
 const REMOTION_NODE_MODULES = path.resolve(__dirname, 'node_modules');
 
 const primitiveAliases = {
-  '@workspace-effects': WORKSPACE_EFFECTS_DIR,
+  '@theme-elements-effects': path.resolve(ACTIVE_THEME_DIR, 'elements/effects'),
   '@theme-effects': path.resolve(ACTIVE_THEME_DIR, 'effects'),
-  '@workspace-animations': WORKSPACE_ANIMATIONS_DIR,
+  '@override-elements-effects': path.resolve(OVERRIDE_ELEMENTS_DIR, 'effects'),
+  '@managed-elements-effects': path.resolve(MANAGED_ELEMENTS_DIR, 'effects'),
+  '@bundled-elements-effects': path.resolve(BUNDLED_ELEMENTS_DIR, 'effects'),
+  '@theme-elements-animations': path.resolve(ACTIVE_THEME_DIR, 'elements/animations'),
   '@theme-animations': path.resolve(ACTIVE_THEME_DIR, 'animations'),
-  '@workspace-transitions': WORKSPACE_TRANSITIONS_DIR,
+  '@override-elements-animations': path.resolve(OVERRIDE_ELEMENTS_DIR, 'animations'),
+  '@managed-elements-animations': path.resolve(MANAGED_ELEMENTS_DIR, 'animations'),
+  '@bundled-elements-animations': path.resolve(BUNDLED_ELEMENTS_DIR, 'animations'),
+  '@theme-elements-transitions': path.resolve(ACTIVE_THEME_DIR, 'elements/transitions'),
   '@theme-transitions': path.resolve(ACTIVE_THEME_DIR, 'transitions'),
+  '@override-elements-transitions': path.resolve(OVERRIDE_ELEMENTS_DIR, 'transitions'),
+  '@managed-elements-transitions': path.resolve(MANAGED_ELEMENTS_DIR, 'transitions'),
+  '@bundled-elements-transitions': path.resolve(BUNDLED_ELEMENTS_DIR, 'transitions'),
 };
 
 export const applyRemotionPrimitiveAliases = (currentConfiguration) => ({
