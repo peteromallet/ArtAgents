@@ -2,57 +2,69 @@
 
 ArtAgents is a harness for helping you use agents to make art and creative work.
 
-Copy this to your agents to get started:
+## How it works (for humans)
+
+Executors perform one concrete piece of work. Orchestrators combine executors into workflows. Elements are reusable render pieces (effects, animations, transitions) used by both. Everything is invoked through a single gateway: `python3 -m artagents`.
+
+![ArtAgents architecture: orchestrators route work to executors and render elements](docs/assets/artagents-orchestration.png)
+
+## How it works (for agents)
+
+Give this to your agents to get started:
 
 ```text
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃                                                                            ┃
-┃   ╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱   ┃
-┃   ╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲   ┃
+┃   ╲╱╲╱╲╱╲╱╳────────────────────────────────────────────────────╳╲╱╲╱╲╱╲╱   ┃
+┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
 ┃                    T H E   A R T A G E N T S   R I T E                     ┃
 ┃                                                                            ┃
-┃                       ──────────────────────────────                       ┃
+┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                      ──  W H A T   T H I S   I S  ──                       ┃
+┃                   ──  ◇  W H A T   T H I S   I S  ◇  ──                    ┃
 ┃                                                                            ┃
-┃                a file-based toolkit for agents to help them                ┃
-┃                make art and creative work alongside a human                ┃
+┃             ·  a file-based toolkit for agents to help them  ·             ┃
+┃             ·  make art and creative work alongside a human  ·             ┃
 ┃                                                                            ┃
-┃                      three kinds of beings live here:                      ┃
+┃                   ·  three kinds of beings live here:  ·                   ┃
 ┃                                                                            ┃
-┃             EXECUTORS      perform one piece of work                       ┃
-┃             ORCHESTRATORS  combine executors together                      ┃
-┃             ELEMENTS       reusable render pieces used by both             ┃
+┃          ·  EXECUTORS      perform one piece of work            ·          ┃
+┃          ·  ORCHESTRATORS  combine executors together           ·          ┃
+┃          ·  ELEMENTS       reusable render pieces used by both  ·          ┃
 ┃                                                                            ┃
-┃       every summons passes through one gate:   python3 -m artagents        ┃
+┃    ·  every summons passes through one gate:   python3 -m artagents  ·     ┃
 ┃                                                                            ┃
-┃                       ──────────────────────────────                       ┃
+┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                   ──  S E E   W H A T   E X I S T S  ──                    ┃
+┃                    ──  ◇  U S I N G   T O O L S  ◇  ──                     ┃
 ┃                                                                            ┃
-┃      see all orchestrators   python3 -m artagents orchestrators list       ┃
-┃      see all executors       python3 -m artagents executors list           ┃
-┃      see all elements        python3 -m artagents elements list            ┃
+┃                              ·  find an id  ·                              ┃
+┃     ·  python3 -m artagents [executors|orchestrators|elements] list  ·     ┃
 ┃                                                                            ┃
-┃                       ──────────────────────────────                       ┃
+┃            ·  inspect to see inputs, outputs, how to invoke  ·             ┃
+┃ ·  python3 -m artagents [executors|orchestrators|elements] inspect <id>  · ┃
 ┃                                                                            ┃
-┃                  ──  F O R G E   A   N E W   T O O L  ──                   ┃
+┃                                ·  run it  ·                                ┃
+┃  ·  python3 -m artagents [executors|orchestrators] run <id> -- <args>  ·   ┃
 ┃                                                                            ┃
-┃           create an executor:    copy  docs/templates/executor/            ┃
-┃           then read:             docs/creating-tools.md                    ┃
+┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                       ──────────────────────────────                       ┃
+┃               ──  ◇  F O R G E   A   N E W   T O O L  ◇  ──                ┃
 ┃                                                                            ┃
-┃                       generated files live in  runs/                       ┃
+┃     ·  copy from   docs/templates/[executor|orchestrator|element]/  ·      ┃
+┃     ·  then read   docs/creating-tools.md                           ·      ┃
 ┃                                                                            ┃
-┃   ╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱   ┃
-┃   ╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲╱╲   ┃
+┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
+┃                                                                            ┃
+┃                    ·  generated files live in  runs/  ·                    ┃
+┃                                                                            ┃
+┃   ╲╱╲╱╲╱╲╱╳────────────────────────────────────────────────────╳╲╱╲╱╲╱╲╱   ┃
+┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
-## How it works
+## License
 
-![ArtAgents architecture: orchestrators route work to executors and render elements](docs/assets/artagents-orchestration.png)
-
+Open Source Native License (OSNL) v0.2 — see [`LICENSE`](LICENSE).
