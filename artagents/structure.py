@@ -32,7 +32,6 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "elements",
     "executors",
     "orchestrators",
-    "skills",
     "utilities",
 }
 

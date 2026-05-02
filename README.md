@@ -62,6 +62,9 @@ python3 pipeline.py --audio rant.wav --brief brief.txt --out runs/audio --render
 # Pure-generative timeline
 python3 pipeline.py --brief brief.txt --theme 2rp --out runs/generative --render --target-duration 28
 
+# Pure-generative sample brief
+python3 pipeline.py --brief examples/briefs/cinematic.txt --out runs/cinematic --render --target-duration 15
+
 # Event-talk render
 python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
@@ -144,9 +147,10 @@ artagents/executors/       Canonical executor folders, registry, runner, and CLI
 artagents/elements/        Element schema, registry, CLI, and bundled defaults
 .artagents/elements/       Local managed defaults and user overrides
 bin/                       Direct launchers backed by canonical executor and orchestrator folders
+agents/                    Agent configuration
 remotion/                  Remotion renderer project
 scripts/                   Development and code-generation scripts
-examples/                  Small schema fixtures
+examples/                  Schema fixtures and committed sample briefs under examples/briefs/
 _reference/                Copied Reigh contract references
 runs/                      Ignored local outputs
 ```

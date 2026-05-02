@@ -19,4 +19,3 @@ Arrangement instructions:
 - Use `cta-card` for the closing with a jarring cutoff.
 - Spread the clips to cover 15 seconds.
 - Tone is surreal, glitched out, and hyper-stylized.
-EOF; __hermes_rc=$?; printf '__HERMES_FENCE_a9f7b3__'; exit $__hermes_rc

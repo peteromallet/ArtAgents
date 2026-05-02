@@ -42,6 +42,7 @@ class OnboardingDocsTest(unittest.TestCase):
             "artagents/orchestrators/<slug>/{orchestrator.yaml,SKILL.md,run.py}",
             "artagents/executors/<slug>/{executor.yaml,SKILL.md,run.py}",
             "Top-level `artagents/*.py`",
+            "examples/briefs/",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -58,6 +59,7 @@ class OnboardingDocsTest(unittest.TestCase):
             "artagents/event_talks.py",
             "artagents/thumbnail_maker.py",
             "artagents/understand.py",
+            "artagents/skills/reigh-data",
         )
         for phrase in forbidden:
             with self.subTest(forbidden=phrase):

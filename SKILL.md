@@ -84,7 +84,7 @@ Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.th
 
 ## Reigh Data Tool
 
-Use `artagents/skills/reigh-data/SKILL.md` before fetching live Reigh project, shot, task, timeline, image, or video data. The canonical command is:
+Use `artagents/executors/reigh_data/SKILL.md` before fetching live Reigh project, shot, task, timeline, image, or video data. The canonical command is:
 
 ```bash
 python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json

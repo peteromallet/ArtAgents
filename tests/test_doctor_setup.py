@@ -107,6 +107,7 @@ class DoctorSetupTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "artagents" / "conductors").mkdir(parents=True)
+            (root / "artagents" / "skills" / "reigh-data").mkdir(parents=True)
             bad_orchestrator = root / "artagents" / "orchestrators" / "vibecomfy"
             bad_orchestrator.mkdir(parents=True)
             (bad_orchestrator / "executor.yaml").write_text(
@@ -143,6 +144,7 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertFalse(report.ok)
         detail = "\n".join(report.errors)
         self.assertIn("legacy public package must not exist: artagents/conductors", detail)
+        self.assertIn("top-level artagents directory is not a canonical concept: artagents/skills", detail)
         self.assertIn("artagents/orchestrators/vibecomfy missing orchestrator.yaml", detail)
         self.assertIn("orchestrator folder contains executor metadata: artagents/orchestrators/vibecomfy", detail)
         self.assertIn("built-in executor 'builtin.not_render' must live in artagents/executors/not_render", detail)

@@ -113,6 +113,8 @@ Public executor folders under `artagents/executors/<slug>/` must include
 and `SKILL.md`. Executor folders must not contain orchestrator metadata, and
 orchestrator folders must not contain executor metadata. Legacy public package
 directories are rejected so developers do not reintroduce removed concepts.
+Package-level skill directories are also rejected; skill guidance lives beside
+the executor or orchestrator it describes.
 
 ## Generated Files and Dirty Worktrees
 
