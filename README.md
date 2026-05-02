@@ -101,6 +101,12 @@ for executors, with optional local `src/` modules. Top-level `artagents/*.py`
 files are shared libraries or system commands, not alternate runnable
 implementations.
 
+When ArtAgents is missing a reusable capability, use `docs/creating-tools.md`
+before adding files. Create an executor for one concrete unit of work, an
+orchestrator for a workflow, and an element for a reusable render building
+block. Copy from `docs/templates/executor/`, `docs/templates/orchestrator/`, or
+`docs/templates/element/` so new public tools keep the expected shape.
+
 Default orchestrators include `builtin.hype`, `builtin.event_talks`,
 `builtin.thumbnail_maker`, and `builtin.understand`. Default executors include the built-in pipeline
 stages such as `builtin.transcribe`, `builtin.cut`, `builtin.render`, and
@@ -155,6 +161,7 @@ bin/                       Direct launchers backed by canonical executor and orc
 agents/                    Agent configuration
 remotion/                  Remotion renderer project
 scripts/                   Development and code-generation scripts
+docs/                      Architecture notes, creation guide, and templates
 examples/                  Schema fixtures and committed sample briefs under examples/briefs/
 _reference/                Copied Reigh contract references
 runs/                      Ignored local outputs

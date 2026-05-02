@@ -1,0 +1,29 @@
+{
+  "id": "builtin.example",
+  "name": "Example",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Describe the workflow this orchestrator coordinates.",
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.orchestrators.example.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [
+    "builtin.example_step"
+  ],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "metadata": {
+    "runtime_module": "artagents.orchestrators.example.run",
+    "runtime_file": "run.py"
+  }
+}

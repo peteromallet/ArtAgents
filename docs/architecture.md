@@ -52,6 +52,12 @@ implementation location:
 system commands only; they are not alternate executor or orchestrator
 implementations.
 
+For creation decisions, use `docs/creating-tools.md` and the templates under
+`docs/templates/`. Add an executor for one concrete action, an orchestrator for
+a workflow, and an element for a reusable render primitive. Agents should avoid
+manual chains of low-level stage artifacts unless they are debugging a specific
+executor.
+
 ## Orchestrators
 
 | Module or entry point | Classification | Notes |

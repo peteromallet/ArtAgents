@@ -54,6 +54,21 @@ for executors, with optional local `src/` modules. Top-level `artagents/*.py`
 files are shared libraries or system commands, not alternate runnable
 implementations.
 
+## Creating Missing Capabilities
+
+Read `docs/creating-tools.md` before adding a reusable public capability.
+Create an executor for one concrete unit of work, an orchestrator for a
+workflow, and an element for a reusable render building block. Start from the
+templates in `docs/templates/executor/`, `docs/templates/orchestrator/`, or
+`docs/templates/element/`.
+
+Do not chain pipeline internals by hand unless you are debugging one specific
+stage. If the user gives a topic instead of a brief, add or use a
+brief-generation executor and coordinate it from an orchestrator; do not fake
+source media just to enter the source-video path. Render requires the
+`hype.timeline.json` and `hype.assets.json` pair produced by cut, so do not
+skip cut unless both files already exist.
+
 ## Defaults
 
 Default orchestrators include `builtin.hype`, `builtin.event_talks`,

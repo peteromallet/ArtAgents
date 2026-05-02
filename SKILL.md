@@ -63,6 +63,18 @@ for executors, with optional local `src/` modules. Top-level `artagents/*.py`
 files are shared libraries or system commands, not alternate runnable
 implementations.
 
+Before adding a new public capability, read `docs/creating-tools.md`. Create an
+executor for one concrete unit of work, an orchestrator for a workflow, and an
+element for a reusable render building block. Use
+`docs/templates/executor/`, `docs/templates/orchestrator/`, or
+`docs/templates/element/` as the starting shape.
+
+Do not chain pipeline internals by hand unless you are debugging one stage.
+Source-analysis executors use files as their artifact contract; normal creative
+requests should go through an orchestrator. If the user gives a topic instead
+of a brief, use or create a brief-generation executor and coordinate it from an
+orchestrator. Do not fake source media just to enter the source-video pipeline.
+
 Use canonical packages and commands for new code:
 
 ```bash

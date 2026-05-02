@@ -1,0 +1,43 @@
+{
+  "id": "builtin.example",
+  "name": "Example",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Describe the concrete unit of work this executor performs.",
+  "inputs": [
+    {
+      "name": "input",
+      "type": "file",
+      "description": "Input artifact."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "result",
+      "type": "file",
+      "path_template": "{out}/result.json"
+    }
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "artagents.executors.example.run",
+      "--input",
+      "{input}",
+      "--out",
+      "{out}/result.json"
+    ]
+  },
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "metadata": {
+    "runtime_module": "artagents.executors.example.run",
+    "runtime_file": "run.py"
+  }
+}

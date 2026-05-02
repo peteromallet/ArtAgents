@@ -13,7 +13,13 @@ class OnboardingDocsTest(unittest.TestCase):
     def read_docs(self) -> str:
         return "\n".join(
             (ROOT / path).read_text(encoding="utf-8")
-            for path in ("README.md", "AGENTS.md", "SKILL.md", "docs/architecture.md")
+            for path in (
+                "README.md",
+                "AGENTS.md",
+                "SKILL.md",
+                "docs/architecture.md",
+                "docs/creating-tools.md",
+            )
         )
 
     def run_pipeline(self, *args: str) -> subprocess.CompletedProcess[str]:
@@ -45,6 +51,16 @@ class OnboardingDocsTest(unittest.TestCase):
             "artagents/executors/<slug>/{executor.yaml,SKILL.md,run.py}",
             "Top-level `artagents/*.py`",
             "examples/briefs/",
+            "docs/creating-tools.md",
+            "docs/templates/executor/",
+            "docs/templates/orchestrator/",
+            "docs/templates/element/",
+            "Create an **executor**",
+            "Create an **orchestrator**",
+            "Create an **element**",
+            "Do not chain pipeline internals by hand",
+            "brief-generation executor",
+            "hype.assets.json",
         )
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -80,6 +96,23 @@ class OnboardingDocsTest(unittest.TestCase):
                 result = self.run_pipeline(*command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(result.stdout.strip())
+
+    def test_creation_templates_exist(self) -> None:
+        required = (
+            "docs/templates/executor/executor.yaml",
+            "docs/templates/executor/run.py",
+            "docs/templates/executor/SKILL.md",
+            "docs/templates/orchestrator/orchestrator.yaml",
+            "docs/templates/orchestrator/run.py",
+            "docs/templates/orchestrator/SKILL.md",
+            "docs/templates/element/component.tsx",
+            "docs/templates/element/schema.json",
+            "docs/templates/element/defaults.json",
+            "docs/templates/element/meta.json",
+        )
+        for path in required:
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / path).is_file())
 
 
 if __name__ == "__main__":
