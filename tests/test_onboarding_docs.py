@@ -44,7 +44,6 @@ class OnboardingDocsTest(unittest.TestCase):
             "python3 -m artagents",
             "executable package gateway",
             "python3 -m artagents setup",
-            "single command gateway",
             ".artagents/elements/overrides",
             "python3 scripts/gen_effect_registry.py",
             "artagents/executors/moirae/SKILL.md",

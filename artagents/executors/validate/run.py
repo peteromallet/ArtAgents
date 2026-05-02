@@ -24,7 +24,7 @@ from typing import Any
 from ...audit import register_outputs
 
 from artagents.domains.hype.text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
-from ..._paths import cli_script_path
+from ..._paths import executor_argv
 
 
 def clip_timeline_duration_sec(clip: dict[str, Any]) -> float:
@@ -53,8 +53,7 @@ def joined_text(segments: list[dict]) -> str:
 def run_transcribe(video: Path, out_dir: Path, env_file: Path | None) -> Path:
     transcript_json = out_dir / "transcript.json"
     cmd = [
-        sys.executable,
-        str(cli_script_path("transcribe.py")),
+        *executor_argv("transcribe", sys.executable),
         "--audio",
         str(video),
         "--out",
