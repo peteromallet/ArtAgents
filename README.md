@@ -15,7 +15,7 @@ Give this to your agents to get started:
 ┃                        ═══  A R T A G E N T S  ═══                         ┃
 ┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
-┃                   ──  ◇  w h a t   t h i s   i s  ◇  ──                    ┃
+┃                         ──  ◇  What This Is  ◇  ──                         ┃
 ┃                                                                            ┃
 ┃             ·  a file-based toolkit for agents to help them  ·             ┃
 ┃             ·  make art and creative work alongside a human  ·             ┃
@@ -30,7 +30,7 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                    ──  ◇  u s i n g   t o o l s  ◇  ──                     ┃
+┃                         ──  ◇  Using Tools  ◇  ──                          ┃
 ┃                                                                            ┃
 ┃                              ·  find an id  ·                              ┃
 ┃     ·  python3 -m artagents [executors|orchestrators|elements] list  ·     ┃
@@ -43,14 +43,14 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃               ──  ◇  f o r g e   a   n e w   t o o l  ◇  ──                ┃
+┃                       ──  ◇  Forge a New Tool  ◇  ──                       ┃
 ┃                                                                            ┃
 ┃     ·  copy from   docs/templates/[executor|orchestrator|element]/  ·      ┃
 ┃     ·  then read   docs/creating-tools.md                           ·      ┃
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                          ──  ◇  b e g i n  ◇  ──                           ┃
+┃                            ──  ◇  Begin  ◇  ──                             ┃
 ┃                                                                            ┃
 ┃            ·  ask the maker what they want to make or learn  ·             ┃
 ┃                ·  if they want ideas, see  docs/ideas.md  ·                ┃
