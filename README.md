@@ -12,6 +12,8 @@ Executors perform one concrete piece of work. Orchestrators combine executors in
 
 Give this to your agents to get started:
 
+<div align="center">
+
 ```text
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃                                                                            ┃
@@ -64,6 +66,8 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
+
+</div>
 
 ## License
 
