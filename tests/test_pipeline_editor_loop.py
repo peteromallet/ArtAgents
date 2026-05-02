@@ -298,8 +298,8 @@ class PipelineEditorLoopTest(unittest.TestCase):
             )
 
         self.assertEqual(result, 0)
-        self.assertEqual(inspect_calls[0][2], str(brief_dir.resolve()))
-        self.assertNotEqual(inspect_calls[0][2], str(run_dir.resolve()))
+        self.assertEqual(inspect_calls[0][3], str(brief_dir.resolve()))
+        self.assertNotEqual(inspect_calls[0][3], str(run_dir.resolve()))
 
     def test_no_hype_mp4_copy_in_frame_sampling(self) -> None:
         root = self.make_workspace()

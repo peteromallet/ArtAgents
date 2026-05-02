@@ -20,7 +20,7 @@ from artagents.executors.editor_review.run import (
     _validate_review_payload_shape,
     arrangement_summary,
 )
-from artagents._paths import cli_script_path
+from artagents._paths import executor_argv
 from artagents.utilities.llm_clients import ClaudeClient, build_claude_client
 from artagents.timeline import load_arrangement, load_pool
 
@@ -79,8 +79,8 @@ def _pool_ids(pool: dict[str, Any]) -> set[str]:
     }
 
 
-def _script_path(name: str) -> str:
-    return str(cli_script_path(name))
+def _step_argv(name: str, python_exec: str) -> list[str]:
+    return executor_argv(name, python_exec)
 
 
 def _parse_asset_entry(parser: argparse.ArgumentParser, raw: str) -> tuple[str, Path | str]:
@@ -179,8 +179,7 @@ def _apply_pipeline(args: argparse.Namespace) -> None:
     metadata_path = args.brief_dir / "hype.metadata.json"
 
     arrange_cmd = [
-        args.python_exec,
-        _script_path("arrange.py"),
+        *_step_argv("arrange.py", args.python_exec),
         "--revise",
         "--pool",
         str(args.pool),
@@ -199,8 +198,7 @@ def _apply_pipeline(args: argparse.Namespace) -> None:
         arrange_cmd.extend(["--model", args.model])
 
     cut_cmd = [
-        args.python_exec,
-        _script_path("cut.py"),
+        *_step_argv("cut.py", args.python_exec),
         "--scenes",
         str(scenes_path),
         "--transcript",
@@ -222,8 +220,7 @@ def _apply_pipeline(args: argparse.Namespace) -> None:
         cut_cmd.extend(["--primary-asset", args.primary_asset])
 
     refine_cmd = [
-        args.python_exec,
-        _script_path("refine.py"),
+        *_step_argv("refine.py", args.python_exec),
         "--arrangement",
         str(arrangement_path),
         "--pool",
@@ -245,8 +242,7 @@ def _apply_pipeline(args: argparse.Namespace) -> None:
         refine_cmd.extend(["--env-file", str(args.env_file)])
 
     render_cmd = [
-        args.python_exec,
-        _script_path("render_remotion.py"),
+        *_step_argv("render_remotion.py", args.python_exec),
         "--timeline",
         str(timeline_path),
         "--assets",

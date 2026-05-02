@@ -393,7 +393,15 @@ class HumanNotesTest(unittest.TestCase):
             )
 
         self.assertEqual(len(calls), 4)
-        self.assertEqual([Path(call[0][1]).name for call in calls], ["arrange.py", "cut.py", "refine.py", "render_remotion.py"])
+        self.assertEqual(
+            [call[0][2] for call in calls],
+            [
+                "artagents.executors.arrange.run",
+                "artagents.executors.cut.run",
+                "artagents.executors.refine.run",
+                "artagents.executors.render.run",
+            ],
+        )
         for _, kwargs in calls:
             self.assertTrue(kwargs["check"])
         cut_cmd = calls[1][0]

@@ -227,7 +227,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["transcribe"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "transcribe.py").resolve()),
+                "-m",
+                f"artagents.executors.transcribe.run",
                 "--audio",
                 str((root / "audio.wav").resolve()),
                 "--out",
@@ -238,7 +239,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["scenes"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "scenes.py").resolve()),
+                "-m",
+                f"artagents.executors.scenes.run",
                 "--video",
                 str((root / "main.mp4").resolve()),
                 "--out",
@@ -249,7 +251,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["quality_zones"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "quality_zones.py").resolve()),
+                "-m",
+                f"artagents.executors.quality_zones.run",
                 str((root / "main.mp4").resolve()),
                 "--out",
                 str((out_dir / "quality_zones.json").resolve()),
@@ -260,7 +263,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["render"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "render_remotion.py").resolve()),
+                "-m",
+                f"artagents.executors.render.run",
                 "--timeline",
                 str((out_dir / "briefs" / "out" / "hype.timeline.json").resolve()),
                 "--assets",
@@ -437,7 +441,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["arrange"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "arrange.py").resolve()),
+                "-m",
+                f"artagents.executors.arrange.run",
                 "--pool",
                 str((out_dir / "pool.json").resolve()),
                 "--brief",
@@ -455,7 +460,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["refine"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "refine.py").resolve()),
+                "-m",
+                f"artagents.executors.refine.run",
                 "--arrangement",
                 str((second_dir / "arrangement.json").resolve()),
                 "--pool",
@@ -478,7 +484,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["render"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "render_remotion.py").resolve()),
+                "-m",
+                f"artagents.executors.render.run",
                 "--timeline",
                 str((second_dir / "hype.timeline.json").resolve()),
                 "--assets",
@@ -493,7 +500,8 @@ class PipelineCachingTest(unittest.TestCase):
             commands["validate"],
             [
                 pipeline.sys.executable,
-                str((ROOT / "bin" / "validate.py").resolve()),
+                "-m",
+                f"artagents.executors.validate.run",
                 "--video",
                 str((second_dir / "hype.mp4").resolve()),
                 "--timeline",

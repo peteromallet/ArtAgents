@@ -16,7 +16,7 @@ from ...audit import AuditContext
 from artagents.utilities.llm_clients import build_claude_client
 from ...timeline import load_arrangement, load_metadata, load_pool
 from ..transcribe.run import load_api_key
-from ..._paths import cli_script_path
+from ..._paths import executor_argv
 
 EDITOR_ACTIONS = (
     "accept",
@@ -512,7 +512,7 @@ def inspect_cut_text(brief_dir: Path, *, runner: Any | None = None) -> str:
     if runner is None:
         runner = subprocess.run
     result = runner(
-        [sys.executable, str(cli_script_path("inspect_cut.py")), str(brief_dir), "--no-color"],
+        [*executor_argv("inspect_cut", sys.executable), str(brief_dir), "--no-color"],
         check=False,
         capture_output=True,
         text=True,

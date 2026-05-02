@@ -265,8 +265,8 @@ class EditorReviewTest(unittest.TestCase):
         self.assertEqual(review["iteration"], 2)
         self.assertEqual(review["verdict"], "ship")
         self.assertEqual(len(fake_claude.calls), 1)
-        self.assertEqual(inspect_calls[0][2], str(brief_dir.resolve()))
-        self.assertNotEqual(inspect_calls[0][2], str(run_dir.resolve()))
+        self.assertEqual(inspect_calls[0][3], str(brief_dir.resolve()))
+        self.assertNotEqual(inspect_calls[0][3], str(run_dir.resolve()))
 
 
 if __name__ == "__main__":

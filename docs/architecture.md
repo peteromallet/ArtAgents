@@ -7,8 +7,8 @@ ArtAgents has three canonical public concepts:
 - **Elements** are render/custom building blocks such as effects, animations, and transitions.
 
 Canonical packages and commands are first-class. `python3 -m artagents` is the
-executable package gateway for normal work. Retained `bin/*.py` launchers route
-to canonical executor or orchestrator folders for specialized/manual use.
+executable package gateway; every runnable tool is reached via
+`python3 -m artagents [executors|orchestrators|elements] …`.
 
 ## Onboarding Commands
 
@@ -68,19 +68,18 @@ executor.
 | `artagents/orchestrators/event_talks` | Orchestrator | Canonical event-talk discovery and rendering workflow folder. |
 | `artagents/orchestrators/thumbnail_maker` | Orchestrator | Canonical source-evidence thumbnail workflow folder. |
 | `artagents/orchestrators/understand` | Orchestrator | Canonical dispatcher for audio, visual, and video understanding executors. |
-| `bin/event_talks.py`, `bin/thumbnail_maker.py`, `bin/understand.py` | Launchers | Thin direct launchers backed by canonical orchestrator folders. |
 | `artagents/orchestrators/*` | Orchestrator canonical package | Folderized orchestrator manifests, registry, runner, and CLI. |
 
 ## Executors
 
-Every runnable tool is a built-in or external executor exposed from exactly one canonical folder under `artagents/executors/<slug>/`. Retained `bin/*.py` launchers import canonical executor folder entrypoints and do not own behavior.
+Every runnable tool is a built-in or external executor exposed from exactly one canonical folder under `artagents/executors/<slug>/`.
 
-| Executor group | Canonical location | Retained launchers | Notes |
-| --- | --- | --- | --- |
-| Hype pipeline stages | `artagents/executors/{transcribe,scenes,quality_zones,shots,triage,scene_describe,quote_scout,pool_build,pool_merge,arrange,cut,refine,render,editor_review,validate}` | Matching `bin/*.py` launchers | `STEP_ORDER` stages used by the hype orchestrator. |
-| Understanding tools | `artagents/executors/{audio_understand,visual_understand,video_understand}` | Matching `bin/*.py` launchers | Concrete media understanding tools used directly or by the understand orchestrator. |
-| Standalone/service tools | `artagents/executors/{asset_cache,boundary_candidates,generate_image,human_notes,inspect_cut,open_in_reigh,publish,reigh_data,sprite_sheet,upload_youtube}` | Matching `bin/*.py` launchers where useful | Standalone executor capabilities. |
-| External tools | `artagents/executors/{vibecomfy,moirae}` | None required | VibeComfy and Moirae are external executors only, not orchestrators. |
+| Executor group | Canonical location | Notes |
+| --- | --- | --- |
+| Hype pipeline stages | `artagents/executors/{transcribe,scenes,quality_zones,shots,triage,scene_describe,quote_scout,pool_build,pool_merge,arrange,cut,refine,render,editor_review,validate}` | `STEP_ORDER` stages used by the hype orchestrator. |
+| Understanding tools | `artagents/executors/{audio_understand,visual_understand,video_understand}` | Concrete media understanding tools used directly or by the understand orchestrator. |
+| Standalone/service tools | `artagents/executors/{asset_cache,boundary_candidates,generate_image,human_notes,inspect_cut,open_in_reigh,publish,reigh_data,sprite_sheet,upload_youtube}` | Standalone executor capabilities. |
+| External tools | `artagents/executors/{vibecomfy,moirae}` | VibeComfy and Moirae are external executors only, not orchestrators. |
 
 Executor-owned complexity stays in the executor folder, usually under optional local `src/` modules. Shared pure hype/editing logic belongs in `artagents/domains/hype`; generic plumbing belongs in `artagents/utilities`.
 

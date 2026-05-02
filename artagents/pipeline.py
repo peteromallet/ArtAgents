@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover - optional dependency
 from .audit import AuditContext, PARENT_IDS_ENV
 from .executors.asset_cache import run as asset_cache
 from . import timeline
-from ._paths import REPO_ROOT, WORKSPACE_ROOT, cli_script_path
+from ._paths import REPO_ROOT, WORKSPACE_ROOT, executor_argv
 
 
 STEP_ORDER = (
@@ -373,8 +373,9 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def script_path(name: str) -> str:
-    return str(cli_script_path(name))
+def step_argv(name: str, python_exec: str) -> list[str]:
+    """Argv tokens that invoke a pipeline step's executor module."""
+    return executor_argv(name, python_exec)
 
 
 def add_extra_args(args: argparse.Namespace, step_name: str, cmd: list[str]) -> list[str]:
@@ -439,8 +440,7 @@ def prepare_brief_artifacts(args: argparse.Namespace) -> None:
 
 def build_pool_cut_cmd(args: argparse.Namespace) -> list[str]:
     cmd = [
-        args.python_exec,
-        script_path("cut.py"),
+        *step_argv("cut.py", args.python_exec),
         "--pool",
         str(args.out / "pool.json"),
         "--arrangement",
@@ -478,8 +478,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "transcribe",
                 [
-                    args.python_exec,
-                    script_path("transcribe.py"),
+                    *step_argv("transcribe.py", args.python_exec),
                     "--audio",
                     str(args.audio),
                     "--out",
@@ -494,7 +493,7 @@ def build_pool_steps() -> list[Step]:
             lambda args: add_extra_args(
                 args,
                 "scenes",
-                [args.python_exec, script_path("scenes.py"), "--video", str(args.video), "--out", str(args.out / "scenes.json")],
+                [*step_argv("scenes.py", args.python_exec), "--video", str(args.video), "--out", str(args.out / "scenes.json")],
             ),
         ),
         Step(
@@ -504,8 +503,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "quality_zones",
                 [
-                    args.python_exec,
-                    script_path("quality_zones.py"),
+                    *step_argv("quality_zones.py", args.python_exec),
                     str(args.video),
                     "--out",
                     str(args.out / "quality_zones.json"),
@@ -518,7 +516,7 @@ def build_pool_steps() -> list[Step]:
             lambda args: add_extra_args(
                 args,
                 "shots",
-                [args.python_exec, script_path("shots.py"), "--video", str(args.video), "--scenes", str(args.out / "scenes.json"), "--out", str(args.out)],
+                [*step_argv("shots.py", args.python_exec), "--video", str(args.video), "--scenes", str(args.out / "scenes.json"), "--out", str(args.out)],
             ),
         ),
         Step(
@@ -528,8 +526,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "triage",
                 [
-                    args.python_exec,
-                    script_path("triage.py"),
+                    *step_argv("triage.py", args.python_exec),
                     "--scenes",
                     str(args.out / "scenes.json"),
                     "--shots",
@@ -549,8 +546,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "scene_describe",
                 [
-                    args.python_exec,
-                    script_path("scene_describe.py"),
+                    *step_argv("scene_describe.py", args.python_exec),
                     "--scenes",
                     str(args.out / "scenes.json"),
                     "--triage",
@@ -570,8 +566,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "quote_scout",
                 [
-                    args.python_exec,
-                    script_path("quote_scout.py"),
+                    *step_argv("quote_scout.py", args.python_exec),
                     "--transcript",
                     str(args.out / "transcript.json"),
                     "--out",
@@ -587,8 +582,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "pool_build",
                 [
-                    args.python_exec,
-                    script_path("pool_build.py"),
+                    *step_argv("pool_build.py", args.python_exec),
                     "--triage",
                     str(args.out / "scene_triage.json"),
                     "--scene-descriptions",
@@ -613,8 +607,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "pool_merge",
                 [
-                    args.python_exec,
-                    script_path("pool_merge.py"),
+                    *step_argv("pool_merge.py", args.python_exec),
                     "--pool",
                     str(args.out / "pool.json"),
                     "--out",
@@ -632,8 +625,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "arrange",
                 [
-                    args.python_exec,
-                    script_path("arrange.py"),
+                    *step_argv("arrange.py", args.python_exec),
                     "--pool",
                     str(args.out / "pool.json"),
                     "--brief",
@@ -667,8 +659,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "refine",
                 [
-                    args.python_exec,
-                    script_path("refine.py"),
+                    *step_argv("refine.py", args.python_exec),
                     "--arrangement",
                     str(args.brief_out / "arrangement.json"),
                     "--pool",
@@ -696,8 +687,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "render",
                 [
-                    args.python_exec,
-                    script_path("render_remotion.py"),
+                    *step_argv("render_remotion.py", args.python_exec),
                     "--timeline",
                     str(args.brief_out / "hype.timeline.json"),
                     "--assets",
@@ -717,8 +707,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "editor_review",
                 [
-                    args.python_exec,
-                    script_path("editor_review.py"),
+                    *step_argv("editor_review.py", args.python_exec),
                     "--brief-dir",
                     str(args.brief_out),
                     "--run-dir",
@@ -739,8 +728,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "validate",
                 [
-                    args.python_exec,
-                    script_path("validate.py"),
+                    *step_argv("validate.py", args.python_exec),
                     "--video",
                     str(args.brief_out / "hype.mp4"),
                     "--timeline",
@@ -1011,8 +999,7 @@ def _run_revise(args: argparse.Namespace, prior_arrangement: Path, editor_notes:
             step_args,
             "arrange",
             [
-                step_args.python_exec,
-                script_path("arrange.py"),
+                *step_argv("arrange.py", step_args.python_exec),
                 "--pool",
                 str(step_args.out / "pool.json"),
                 "--brief",
@@ -1297,7 +1284,6 @@ Run any tool through this gateway:
 
 Notes:
   python3 -m artagents is the package entry point.
-  bin/*.py files are thin direct launchers.
   Use orchestrators for workflows, executors for concrete work, and elements for render building blocks.
 """
     )

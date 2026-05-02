@@ -11,11 +11,8 @@ from typing import Any, Iterable
 from artagents.executors.registry import ExecutorRegistry, load_default_registry as load_default_executor_registry
 
 from .schema import (
-    CachePolicy,
-    CommandSpec,
     OrchestratorDefinition,
     OrchestratorValidationError,
-    RuntimeSpec,
     load_orchestrator_manifest,
     validate_orchestrator_definition,
 )
@@ -24,23 +21,6 @@ from .folder import load_folder_orchestrators
 
 BUNDLED_PACKAGE = "artagents.orchestrators.bundled"
 CURATED_PACKAGE = "artagents.orchestrators.curated"
-HYPE_STEP_ORDER: tuple[str, ...] = (
-    "transcribe",
-    "scenes",
-    "quality_zones",
-    "shots",
-    "triage",
-    "scene_describe",
-    "quote_scout",
-    "pool_build",
-    "pool_merge",
-    "arrange",
-    "cut",
-    "refine",
-    "render",
-    "editor_review",
-    "validate",
-)
 
 
 class OrchestratorRegistryError(OrchestratorValidationError):
@@ -152,20 +132,10 @@ class OrchestratorRegistry:
 
 
 def load_builtin_orchestrators() -> tuple[OrchestratorDefinition, ...]:
-    folder_orchestrators: list[OrchestratorDefinition] = []
+    orchestrators: list[OrchestratorDefinition] = []
     for root in _builtin_folder_roots():
-        folder_orchestrators.extend(load_folder_orchestrators(root))
-    by_id = {orchestrator.id: orchestrator for orchestrator in folder_orchestrators}
-    expected = {"builtin.hype", "builtin.event_talks", "builtin.thumbnail_maker", "builtin.understand", "builtin.first_rite"}
-    if expected.issubset(by_id):
-        return tuple(by_id[orchestrator_id] for orchestrator_id in sorted(expected))
-    return (
-        _builtin_hype(),
-        _builtin_event_talks(),
-        _builtin_thumbnail_maker(),
-        _builtin_understand(),
-        _builtin_first_rite(),
-    )
+        orchestrators.extend(load_folder_orchestrators(root))
+    return tuple(sorted(orchestrators, key=lambda o: o.id))
 
 
 def load_curated_orchestrators() -> tuple[OrchestratorDefinition, ...]:
@@ -207,102 +177,6 @@ def load_default_registry(
     return registry
 
 
-def _builtin_hype() -> OrchestratorDefinition:
-    return validate_orchestrator_definition(
-        OrchestratorDefinition(
-            id="builtin.hype",
-            name="Hype Pipeline",
-            kind="built_in",
-            version="1.0",
-            description="Orchestrates the built-in hype editing pipeline.",
-            runtime=RuntimeSpec(
-                kind="command",
-                command=CommandSpec(argv=("{python_exec}", "-m", "artagents", "{orchestrator_args}")),
-            ),
-            child_executors=tuple(f"builtin.{name}" for name in HYPE_STEP_ORDER),
-            cache=CachePolicy(mode="none"),
-            metadata={"entrypoint": "python3 -m artagents"},
-        )
-    )
-
-
-def _builtin_event_talks() -> OrchestratorDefinition:
-    return validate_orchestrator_definition(
-        OrchestratorDefinition(
-            id="builtin.event_talks",
-            name="Event Talks",
-            kind="built_in",
-            version="1.0",
-            description="Orchestrates event-talk template, search, holding-screen, and render commands.",
-            runtime=RuntimeSpec(
-                kind="command",
-                command=CommandSpec(argv=("{python_exec}", "bin/event_talks.py", "{orchestrator_args}")),
-            ),
-            cache=CachePolicy(mode="none"),
-            metadata={
-                "entrypoint": "event_talks.py",
-                "subcommands": ["ados-sunday-template", "search-transcript", "find-holding-screens", "render"],
-            },
-        )
-    )
-
-
-def _builtin_thumbnail_maker() -> OrchestratorDefinition:
-    return validate_orchestrator_definition(
-        OrchestratorDefinition(
-            id="builtin.thumbnail_maker",
-            name="Thumbnail Maker",
-            kind="built_in",
-            version="1.0",
-            description="Plans source evidence and thumbnail generation candidates for a video/query pair.",
-            runtime=RuntimeSpec(
-                kind="command",
-                command=CommandSpec(argv=("{python_exec}", "bin/thumbnail_maker.py", "{orchestrator_args}")),
-            ),
-            cache=CachePolicy(mode="none"),
-            metadata={"entrypoint": "thumbnail_maker.py"},
-        )
-    )
-
-
-def _builtin_first_rite() -> OrchestratorDefinition:
-    return validate_orchestrator_definition(
-        OrchestratorDefinition(
-            id="builtin.first_rite",
-            name="First Rite",
-            kind="built_in",
-            version="1.0",
-            description="Onboarding rite that summons a portrait of the maker and opens it.",
-            runtime=RuntimeSpec(
-                kind="command",
-                command=CommandSpec(argv=("{python_exec}", "-m", "artagents.orchestrators.first_rite.run", "{orchestrator_args}")),
-            ),
-            child_executors=("builtin.generate_image",),
-            cache=CachePolicy(mode="none"),
-            metadata={"runtime_module": "artagents.orchestrators.first_rite.run", "runtime_file": "run.py"},
-        )
-    )
-
-
-def _builtin_understand() -> OrchestratorDefinition:
-    return validate_orchestrator_definition(
-        OrchestratorDefinition(
-            id="builtin.understand",
-            name="Understand",
-            kind="built_in",
-            version="1.0",
-            description="Dispatches to audio, visual, or video understanding executors.",
-            runtime=RuntimeSpec(
-                kind="command",
-                command=CommandSpec(argv=("{python_exec}", "-m", "artagents.orchestrators.understand.run", "{orchestrator_args}")),
-            ),
-            child_executors=("builtin.audio_understand", "builtin.visual_understand", "builtin.video_understand"),
-            cache=CachePolicy(mode="none"),
-            metadata={"entrypoint": "understand.py"},
-        )
-    )
-
-
 def _curated_manifest_paths() -> tuple[Path, ...]:
     return _package_manifest_paths(CURATED_PACKAGE, Path(__file__).with_name("curated"))
 
@@ -321,10 +195,11 @@ def _bundled_folder_roots() -> tuple[Path, ...]:
 
 def _builtin_folder_roots() -> tuple[Path, ...]:
     root = Path(__file__).resolve().parent
+    skip = {"__pycache__", "bundled", "curated"}
     return tuple(
         path
-        for path in (root / "event_talks", root / "first_rite", root / "hype", root / "thumbnail_maker", root / "understand")
-        if path.is_dir()
+        for path in sorted(root.iterdir())
+        if path.is_dir() and path.name not in skip and (path / "orchestrator.yaml").is_file()
     )
 
 

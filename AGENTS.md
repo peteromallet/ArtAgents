@@ -31,9 +31,7 @@ Use `python3 -m artagents` as the executable package gateway for normal work.
 Reach workflows through
 `python3 -m artagents orchestrators ...`, concrete tools through
 `python3 -m artagents executors ...`, and render building blocks through
-`python3 -m artagents elements ...`. The `bin/*.py` files are thin direct
-launchers for specialized/manual use; do not treat them as a separate public
-API.
+`python3 -m artagents elements ...`.
 
 Use canonical imports and commands for new work:
 
