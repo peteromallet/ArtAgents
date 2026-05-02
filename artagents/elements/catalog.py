@@ -8,9 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
-from ._paths import REPO_ROOT, WORKSPACE_ROOT
-from .elements.registry import ElementRegistry, ElementSource, load_default_registry, load_source_elements
-from .elements.schema import ELEMENT_KINDS, REQUIRED_ELEMENT_FILES
+from artagents._paths import REPO_ROOT, WORKSPACE_ROOT
+from artagents.elements.registry import ElementRegistry, ElementSource, load_default_registry, load_source_elements
+from artagents.elements.schema import ELEMENT_KINDS, REQUIRED_ELEMENT_FILES
 
 TOOLS_DIR = REPO_ROOT
 THEMES_ROOT = WORKSPACE_ROOT / "themes"

@@ -21,7 +21,7 @@ from artagents.executors.editor_review.run import (
     arrangement_summary,
 )
 from artagents._paths import cli_script_path
-from artagents.llm_clients import ClaudeClient, build_claude_client
+from artagents.utilities.llm_clients import ClaudeClient, build_claude_client
 from artagents.timeline import load_arrangement, load_pool
 
 

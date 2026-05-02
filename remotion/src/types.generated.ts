@@ -45,37 +45,33 @@ export interface ArrangementVisualSource {
 }
 
 export interface AssetEntry {
-  content_sha256: unknown;
-  duration: unknown;
-  etag: unknown;
-  file: unknown;
-  fps: unknown;
-  generationId: unknown;
-  resolution: unknown;
-  thumbnailUrl: unknown;
-  type: unknown;
-  url: unknown;
-  url_expires_at: unknown;
-  variantId: unknown;
+  content_sha256?: string;
+  duration?: number;
+  etag?: string;
+  file?: string;
+  fps?: number;
+  generationId?: string;
+  resolution?: string;
+  type?: string;
+  url?: string;
+  url_expires_at?: string;
 }
 
 export interface AssetRegistry {
-  assets: Record<string, AssetEntry>;
+  assets: Record<string, SharedAssetEntry>;
 }
 
 export interface AssetRegistryEntry {
-  content_sha256: unknown;
-  duration: unknown;
-  etag: unknown;
-  file: unknown;
-  fps: unknown;
-  generationId: unknown;
-  resolution: unknown;
-  thumbnailUrl: unknown;
-  type: unknown;
-  url: unknown;
-  url_expires_at: unknown;
-  variantId: unknown;
+  content_sha256?: string;
+  duration?: number;
+  etag?: string;
+  file?: string;
+  fps?: number;
+  generationId?: string;
+  resolution?: string;
+  type?: string;
+  url?: string;
+  url_expires_at?: string;
 }
 
 export interface AudioBindingValue {
@@ -200,86 +196,83 @@ export interface PoolScores {
 }
 
 export interface SharedAssetEntry {
-  content_sha256: unknown;
-  duration: unknown;
-  etag: unknown;
-  file: unknown;
-  fps: unknown;
-  generationId: unknown;
-  resolution: unknown;
-  thumbnailUrl: unknown;
-  type: unknown;
-  url: unknown;
-  url_expires_at: unknown;
-  variantId: unknown;
+  content_sha256?: string;
+  duration?: number;
+  etag?: string;
+  file?: string;
+  fps?: number;
+  generationId?: string;
+  resolution?: string;
+  type?: string;
+  url?: string;
+  url_expires_at?: string;
 }
 
 export interface SharedTheme {
-  audio: unknown;
-  generation: unknown;
-  id: string;
-  pacing: unknown;
-  visual: unknown;
-  voice: unknown;
+  audio?: Record<string, unknown>;
+  generation?: Record<string, unknown>;
+  pacing?: Record<string, unknown>;
+  visual?: Record<string, unknown>;
+  voice?: Record<string, unknown>;
 }
 
 export interface SharedThemeOverrides {
-  audio: unknown;
-  generation: unknown;
-  pacing: unknown;
-  visual: unknown;
-  voice: unknown;
+  audio?: Record<string, unknown>;
+  generation?: Record<string, unknown>;
+  pacing?: Record<string, unknown>;
+  visual?: Record<string, unknown>;
+  voice?: Record<string, unknown>;
 }
 
 export interface SharedTimelineClip {
-  asset?: unknown;
-  at: number;
-  clipType?: unknown;
-  clip_order?: unknown;
-  continuous?: unknown;
-  cropBottom?: unknown;
-  cropLeft?: unknown;
-  cropRight?: unknown;
-  cropTop?: unknown;
-  effects?: unknown;
-  entrance?: unknown;
-  exit?: unknown;
-  from?: unknown;
-  generation?: unknown;
-  height?: unknown;
-  hold?: unknown;
-  id: string;
-  opacity?: unknown;
-  params?: unknown;
-  pool_id?: unknown;
-  source_uuid?: unknown;
-  speed?: unknown;
-  text?: unknown;
-  to?: unknown;
-  track: string;
-  transition?: unknown;
-  volume?: unknown;
-  width?: unknown;
-  x?: unknown;
-  y?: unknown;
+  asset?: string;
+  at?: number;
+  clipType?: string;
+  clip_order?: number;
+  continuous?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  cropBottom?: number;
+  cropLeft?: number;
+  cropRight?: number;
+  cropTop?: number;
+  effects?: TimelineEffect[];
+  entrance?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  exit?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  from_?: number;
+  generation?: Record<string, unknown>;
+  height?: number;
+  hold?: number;
+  id?: string;
+  opacity?: number;
+  params?: Record<string, unknown>;
+  pool_id?: string;
+  source_uuid?: string;
+  speed?: number;
+  text?: TextClipData;
+  to?: number;
+  track?: string;
+  transition?: ClipTransitionReference;
+  volume?: number;
+  width?: number;
+  x?: number;
+  y?: number;
 }
 
 export interface SharedTimelineConfig {
-  clips: Clip[];
-  generation_defaults: unknown;
-  output: unknown;
-  pinnedShotGroups: unknown;
-  theme: unknown;
-  theme_overrides: unknown;
-  tracks: unknown;
+  clips?: SharedTimelineClip[];
+  generation_defaults?: Record<string, unknown>;
+  output?: SharedTimelineOutput;
+  pinnedShotGroups?: Record<string, unknown>[];
+  theme?: string;
+  theme_overrides?: SharedThemeOverrides;
+  tracks?: Record<string, unknown>[];
 }
 
 export interface SharedTimelineOutput {
-  background: unknown;
-  background_scale: unknown;
-  file: string;
-  fps: number;
-  resolution: string;
+  background?: string;
+  background_scale?: number;
+  file?: string;
+  fps?: number;
+  resolution?: string;
 }
 
 export interface SourceIds {
@@ -298,65 +291,64 @@ export interface TextClipData {
 }
 
 export interface Theme {
-  audio: unknown;
-  generation: unknown;
-  id: string;
-  pacing: unknown;
-  visual: unknown;
-  voice: unknown;
+  audio?: Record<string, unknown>;
+  generation?: Record<string, unknown>;
+  pacing?: Record<string, unknown>;
+  visual?: Record<string, unknown>;
+  voice?: Record<string, unknown>;
 }
 
 export interface ThemeOverrides {
-  audio: unknown;
-  generation: unknown;
-  pacing: unknown;
-  visual: unknown;
-  voice: unknown;
+  audio?: Record<string, unknown>;
+  generation?: Record<string, unknown>;
+  pacing?: Record<string, unknown>;
+  visual?: Record<string, unknown>;
+  voice?: Record<string, unknown>;
 }
 
 export interface TimelineClip {
-  asset?: unknown;
-  at: number;
-  clipType?: unknown;
-  clip_order?: unknown;
-  continuous?: unknown;
-  cropBottom?: unknown;
-  cropLeft?: unknown;
-  cropRight?: unknown;
-  cropTop?: unknown;
-  effects?: unknown;
-  entrance?: unknown;
-  exit?: unknown;
-  from?: unknown;
-  generation?: unknown;
-  height?: unknown;
-  hold?: unknown;
-  id: string;
-  opacity?: unknown;
-  params?: unknown;
-  pool_id?: unknown;
-  source_uuid?: unknown;
-  speed?: unknown;
-  text?: unknown;
-  to?: unknown;
-  track: string;
-  transition?: unknown;
-  volume?: unknown;
-  width?: unknown;
-  x?: unknown;
-  y?: unknown;
+  asset?: string;
+  at?: number;
+  clipType?: string;
+  clip_order?: number;
+  continuous?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  cropBottom?: number;
+  cropLeft?: number;
+  cropRight?: number;
+  cropTop?: number;
+  effects?: TimelineEffect[];
+  entrance?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  exit?: AnimationReferenceObject | AnimationReferenceObject | string[] | string;
+  from?: number;
+  generation?: Record<string, unknown>;
+  height?: number;
+  hold?: number;
+  id?: string;
+  opacity?: number;
+  params?: Record<string, unknown>;
+  pool_id?: string;
+  source_uuid?: string;
+  speed?: number;
+  text?: TextClipData;
+  to?: number;
+  track?: string;
+  transition?: ClipTransitionReference;
+  volume?: number;
+  width?: number;
+  x?: number;
+  y?: number;
 }
 
 export type Clip = TimelineClip;
 
 export interface TimelineConfig {
-  clips: Clip[];
-  generation_defaults: unknown;
-  output: unknown;
-  pinnedShotGroups: unknown;
-  theme: unknown;
-  theme_overrides: unknown;
-  tracks: unknown;
+  clips?: SharedTimelineClip[];
+  generation_defaults?: Record<string, unknown>;
+  output?: SharedTimelineOutput;
+  pinnedShotGroups?: Record<string, unknown>[];
+  theme?: string;
+  theme_overrides?: SharedThemeOverrides;
+  tracks?: Record<string, unknown>[];
 }
 
 export interface TimelineEffect {
@@ -365,11 +357,11 @@ export interface TimelineEffect {
 }
 
 export interface TimelineOutput {
-  background: unknown;
-  background_scale: unknown;
-  file: string;
-  fps: number;
-  resolution: string;
+  background?: string;
+  background_scale?: number;
+  file?: string;
+  fps?: number;
+  resolution?: string;
 }
 
 export interface TrackDefinition {

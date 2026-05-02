@@ -11,8 +11,30 @@ from artagents.orchestrators.folder import load_folder_orchestrators
 
 
 LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives")
+LEGACY_LOCAL_DIRS = ("performers", "conductors", "nodes", "instruments", "primitives")
 INTERNAL_EXECUTOR_DIRS = {"__pycache__", "actions", "builtin", "bundled", "curated"}
 INTERNAL_ORCHESTRATOR_DIRS = {"__pycache__", "bundled", "curated"}
+TOP_LEVEL_ARTAGENTS_FILES = {
+    "__init__.py",
+    "_paths.py",
+    "doctor.py",
+    "pipeline.py",
+    "setup_cli.py",
+    "structure.py",
+    "theme_schema.py",
+    "timeline.py",
+}
+TOP_LEVEL_ARTAGENTS_DIRS = {
+    "__pycache__",
+    "audit",
+    "contracts",
+    "domains",
+    "elements",
+    "executors",
+    "orchestrators",
+    "skills",
+    "utilities",
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +50,8 @@ def validate_repo_structure(root: str | Path = REPO_ROOT) -> StructureReport:
     repo_root = Path(root)
     errors: list[str] = []
     errors.extend(_validate_legacy_dirs(repo_root))
+    errors.extend(_validate_local_state_dirs(repo_root))
+    errors.extend(_validate_top_level_artagents(repo_root / "artagents"))
     errors.extend(_validate_executor_folders(repo_root / "artagents" / "executors"))
     errors.extend(_validate_orchestrator_folders(repo_root / "artagents" / "orchestrators"))
     return StructureReport(errors=tuple(errors))
@@ -39,6 +63,30 @@ def _validate_legacy_dirs(repo_root: Path) -> list[str]:
         candidate = repo_root / "artagents" / dirname
         if candidate.exists():
             errors.append(f"legacy public package must not exist: {candidate.relative_to(repo_root)}")
+    return errors
+
+
+def _validate_local_state_dirs(repo_root: Path) -> list[str]:
+    errors: list[str] = []
+    local_root = repo_root / ".artagents"
+    if not local_root.exists():
+        return errors
+    for dirname in LEGACY_LOCAL_DIRS:
+        candidate = local_root / dirname
+        if candidate.exists():
+            errors.append(f"legacy local state directory must not exist: {candidate.relative_to(repo_root)}")
+    return errors
+
+
+def _validate_top_level_artagents(package_root: Path) -> list[str]:
+    errors: list[str] = []
+    for child in sorted(package_root.iterdir()):
+        if child.name.startswith("."):
+            continue
+        if child.is_file() and child.suffix == ".py" and child.name not in TOP_LEVEL_ARTAGENTS_FILES:
+            errors.append(f"top-level artagents module must move to a canonical package: {child.relative_to(package_root.parents[0])}")
+        if child.is_dir() and child.name not in TOP_LEVEL_ARTAGENTS_DIRS:
+            errors.append(f"top-level artagents directory is not a canonical concept: {child.relative_to(package_root.parents[0])}")
     return errors
 
 

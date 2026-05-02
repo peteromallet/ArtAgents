@@ -193,7 +193,7 @@ def _check_remotion_config() -> str:
 
 
 def _check_timeline_catalog() -> str:
-    from artagents.effects_catalog import list_animation_ids, list_effect_ids, list_transition_ids
+    from artagents.elements.catalog import list_animation_ids, list_effect_ids, list_transition_ids
 
     effects = set(list_effect_ids())
     animations = set(list_animation_ids())

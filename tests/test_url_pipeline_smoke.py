@@ -126,7 +126,7 @@ class UrlPipelineSmokeTests(unittest.TestCase):
         return {"scenes": scenes, "transcript": transcript, "pool": pool, "arrangement": arrangement, "brief": brief}
 
     def test_cut_main_writes_url_registry_with_prefetched_sha(self) -> None:
-        from artagents import arrangement_rules as ar
+        from artagents.domains.hype import arrangement_rules as ar
         handler = partial(_RangeHTTPRequestHandler, directory=str(self.serve_dir))
         try:
             server = ThreadingHTTPServer(("127.0.0.1", 0), handler)

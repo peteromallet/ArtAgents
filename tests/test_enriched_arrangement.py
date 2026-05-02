@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import unittest
 
-from artagents import enriched_arrangement
+from artagents.domains.hype import enriched_arrangement
 
 from tests.helpers.fixture_case import make_brief_case
 

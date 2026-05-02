@@ -115,7 +115,7 @@ def _run_upload_youtube(request: ExecutorRunRequest) -> ExecutorRunResult:
             payload={"would_run": "upload.youtube", "inputs": inputs},
         )
 
-    from artagents.social_publish import publish_youtube_video
+    from artagents.executors.upload_youtube.src.social_publish import publish_youtube_video
 
     result = publish_youtube_video(
         video_url=_required_input(inputs, "video_url"),

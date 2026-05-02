@@ -9,7 +9,7 @@ import importlib.util
 from unittest import mock
 from pathlib import Path
 
-from artagents import effects_catalog
+from artagents.elements import catalog as effects_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]

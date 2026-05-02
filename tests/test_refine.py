@@ -9,7 +9,7 @@ from artagents.executors.cut import run as cut
 from artagents.executors.refine import run as refine
 from artagents import timeline
 from artagents.executors.validate import run as validate
-from artagents.arrangement_rules import TRIM_BOUND_EXTENSION_SEC
+from artagents.domains.hype.arrangement_rules import TRIM_BOUND_EXTENSION_SEC
 
 
 class RefineTest(unittest.TestCase):

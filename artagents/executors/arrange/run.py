@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from ...audit import AuditContext
-from ...llm_clients import ClaudeClient, build_claude_client
+from artagents.utilities.llm_clients import ClaudeClient, build_claude_client
 from ...theme_schema import load_theme
 from ..._paths import WORKSPACE_ROOT
 from ...timeline import (
@@ -574,7 +574,7 @@ def build_arrangement(
     no_audio: bool = False,
     theme: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    from ...arrangement_rules import compile_arrangement_plan
+    from artagents.domains.hype.arrangement_rules import compile_arrangement_plan
 
     system_prompt = _system_prompt(pool, allow_generative_effects=allow_generative_effects, theme=theme)
     messages: list[dict[str, Any]] = [
@@ -646,7 +646,7 @@ def build_revised_arrangement(
     no_audio: bool = False,
     theme: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    from ...arrangement_rules import compile_arrangement_plan
+    from artagents.domains.hype.arrangement_rules import compile_arrangement_plan
 
     brief_text = str(prior_arrangement.get("brief_text") or "")
     target_duration_sec = prior_arrangement.get("target_duration_sec")

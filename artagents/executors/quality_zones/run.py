@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Sequence
 
 from ...audit import register_outputs
-from ... import enriched_arrangement
+from artagents.domains.hype import enriched_arrangement
 
 sys.modules.setdefault("quality_zones", sys.modules[__name__])
 

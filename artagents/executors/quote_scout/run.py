@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from ...audit import register_outputs
-from ...llm_clients import ClaudeClient, build_claude_client
+from artagents.utilities.llm_clients import ClaudeClient, build_claude_client
 
 QUOTE_CANDIDATES_VERSION = 1
 RESPONSE_SCHEMA = {

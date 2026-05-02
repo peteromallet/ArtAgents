@@ -13,7 +13,7 @@ from typing import Any, Sequence
 
 from ..arrange.run import pool_digest
 from ...audit import AuditContext
-from ...llm_clients import build_claude_client
+from artagents.utilities.llm_clients import build_claude_client
 from ...timeline import load_arrangement, load_metadata, load_pool
 from ..transcribe.run import load_api_key
 from ..._paths import cli_script_path

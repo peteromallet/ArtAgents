@@ -16,7 +16,7 @@ export REIGH_PAT=<personal-access-token>
 export SUPABASE_URL=https://<project-ref>.supabase.co
 ```
 
-You can also set `REIGH_DATA_FETCH_URL` to the full function URL, or `REIGH_API_URL` to the Supabase base URL. `reigh_data.py` also checks nearby `this.env` and `.env` files, including the sibling `reigh-app` checkout.
+You can also set `REIGH_DATA_FETCH_URL` to the full function URL, or `REIGH_API_URL` to the Supabase base URL. The `builtin.reigh_data` executor checks nearby `this.env` and `.env` files, including the sibling `reigh-app` checkout.
 
 ## Commands
 
@@ -44,10 +44,10 @@ python3 pipeline.py reigh-data \
   --timeline-id <TIMELINE_UUID>
 ```
 
-The root launcher is equivalent:
+The canonical executor entrypoint can also run it directly:
 
 ```bash
-python3 reigh_data.py --project-id <PROJECT_UUID> --shot-id <SHOT_UUID>
+python3 pipeline.py executors run builtin.reigh_data --out runs/reigh --input project_id=<PROJECT_UUID>
 ```
 
 ## Payload Contract

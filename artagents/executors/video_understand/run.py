@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from artagents.llm_clients import build_gemini_client
+from artagents.utilities.llm_clients import build_gemini_client
 
 
 MODEL_PRESETS = {

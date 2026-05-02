@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from artagents.social_publish import PublishError, publish_youtube_video
+from artagents.executors.upload_youtube.src.social_publish import PublishError, publish_youtube_video
 
 
 def build_parser() -> argparse.ArgumentParser:

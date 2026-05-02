@@ -23,7 +23,7 @@ from typing import Any
 
 from ...audit import register_outputs
 
-from ...text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
+from artagents.domains.hype.text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
 from ..._paths import cli_script_path
 
 

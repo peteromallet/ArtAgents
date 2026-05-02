@@ -5,7 +5,7 @@ import json
 import pytest
 
 from artagents.executors.generate_image.run import load_api_key, main
-from artagents.llm_clients import _load_api_key
+from artagents.utilities.llm_clients import _load_api_key
 
 
 def test_generate_image_dry_run_multiple_variants(capsys, tmp_path):

@@ -62,47 +62,18 @@ implementations.
 | `bin/event_talks.py`, `bin/thumbnail_maker.py`, `bin/understand.py` | Launchers | Thin direct launchers backed by canonical orchestrator folders. |
 | `artagents/orchestrators/*` | Orchestrator canonical package | Folderized orchestrator manifests, registry, runner, and CLI. |
 
-## Built-In Executors
+## Executors
 
-Every `STEP_ORDER` stage is a built-in executor exposed from a canonical folder under `artagents/executors/<slug>/`. Retained `bin/*.py` launchers import canonical executor folder entrypoints.
+Every runnable tool is a built-in or external executor exposed from exactly one canonical folder under `artagents/executors/<slug>/`. Retained `bin/*.py` launchers import canonical executor folder entrypoints and do not own behavior.
 
-| `STEP_ORDER` stage | Implementation module | Retained launchers | Classification | Notes |
-| --- | --- | --- | --- | --- |
-| `transcribe` | `artagents/executors/builtin/transcribe.py` | `artagents/executors/transcribe`, `bin/transcribe.py` | Executor | Produces transcript data from audio or video. |
-| `scenes` | `artagents/executors/builtin/scenes.py` | `artagents/executors/scenes`, `bin/scenes.py` | Executor | Detects scene boundaries. |
-| `quality_zones` | `artagents/executors/builtin/quality_zones.py` | `artagents/executors/quality_zones`, `bin/quality_zones.py` | Executor | Computes source quality ranges. |
-| `shots` | `artagents/executors/builtin/shots.py` | `artagents/executors/shots`, `bin/shots.py` | Executor | Splits source video into shots. |
-| `triage` | `artagents/executors/builtin/triage.py` | `artagents/executors/triage`, `bin/triage.py` | Executor | Prioritizes scenes and shots for later selection. |
-| `scene_describe` | `artagents/executors/builtin/scene_describe.py` | `artagents/executors/scene_describe`, `bin/scene_describe.py` | Executor | Generates visual scene descriptions. |
-| `quote_scout` | `artagents/executors/builtin/quote_scout.py` | `artagents/executors/quote_scout`, `bin/quote_scout.py` | Executor | Finds candidate transcript quotes. |
-| `pool_build` | `artagents/executors/builtin/pool_build.py` | `artagents/executors/pool_build`, `bin/pool_build.py` | Executor | Builds source pool data from analysis inputs. |
-| `pool_merge` | `artagents/executors/builtin/pool_merge.py` | `artagents/executors/pool_merge`, `bin/pool_merge.py` | Executor | Merges pool data and theme defaults. |
-| `arrange` | `artagents/executors/builtin/arrange.py` | `artagents/executors/arrange`, `bin/arrange.py` | Executor | Creates a brief-specific arrangement. |
-| `cut` | `artagents/executors/builtin/cut.py` | `artagents/executors/cut`, `bin/cut.py` | Executor | Builds Reigh-compatible timeline, assets, and metadata JSON. |
-| `refine` | `artagents/executors/builtin/refine.py` | `artagents/executors/refine`, `bin/refine.py` | Executor | Mutates timeline/assets/metadata using review context. |
-| `render` | `artagents/executors/builtin/render_remotion.py` | `artagents/executors/render`, `bin/render_remotion.py` | Executor | Renders timeline/assets through Remotion. |
-| `editor_review` | `artagents/executors/builtin/editor_review.py` | `artagents/executors/editor_review`, `bin/editor_review.py` | Executor | Reviews generated edits and writes review JSON. |
-| `validate` | `artagents/executors/builtin/validate.py` | `artagents/executors/validate`, `bin/validate.py` | Executor | Validates rendered output and timeline metadata. |
+| Executor group | Canonical location | Retained launchers | Notes |
+| --- | --- | --- | --- |
+| Hype pipeline stages | `artagents/executors/{transcribe,scenes,quality_zones,shots,triage,scene_describe,quote_scout,pool_build,pool_merge,arrange,cut,refine,render,editor_review,validate}` | Matching `bin/*.py` launchers | `STEP_ORDER` stages used by the hype orchestrator. |
+| Understanding tools | `artagents/executors/{audio_understand,visual_understand,video_understand}` | Matching `bin/*.py` launchers | Concrete media understanding tools used directly or by the understand orchestrator. |
+| Standalone/service tools | `artagents/executors/{asset_cache,boundary_candidates,generate_image,human_notes,inspect_cut,open_in_reigh,publish,reigh_data,sprite_sheet,upload_youtube}` | Matching `bin/*.py` launchers where useful | Standalone executor capabilities. |
+| External tools | `artagents/executors/{vibecomfy,moirae}` | None required | VibeComfy and Moirae are external executors only, not orchestrators. |
 
-## Action-Style Executors
-
-| Module or entry point | Classification | Notes |
-| --- | --- | --- |
-| `publish_youtube.py`, `bin/publish_youtube.py`, `artagents/publish_youtube.py` | Executor | YouTube upload action. |
-| `bin/publish.py`, `artagents/publish.py` | Executor | Publish action facade. |
-| `bin/open_in_reigh.py`, `artagents/open_in_reigh.py` | Executor | Opens generated outputs in Reigh. |
-| `bin/generate_image.py`, `artagents/generate_image.py` | Executor | GPT image asset generation. |
-| `bin/sprite_sheet.py`, `artagents/sprite_sheet.py` | Executor | Sprite sheet generation utility. |
-| `artagents/executors/audio_understand`, `bin/audio_understand.py` | Executor | Audio understanding action. |
-| `artagents/executors/visual_understand`, `bin/visual_understand.py` | Executor | Image/video-frame understanding action. |
-| `artagents/executors/video_understand`, `bin/video_understand.py` | Executor | Video understanding action. |
-| `bin/understand.py` | Orchestrator launcher | Convenience launcher for the canonical understand orchestrator. |
-| `bin/boundary_candidates.py`, `artagents/boundary_candidates.py` | Executor | Boundary candidate package generation. |
-| `bin/inspect_cut.py`, `artagents/inspect_cut.py` | Executor | Cut inspection/reporting. |
-| `bin/human_notes.py`, `artagents/human_notes.py` | Executor | Human note capture and conversion. |
-| `artagents/executors/*` | Executor canonical package | Folderized executor manifests, registry, install, runner, and CLI. |
-| `artagents/executors/vibecomfy` | External executor | VibeComfy is an external executor only, not an orchestrator. |
-| `artagents/executors/moirae` | External executor | Moirae is an external executor with folder metadata. |
+Executor-owned complexity stays in the executor folder, usually under optional local `src/` modules. Shared pure hype/editing logic belongs in `artagents/domains/hype`; generic plumbing belongs in `artagents/utilities`.
 
 ## Element Support
 
@@ -113,7 +84,7 @@ Every `STEP_ORDER` stage is a built-in executor exposed from a canonical folder 
 | `artagents/elements/bundled/{effects,animations,transitions}` | Element support | Bundled default managed elements. |
 | `.artagents/elements/overrides` | Element support | User-editable fork target for defaults and custom elements. |
 | `.artagents/elements/managed` | Element support | Installed managed elements that should not be overwritten by user overrides. |
-| `artagents/effects_catalog.py` | Element support | Effect catalog support used by the elements registry. |
+| `artagents/elements/catalog.py` | Element support | Effect, animation, and transition catalog support used by render validation. |
 | `scripts/gen_effect_registry.py` | Element support | Generates Remotion registries from element source roots. |
 | `artagents/timeline.py` | Shared library and element validator | Reigh-compatible timeline schema and effect/animation/transition validation. |
 | `remotion/*` | Element runtime support | TypeScript renderer consuming generated element registries. |
@@ -123,17 +94,13 @@ Every `STEP_ORDER` stage is a built-in executor exposed from a canonical folder 
 | Module or package | Classification | Notes |
 | --- | --- | --- |
 | `artagents/contracts/*` | Shared library | Common schema dataclasses for ports, outputs, cache, commands, and isolation. |
-| `artagents/cache` | Shared library | Cache concept; current concrete asset cache lives in `asset_cache.py`. |
-| `artagents/asset_cache.py`, `bin/asset_cache.py` | Shared library | URL and file asset cache helpers used by orchestrators and executors. |
-| `artagents/llm_clients.py` | Shared library | LLM client construction and environment handling. |
+| `artagents/domains/hype/*` | Domain library | Shared hype-cut/editing concepts such as arrangement rules, enriched arrangements, and text matching. |
+| `artagents/utilities/llm_clients.py` | Utility library | Generic LLM client construction and environment handling. |
 | `artagents/audit/*` | Shared library | Run-local provenance ledger, graph, and HTML report. |
-| `artagents/text_match.py` | Shared library | Text matching helpers. |
-| `artagents/reigh_data.py`, `reigh_data.py` | Shared library and executor entry point | Reigh data fetch helper with root compatibility launcher. |
 | `artagents/theme_schema.py` | Shared library | Theme schema validation helpers. |
-| `artagents/arrangement_rules.py` | Shared library | Arrangement validation and rule helpers. |
-| `artagents/social_publish.py` | Shared library | Shared social publishing client logic. |
-| `reviewers/*` | Shared library | Focused review heuristics used by editor and validation workflows. |
 | `artagents/_paths.py` | Shared library | Repository and workspace path resolution. |
+| `artagents/executors/refine/src/reviewers/*` | Executor-owned library | Focused review heuristics used only by the refine executor. |
+| `artagents/executors/upload_youtube/src/social_publish.py` | Executor-owned library | Social publishing client logic used by `upload.youtube`. |
 
 This classification keeps only retained root and bin launchers; executor-owned public metadata and entrypoints live in canonical executor folders, and orchestrator-owned public metadata and entrypoints live in canonical orchestrator folders.
 

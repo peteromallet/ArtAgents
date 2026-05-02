@@ -3,7 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from artagents import effects_catalog
+from artagents.elements import catalog as effects_catalog
 from artagents import timeline
 
 

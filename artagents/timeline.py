@@ -443,30 +443,30 @@ def _normalize_clip_for_validation(clip: dict[str, Any]) -> dict[str, Any]:
 
 def _effect_ids(theme: str | None = None) -> set[str]:
     try:
-        from . import effects_catalog
+        from artagents.elements import catalog as effects_catalog
     except ImportError:
-        import effects_catalog  # type: ignore[no-redef]
+        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_effect_ids(theme=theme))
 
 def _animation_ids() -> set[str]:
     try:
-        from . import effects_catalog
+        from artagents.elements import catalog as effects_catalog
     except ImportError:
-        import effects_catalog  # type: ignore[no-redef]
+        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_animation_ids())
 
 def _transition_ids() -> set[str]:
     try:
-        from . import effects_catalog
+        from artagents.elements import catalog as effects_catalog
     except ImportError:
-        import effects_catalog  # type: ignore[no-redef]
+        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_transition_ids())
 
 def _animation_meta(animation_id: str) -> dict[str, Any]:
     try:
-        from . import effects_catalog
+        from artagents.elements import catalog as effects_catalog
     except ImportError:
-        import effects_catalog  # type: ignore[no-redef]
+        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
     try:
         return effects_catalog.read_animation_meta(animation_id)
     except Exception:
@@ -540,11 +540,11 @@ def _validate_effect_params(effect_id: str, params: Any, path: str, theme: str |
         if phase in params:
             _validate_animation_reference_list(params[phase], phase, f"{path}.{phase}", known_animation_ids)
     try:
-        from . import effects_catalog
+        from artagents.elements import catalog as effects_catalog
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         try:
-            import effects_catalog  # type: ignore[no-redef]
+            from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
             import jsonschema  # type: ignore[import-not-found,no-redef]
         except ImportError:
             return
@@ -836,7 +836,7 @@ def validate_timeline(config: Any, *, strict: bool = True) -> None:
     Sprint 5 (SD-015): `strict` defaults to True. The strict path requires
     every clip's `clipType` to be in the registered effect set (workspace
     effects + active-theme effects discovered via
-    tools/effects_catalog.py:139-155). This catches authoring of unknown
+    artagents/elements/catalog.py:139-155). This catches authoring of unknown
     clipTypes at validate-time; the loud-placeholder Sprint-3 fallback in
     Reigh's TimelineRenderer is the runtime safety net for the
     "installed but unrenderable" case.

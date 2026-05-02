@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from artagents import enriched_arrangement
+from artagents.domains.hype import enriched_arrangement
 from artagents.executors.quality_zones import run as quality_zones
 
 

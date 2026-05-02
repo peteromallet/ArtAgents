@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from artagents import enriched_arrangement
-from reviewers import Reviewer
+from artagents.domains.hype import enriched_arrangement
+from artagents.executors.refine.src.reviewers import Reviewer
 
 
 class SpeakerFlowReviewer(Reviewer):

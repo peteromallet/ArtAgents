@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from artagents.executors.asset_cache import run as asset_cache
-from artagents import enriched_arrangement
-from artagents.arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
-from reviewers import Reviewer
-from artagents.text_match import segments_in_range, token_set_similarity, tokenize
+from artagents.domains.hype import enriched_arrangement
+from artagents.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
+from artagents.executors.refine.src.reviewers import Reviewer
+from artagents.domains.hype.text_match import segments_in_range, token_set_similarity, tokenize
 
 BOILERPLATE_TOKENS = {"um", "uh"}
 BOILERPLATE_BIGRAMS = {("you", "know"), ("i", "mean"), ("sort", "of"), ("kind", "of")}

@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import textwrap
 
-from artagents import enriched_arrangement
+from artagents.domains.hype import enriched_arrangement
 
 TRACKS = ("a1", "v1", "v2")
 TRACK_FILL = {"a1": "A", "v1": "V", "v2": "O"}

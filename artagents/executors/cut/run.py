@@ -14,7 +14,7 @@ from typing import Any, Sequence
 
 from ..asset_cache import run as asset_cache
 from ...audit import AuditContext
-from ...arrangement_rules import compile_arrangement_plan
+from artagents.domains.hype.arrangement_rules import compile_arrangement_plan
 from ...theme_schema import load_theme, theme_root
 from ..._paths import PACKAGE_ROOT, REPO_ROOT, WORKSPACE_ROOT
 from ...timeline import (

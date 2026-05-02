@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from artagents import enriched_arrangement
-from artagents.arrangement_rules import MAX_VISUAL_HOLD_RATIO, MIN_OVERLAY_COVERAGE_SEC
-from reviewers import Reviewer
+from artagents.domains.hype import enriched_arrangement
+from artagents.domains.hype.arrangement_rules import MAX_VISUAL_HOLD_RATIO, MIN_OVERLAY_COVERAGE_SEC
+from artagents.executors.refine.src.reviewers import Reviewer
 
 
 class OverlayFitReviewer(Reviewer):

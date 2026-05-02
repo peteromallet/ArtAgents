@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from ...audit import register_outputs
-from ...llm_clients import ClaudeClient, build_claude_client
+from artagents.utilities.llm_clients import ClaudeClient, build_claude_client
 
 TRIAGE_VERSION = 1
 FORBIDDEN_TIME_KEYS = frozenset({"start", "end", "timestamp", "seconds", "time", "src_start", "src_end", "from", "to", "at"})

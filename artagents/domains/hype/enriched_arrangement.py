@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from . import timeline
+from artagents import timeline
 from .text_match import segments_in_range
 
 

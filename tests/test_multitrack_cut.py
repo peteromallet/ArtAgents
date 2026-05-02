@@ -9,7 +9,7 @@ from unittest import mock
 from artagents.executors.cut import run as cut
 from artagents import timeline
 from artagents.executors.validate import run as validate
-from artagents.arrangement_rules import ROLE_DURATION_BOUNDS
+from artagents.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS
 
 
 ROOT = Path(__file__).resolve().parents[1]

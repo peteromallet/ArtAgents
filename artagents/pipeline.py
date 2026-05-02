@@ -315,7 +315,7 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     default_theme = WORKSPACE_ROOT / "themes" / "banodoco-default" / "theme.json"
     theme_value = getattr(args, "theme", default_theme)
     args.theme = _resolve_theme_arg(theme_value)
-    # Thread the active theme to every subprocess so effects_catalog can
+    # Thread the active theme to every subprocess so element catalog can
     # discover theme-scoped effects/animations/transitions without each
     # child script having to plumb --theme into its catalog calls.
     os.environ["HYPE_ACTIVE_THEME"] = str(args.theme)

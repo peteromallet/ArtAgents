@@ -139,7 +139,7 @@ class ArrangeTest(unittest.TestCase):
             }
         )
 
-        with mock.patch("artagents.arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
             payload = arrange.build_arrangement(pool, "Open with the strongest quote.", client=client, target_duration_sec=80.0)
 
         timeline.validate_arrangement(payload, {"pool_d_0001", "pool_v_0001", "pool_v_0002"})
@@ -164,7 +164,7 @@ class ArrangeTest(unittest.TestCase):
             }
         )
 
-        with mock.patch("artagents.arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
             payload = arrange.build_arrangement(pool, "Open strong.", client=client, target_duration_sec=80.0)
 
         self.assertRegex(payload["clips"][0]["uuid"], r"^[0-9a-f]{8}$")
@@ -225,7 +225,7 @@ class ArrangeTest(unittest.TestCase):
             }
         )
 
-        with mock.patch("artagents.arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
             payload = arrange.build_arrangement(
                 pool,
                 "Make a title card.",
@@ -259,7 +259,7 @@ class ArrangeTest(unittest.TestCase):
             }
         )
 
-        with mock.patch("artagents.arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
             payload = arrange.build_arrangement(
                 pool,
                 "Make a title card.",
@@ -399,7 +399,7 @@ class ArrangeTest(unittest.TestCase):
         )
 
         with mock.patch.object(arrange, "build_claude_client", return_value=client), mock.patch(
-            "artagents.arrangement_rules.compile_arrangement_plan", return_value=[]
+            "artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]
         ):
             result = arrange.main(
                 [

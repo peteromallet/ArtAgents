@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
-from ... import effects_catalog
+from artagents.elements import catalog as effects_catalog
 from ... import timeline
 from ...audit import register_outputs
 

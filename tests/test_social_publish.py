@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from artagents import pipeline, social_publish  # noqa: E402
+from artagents import pipeline
+from artagents.executors.upload_youtube.src import social_publish  # noqa: E402
 from artagents.executors.upload_youtube import run as publish_youtube  # noqa: E402
 
 
