@@ -1212,6 +1212,9 @@ def _register_run_inputs(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     raw = sys.argv[1:] if argv is None else list(argv)
+    if raw and raw[0] in {"-h", "--help"}:
+        _print_entrypoint_help()
+        return 0
     # `publish` is a sibling subcommand for shipping Banodoco-authored
     # timelines into a Reigh project (Sprint 6, Phase 6). Every other token
     # (legacy positional flags) flows to the cache-aware orchestrator below.
@@ -1261,6 +1264,43 @@ def main(argv: list[str] | None = None) -> int:
     session_enabled = not (keep_flag or keep_env)
     with asset_cache.ephemeral_session(enabled=session_enabled):
         return pool_main(args)
+
+
+def _print_entrypoint_help() -> None:
+    print(
+        """ArtAgents command gateway
+
+Usage:
+  python3 pipeline.py doctor
+  python3 pipeline.py setup [--apply]
+  python3 pipeline.py orchestrators {list,inspect,validate,run} ...
+  python3 pipeline.py executors {list,inspect,validate,install,run} ...
+  python3 pipeline.py elements {list,inspect,sync,fork,install,update} ...
+  python3 pipeline.py reigh-data --project-id PROJECT_ID [--out PATH]
+  python3 pipeline.py audit --run RUN_DIR
+  python3 pipeline.py --video SRC --brief BRIEF --out runs/name [--render]
+  python3 pipeline.py --brief BRIEF --out runs/name --target-duration SECONDS [--render]
+
+Start here:
+  python3 pipeline.py doctor
+  python3 pipeline.py orchestrators list
+  python3 pipeline.py executors list
+  python3 pipeline.py elements list
+
+Inspect before running:
+  python3 pipeline.py orchestrators inspect builtin.hype --json
+  python3 pipeline.py executors inspect builtin.render --json
+  python3 pipeline.py elements inspect effects text-card --json
+
+Run any tool through this gateway:
+  python3 pipeline.py orchestrators run ORCHESTRATOR_ID ...
+  python3 pipeline.py executors run EXECUTOR_ID ...
+
+Notes:
+  pipeline.py is the primary entry point. bin/*.py files are thin direct launchers.
+  Use orchestrators for workflows, executors for concrete work, and elements for render building blocks.
+"""
+    )
 
 
 if __name__ == "__main__":

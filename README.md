@@ -13,6 +13,10 @@ The public model has three canonical concepts:
 
 Use canonical commands for new work.
 
+`python3 pipeline.py` is the single command gateway. Use it to discover, inspect,
+validate, install, and run every orchestrator, executor, and element. The
+`bin/*.py` scripts are thin direct launchers for specialized/manual use.
+
 ## Agent Prompt
 
 Copy this into a coding agent:
@@ -37,6 +41,7 @@ dirty user files and do not overwrite unrelated changes.
 Run these from the repository root before making changes:
 
 ```bash
+python3 pipeline.py --help
 git status --short
 python3 pipeline.py doctor
 python3 pipeline.py orchestrators list

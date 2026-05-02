@@ -13,6 +13,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PipelineDispatchAliasTest(unittest.TestCase):
+    def test_root_help_explains_canonical_gateway(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(pipeline.main(["--help"]), 0)
+
+        help_text = stdout.getvalue()
+        self.assertIn("ArtAgents command gateway", help_text)
+        self.assertIn("python3 pipeline.py orchestrators {list,inspect,validate,run}", help_text)
+        self.assertIn("python3 pipeline.py executors {list,inspect,validate,install,run}", help_text)
+        self.assertIn("python3 pipeline.py elements {list,inspect,sync,fork,install,update}", help_text)
+        self.assertIn("pipeline.py is the primary entry point", help_text)
+        self.assertNotIn("conductors", help_text)
+        self.assertNotIn("performers", help_text)
+
     def test_elements_dispatches_before_pipeline_validation(self) -> None:
         from artagents.elements import cli as elements_cli
 

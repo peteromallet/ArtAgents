@@ -6,13 +6,16 @@ ArtAgents has three canonical public concepts:
 - **Executors** run concrete work.
 - **Elements** are render/custom building blocks such as effects, animations, and transitions.
 
-Canonical packages and commands are first-class. Retained `bin/*.py` launchers route to canonical executor or orchestrator folders.
+Canonical packages and commands are first-class. `python3 pipeline.py` is the
+single command gateway for normal work. Retained `bin/*.py` launchers route to
+canonical executor or orchestrator folders for specialized/manual use.
 
 ## Onboarding Commands
 
 Run these from the repository root before editing:
 
 ```bash
+python3 pipeline.py --help
 git status --short
 python3 pipeline.py doctor
 python3 pipeline.py orchestrators list

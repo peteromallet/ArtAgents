@@ -25,9 +25,18 @@ element dependency commands, but it does not mutate the workspace unless
 - **Executors** run concrete work.
 - **Elements** are render/custom building blocks such as effects, animations, and transitions.
 
+## Entry Point Rule
+
+Use `python3 pipeline.py` as the single command gateway for normal work. Reach
+workflows through `pipeline.py orchestrators ...`, concrete tools through
+`pipeline.py executors ...`, and render building blocks through
+`pipeline.py elements ...`. The `bin/*.py` files are thin direct launchers for
+specialized/manual use; do not treat them as a separate public API.
+
 Use canonical imports and commands for new work:
 
 ```bash
+python3 pipeline.py --help
 python3 pipeline.py orchestrators inspect builtin.hype --json
 python3 pipeline.py executors inspect builtin.render --json
 python3 pipeline.py elements inspect effects text-card --json
