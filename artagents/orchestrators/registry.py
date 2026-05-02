@@ -156,7 +156,7 @@ def load_builtin_orchestrators() -> tuple[OrchestratorDefinition, ...]:
     for root in _builtin_folder_roots():
         folder_orchestrators.extend(load_folder_orchestrators(root))
     by_id = {orchestrator.id: orchestrator for orchestrator in folder_orchestrators}
-    expected = {"builtin.hype", "builtin.event_talks", "builtin.thumbnail_maker", "builtin.understand"}
+    expected = {"builtin.hype", "builtin.event_talks", "builtin.thumbnail_maker", "builtin.understand", "builtin.first_rite"}
     if expected.issubset(by_id):
         return tuple(by_id[orchestrator_id] for orchestrator_id in sorted(expected))
     return (
@@ -164,6 +164,7 @@ def load_builtin_orchestrators() -> tuple[OrchestratorDefinition, ...]:
         _builtin_event_talks(),
         _builtin_thumbnail_maker(),
         _builtin_understand(),
+        _builtin_first_rite(),
     )
 
 
@@ -264,6 +265,25 @@ def _builtin_thumbnail_maker() -> OrchestratorDefinition:
     )
 
 
+def _builtin_first_rite() -> OrchestratorDefinition:
+    return validate_orchestrator_definition(
+        OrchestratorDefinition(
+            id="builtin.first_rite",
+            name="First Rite",
+            kind="built_in",
+            version="1.0",
+            description="Onboarding rite that summons a portrait of the maker and opens it.",
+            runtime=RuntimeSpec(
+                kind="command",
+                command=CommandSpec(argv=("{python_exec}", "-m", "artagents.orchestrators.first_rite.run", "{orchestrator_args}")),
+            ),
+            child_executors=("builtin.generate_image",),
+            cache=CachePolicy(mode="none"),
+            metadata={"runtime_module": "artagents.orchestrators.first_rite.run", "runtime_file": "run.py"},
+        )
+    )
+
+
 def _builtin_understand() -> OrchestratorDefinition:
     return validate_orchestrator_definition(
         OrchestratorDefinition(
@@ -303,7 +323,7 @@ def _builtin_folder_roots() -> tuple[Path, ...]:
     root = Path(__file__).resolve().parent
     return tuple(
         path
-        for path in (root / "event_talks", root / "hype", root / "thumbnail_maker", root / "understand")
+        for path in (root / "event_talks", root / "first_rite", root / "hype", root / "thumbnail_maker", root / "understand")
         if path.is_dir()
     )
 
