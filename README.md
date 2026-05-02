@@ -15,7 +15,7 @@ Give this to your agents to get started:
 ┃                        ═══  A R T A G E N T S  ═══                         ┃
 ┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
-┃                   ──  ◇  W H A T   T H I S   I S  ◇  ──                    ┃
+┃                   ──  ◇  W h a t   T h i s   I s  ◇  ──                    ┃
 ┃                                                                            ┃
 ┃             ·  a file-based toolkit for agents to help them  ·             ┃
 ┃             ·  make art and creative work alongside a human  ·             ┃
@@ -30,7 +30,7 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                    ──  ◇  U S I N G   T O O L S  ◇  ──                     ┃
+┃                    ──  ◇  U s i n g   T o o l s  ◇  ──                     ┃
 ┃                                                                            ┃
 ┃                              ·  find an id  ·                              ┃
 ┃     ·  python3 -m artagents [executors|orchestrators|elements] list  ·     ┃
@@ -43,24 +43,21 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃               ──  ◇  F O R G E   A   N E W   T O O L  ◇  ──                ┃
+┃               ──  ◇  F o r g e   a   N e w   T o o l  ◇  ──                ┃
 ┃                                                                            ┃
 ┃     ·  copy from   docs/templates/[executor|orchestrator|element]/  ·      ┃
 ┃     ·  then read   docs/creating-tools.md                           ·      ┃
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                    ·  generated files live in  runs/  ·                    ┃
-┃                                                                            ┃
-┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
-┃                                                                            ┃
-┃                          ──  ◇  B E G I N  ◇  ──                           ┃
+┃                          ──  ◇  B e g i n  ◇  ──                           ┃
 ┃                                                                            ┃
 ┃            ·  ask the maker what they want to make or learn  ·             ┃
 ┃                ·  if they want ideas, see  docs/ideas.md  ·                ┃
+┃                    ·  generated files live in  runs/  ·                    ┃
 ┃                                                                            ┃
 ┃   ╲╱╲╱╲╱╲╱╳────────────────────────────────────────────────────╳╲╱╲╱╲╱╲╱   ┃
-┃                      ·  ask and thou shalt receive  ·                      ┃
+┃                      ·  ASK AND THOU SHALT RECEIVE  ·                      ┃
 ┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
