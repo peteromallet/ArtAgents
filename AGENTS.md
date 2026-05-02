@@ -8,11 +8,11 @@ Run from the repository root:
 
 ```bash
 git status --short
-python3 pipeline.py doctor
-python3 pipeline.py orchestrators list
-python3 pipeline.py executors list
-python3 pipeline.py elements list
-python3 pipeline.py setup
+python3 -m artagents doctor
+python3 -m artagents orchestrators list
+python3 -m artagents executors list
+python3 -m artagents elements list
+python3 -m artagents setup
 ```
 
 `setup` is dry-run by default. It may plan managed element sync and local
@@ -28,7 +28,7 @@ element dependency commands, but it does not mutate the workspace unless
 ## Entry Point Rule
 
 Use `python3 -m artagents` as the executable package gateway for normal work.
-`python3 pipeline.py` remains a compatibility launcher. Reach workflows through
+Reach workflows through
 `python3 -m artagents orchestrators ...`, concrete tools through
 `python3 -m artagents executors ...`, and render building blocks through
 `python3 -m artagents elements ...`. The `bin/*.py` files are thin direct
@@ -39,10 +39,9 @@ Use canonical imports and commands for new work:
 
 ```bash
 python3 -m artagents --help
-python3 pipeline.py --help
-python3 pipeline.py orchestrators inspect builtin.hype --json
-python3 pipeline.py executors inspect builtin.render --json
-python3 pipeline.py elements inspect effects text-card --json
+python3 -m artagents orchestrators inspect builtin.hype --json
+python3 -m artagents executors inspect builtin.render --json
+python3 -m artagents elements inspect effects text-card --json
 ```
 
 Treat the JSON inspect/list output as the runtime index. It points to the
@@ -88,15 +87,15 @@ into `.artagents/elements/managed`. User-editable forks and custom overrides go
 under `.artagents/elements/overrides`:
 
 ```bash
-python3 pipeline.py elements sync --dry-run
-python3 pipeline.py elements fork effects text-card
-python3 pipeline.py elements update --dry-run
+python3 -m artagents elements sync --dry-run
+python3 -m artagents elements fork effects text-card
+python3 -m artagents elements update --dry-run
 ```
 
 Element source priority is active theme, then `.artagents/elements/overrides`,
 then `.artagents/elements/managed`, then bundled defaults.
 
-`python3 pipeline.py doctor` enforces canonical repository structure. Public
+`python3 -m artagents doctor` enforces canonical repository structure. Public
 executor folders must include `executor.yaml`, `run.py`, and `SKILL.md`; public
 orchestrator folders must include `orchestrator.yaml`, `run.py`, and
 `SKILL.md`. Do not place executor metadata in orchestrator folders, or

@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="pipeline.py executors",
+        prog="python3 -m artagents executors",
         description="List, inspect, validate, install, and run ArtAgents executors.",
         formatter_class=argparse.RawTextHelpFormatter,
     )

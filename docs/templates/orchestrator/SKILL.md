@@ -6,17 +6,17 @@ executors or orchestrators.
 Inspect first:
 
 ```bash
-python3 pipeline.py orchestrators inspect builtin.example --json
+python3 -m artagents orchestrators inspect builtin.example --json
 ```
 
 Dry-run:
 
 ```bash
-python3 pipeline.py orchestrators run builtin.example --dry-run -- --dry-run
+python3 -m artagents orchestrators run builtin.example --dry-run -- --dry-run
 ```
 
 Run:
 
 ```bash
-python3 pipeline.py orchestrators run builtin.example -- --dry-run
+python3 -m artagents orchestrators run builtin.example -- --dry-run
 ```

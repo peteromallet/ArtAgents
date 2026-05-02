@@ -216,11 +216,11 @@ def _builtin_hype() -> OrchestratorDefinition:
             description="Orchestrates the built-in hype editing pipeline.",
             runtime=RuntimeSpec(
                 kind="command",
-                command=CommandSpec(argv=("{python_exec}", "pipeline.py", "{orchestrator_args}")),
+                command=CommandSpec(argv=("{python_exec}", "-m", "artagents", "{orchestrator_args}")),
             ),
             child_executors=tuple(f"builtin.{name}" for name in HYPE_STEP_ORDER),
             cache=CachePolicy(mode="none"),
-            metadata={"entrypoint": "pipeline.py"},
+            metadata={"entrypoint": "python3 -m artagents"},
         )
     )
 

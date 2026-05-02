@@ -11,13 +11,13 @@ prompt per line, or provide a JSON/JSONL list accepted by the underlying CLI.
 Inspect:
 
 ```bash
-python3 pipeline.py executors inspect builtin.generate_image
+python3 -m artagents executors inspect builtin.generate_image
 ```
 
 Dry-run:
 
 ```bash
-python3 pipeline.py executors run builtin.generate_image \
+python3 -m artagents executors run builtin.generate_image \
   --out runs/example-images \
   --input prompts_file=runs/example-images/prompts.txt \
   --dry-run
@@ -26,7 +26,7 @@ python3 pipeline.py executors run builtin.generate_image \
 Run:
 
 ```bash
-python3 pipeline.py executors run builtin.generate_image \
+python3 -m artagents executors run builtin.generate_image \
   --out runs/example-images \
   --input prompts_file=runs/example-images/prompts.txt
 ```

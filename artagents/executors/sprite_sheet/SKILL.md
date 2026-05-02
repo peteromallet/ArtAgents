@@ -6,8 +6,8 @@ previews from a subject plus animation description.
 Dry-run or inspect first:
 
 ```bash
-python3 pipeline.py executors inspect builtin.sprite_sheet
-python3 pipeline.py executors run builtin.sprite_sheet --out runs/sprites/wave --input animation=wave --input subject="neon courier" --dry-run
+python3 -m artagents executors inspect builtin.sprite_sheet
+python3 -m artagents executors run builtin.sprite_sheet --out runs/sprites/wave --input animation=wave --input subject="neon courier" --dry-run
 ```
 
 Requires image API credentials for generation and `ffmpeg` for slicing/preview

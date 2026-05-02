@@ -5,7 +5,7 @@ description: "Use for the ArtAgents repo: file-based hype-cut/video pipeline wor
 
 # ArtAgents
 
-ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `python3 -m artagents` is the executable package gateway for normal work; `pipeline.py` remains a compatibility launcher. Use `python3 -m artagents orchestrators ...`, `python3 -m artagents executors ...`, and `python3 -m artagents elements ...` for discoverable tools. Direct launchers live under `bin/` for specialized/manual use and call canonical executor or orchestrator folder entrypoints.
+ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `python3 -m artagents` is the executable package gateway for normal work; Use `python3 -m artagents orchestrators ...`, `python3 -m artagents executors ...`, and `python3 -m artagents elements ...` for discoverable tools. Direct launchers live under `bin/` for specialized/manual use and call canonical executor or orchestrator folder entrypoints.
 
 ## First Checks
 
@@ -13,10 +13,10 @@ Run these before editing:
 
 ```bash
 git status --short
-python3 pipeline.py doctor
-python3 pipeline.py orchestrators list
-python3 pipeline.py executors list
-python3 pipeline.py elements list
+python3 -m artagents doctor
+python3 -m artagents orchestrators list
+python3 -m artagents executors list
+python3 -m artagents elements list
 ```
 
 Do not overwrite unrelated local changes. In particular, preserve local edits in curated executor skill files such as `artagents/executors/moirae/SKILL.md` and `artagents/executors/vibecomfy/SKILL.md` unless the user explicitly asks to edit them. Large source media and generated artifacts should stay out of git under `runs/` or another ignored output directory.
@@ -30,14 +30,14 @@ When a workflow is awkward, brittle, undocumented, or requires a local workaroun
 Source video hype cut:
 
 ```bash
-python3 pipeline.py --video SRC.mp4 --brief brief.txt --out runs/<name> --render
+python3 -m artagents --video SRC.mp4 --brief brief.txt --out runs/<name> --render
 ```
 
 Audio-only or pure-generative timeline:
 
 ```bash
-python3 pipeline.py --audio rant.wav --brief brief.txt --out runs/<name> --render
-python3 pipeline.py --brief brief.txt --theme <theme-id> --out runs/<name> --render --target-duration 28
+python3 -m artagents --audio rant.wav --brief brief.txt --out runs/<name> --render
+python3 -m artagents --brief brief.txt --theme <theme-id> --out runs/<name> --render --target-duration 28
 ```
 
 Event talk splitting:
@@ -79,24 +79,24 @@ orchestrator. Do not fake source media just to enter the source-video pipeline.
 Use canonical packages and commands for new code:
 
 ```bash
-python3 pipeline.py orchestrators list
-python3 pipeline.py orchestrators inspect builtin.hype --json
-python3 pipeline.py orchestrators validate
-python3 pipeline.py orchestrators run builtin.hype --out runs/<name> --brief brief.txt --dry-run -- --target-duration 12 --from cut
-python3 pipeline.py orchestrators run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
-python3 pipeline.py executors list
-python3 pipeline.py executors inspect builtin.render --json
-python3 pipeline.py executors run builtin.render --out runs/<name> --brief brief.txt --dry-run
-python3 pipeline.py executors inspect upload.youtube
-python3 pipeline.py executors run upload.youtube --dry-run --video-url https://cdn.example.com/talk.mp4 --title "Talk" --description "Description"
-python3 pipeline.py elements list
-python3 pipeline.py elements inspect effects text-card --json
-python3 pipeline.py elements fork effects text-card
+python3 -m artagents orchestrators list
+python3 -m artagents orchestrators inspect builtin.hype --json
+python3 -m artagents orchestrators validate
+python3 -m artagents orchestrators run builtin.hype --out runs/<name> --brief brief.txt --dry-run -- --target-duration 12 --from cut
+python3 -m artagents orchestrators run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
+python3 -m artagents executors list
+python3 -m artagents executors inspect builtin.render --json
+python3 -m artagents executors run builtin.render --out runs/<name> --brief brief.txt --dry-run
+python3 -m artagents executors inspect upload.youtube
+python3 -m artagents executors run upload.youtube --dry-run --video-url https://cdn.example.com/talk.mp4 --title "Talk" --description "Description"
+python3 -m artagents elements list
+python3 -m artagents elements inspect effects text-card --json
+python3 -m artagents elements fork effects text-card
 ```
 
 VibeComfy and Moirae are external executors only; do not expose them as orchestrators.
 
-`python3 pipeline.py setup` is dry-run by default. Use `python3 pipeline.py setup --apply` only when the user wants local managed element sync and local element dependency installation.
+`python3 -m artagents setup` is dry-run by default. Use `python3 -m artagents setup --apply` only when the user wants local managed element sync and local element dependency installation.
 
 Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, and `builtin.understand`. Default executors include the `STEP_ORDER` built-ins plus external executors such as `external.moirae` and `external.vibecomfy.run`. Default elements are bundled under `artagents/elements/bundled` and sync into `.artagents/elements/managed`; editable forks go under `.artagents/elements/overrides`.
 
@@ -105,7 +105,7 @@ Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.th
 Use `artagents/executors/reigh_data/SKILL.md` before fetching live Reigh project, shot, task, timeline, image, or video data. The canonical command is:
 
 ```bash
-python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
+python3 -m artagents reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
 ```
 
 This calls the PAT-authenticated `reigh-data-fetch` Edge Function in `reigh-app`; do not add direct Supabase table queries in ArtAgents for this data.
@@ -113,7 +113,7 @@ This calls the PAT-authenticated `reigh-data-fetch` Edge Function in `reigh-app`
 The main root launcher remains supported, and direct stage launchers live under `bin/`:
 
 ```bash
-python3 pipeline.py --video SRC.mp4 --brief brief.txt --out runs/<name> --render
+python3 -m artagents --video SRC.mp4 --brief brief.txt --out runs/<name> --render
 python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
@@ -365,7 +365,7 @@ For web delivery, prefer the default WebP atlas plus `sprite_web_manifest.json` 
 
 ## Important Contracts
 
-- `pipeline.py --brief ...` is the canonical top-level flow.
+- `python3 -m artagents --brief ...` is the canonical top-level flow.
 - Orchestrators coordinate executors and may call declared child orchestrators. Executors execute one unit and must not call orchestrators.
 - `bin/cut.py` emits `hype.timeline.json`, `hype.assets.json`, `hype.metadata.json`, and `hype.edl.csv`.
 - Reigh-facing JSON should round-trip through existing helpers and tests.

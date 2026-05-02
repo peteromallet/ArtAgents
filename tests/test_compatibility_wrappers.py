@@ -8,14 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CompatibilityWrapperTest(unittest.TestCase):
-    def test_root_pipeline_launcher_calls_package_main(self) -> None:
-        with mock.patch("artagents.pipeline.main", return_value=0) as package_main:
-            with self.assertRaises(SystemExit) as raised:
-                runpy.run_path(str(ROOT / "pipeline.py"), run_name="__main__")
-
-        self.assertEqual(raised.exception.code, 0)
-        package_main.assert_called_once_with()
-
     def test_event_talks_launcher_calls_canonical_orchestrator_main(self) -> None:
         with mock.patch("artagents.orchestrators.event_talks.run.main", return_value=0) as package_main:
             with self.assertRaises(SystemExit) as raised:

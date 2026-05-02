@@ -5,7 +5,7 @@ Use this guide when ArtAgents is missing a capability.
 ## Operating Level
 
 Start with the highest-level command that fits the user request. For normal
-video creation, run an orchestrator through `python3 pipeline.py` instead of
+video creation, run an orchestrator through `python3 -m artagents` instead of
 chaining internal executors by hand.
 
 Do not chain pipeline internals by hand unless you are debugging one specific
@@ -19,13 +19,13 @@ Current start points:
 
 ```bash
 # Source-backed edit
-python3 pipeline.py --video source.mp4 --brief brief.txt --out runs/example --render
+python3 -m artagents --video source.mp4 --brief brief.txt --out runs/example --render
 
 # Audio-backed edit
-python3 pipeline.py --audio voiceover.wav --brief brief.txt --out runs/audio --render
+python3 -m artagents --audio voiceover.wav --brief brief.txt --out runs/audio --render
 
 # Pure-generative edit from an existing brief
-python3 pipeline.py --brief examples/briefs/cinematic.txt --out runs/generative --render --target-duration 15
+python3 -m artagents --brief examples/briefs/cinematic.txt --out runs/generative --render --target-duration 15
 ```
 
 If the user gives a topic instead of a brief, create or use a brief-generation
@@ -124,7 +124,7 @@ User-editable forks go under `.artagents/elements/overrides/<kind>/<id>/` and
 should be created with:
 
 ```bash
-python3 pipeline.py elements fork effects text-card
+python3 -m artagents elements fork effects text-card
 ```
 
 ## Templates
@@ -138,18 +138,17 @@ Copy the closest template and replace the placeholder identifiers:
 Then run:
 
 ```bash
-python3 pipeline.py doctor
-python3 pipeline.py executors inspect builtin.example --json
-python3 pipeline.py orchestrators inspect builtin.example --json
-python3 pipeline.py elements inspect effects example-card --json
+python3 -m artagents doctor
+python3 -m artagents executors inspect builtin.example --json
+python3 -m artagents orchestrators inspect builtin.example --json
+python3 -m artagents elements inspect effects example-card --json
 ```
 
 Run only the inspect command that matches the thing you created.
 
 ## Review Checklist
 
-- The new capability is reachable through `python3 -m artagents` and the
-  compatibility `python3 pipeline.py` launcher.
+- The new capability is reachable through `python3 -m artagents`.
 - The folder has the required manifest, `run.py`, and `SKILL.md` or element
   files.
 - The `SKILL.md` says when to use it and gives the canonical command.

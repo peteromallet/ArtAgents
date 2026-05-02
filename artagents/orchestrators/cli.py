@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="pipeline.py orchestrators",
+        prog="python3 -m artagents orchestrators",
         description="List, inspect, validate, and run ArtAgents orchestrators.",
         formatter_class=argparse.RawTextHelpFormatter,
     )

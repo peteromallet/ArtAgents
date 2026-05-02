@@ -21,7 +21,7 @@ class SetupStep:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="pipeline.py setup", description="Plan or apply ArtAgents local setup.")
+    parser = argparse.ArgumentParser(prog="python3 -m artagents setup", description="Plan or apply ArtAgents local setup.")
     parser.add_argument("--apply", action="store_true", help="Apply local setup mutations. Default is dry-run.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable setup output.")
     return parser

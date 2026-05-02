@@ -57,7 +57,7 @@
   "kind": "built_in",
   "metadata": {
     "backend": "banodoco-social",
-    "command": "pipeline.py upload-youtube",
+    "command": "python3 -m artagents upload-youtube",
     "requires_reachable_video_url": true,
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",

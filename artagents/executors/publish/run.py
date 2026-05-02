@@ -445,7 +445,7 @@ def _resolve_timeline_path(args: argparse.Namespace) -> Path:
         return Path(args.timeline_file).expanduser().resolve()
     raise PublishError(
         "--timeline-file is required (the path to your hype.timeline.json). "
-        "If you ran `tools/pipeline.py`, point at "
+        "If you ran `python3 -m artagents`, point at "
         "<out>/briefs/<brief>/hype.timeline.json."
     )
 

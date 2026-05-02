@@ -409,7 +409,7 @@ def _tool_fingerprints(tools_dir: Path) -> dict[str, str]:
                  "triage.py", "scene_describe.py", "quote_scout.py", "pool_build.py", "arrange.py",
                  "text_match.py", "llm_clients.py", "quality_zones.py", "refine.py",
                  "inspect_cut.py", "enriched_arrangement.py",
-                 "render_remotion.py", "pipeline.py", "open_in_reigh.py"):
+                 "render_remotion.py", "open_in_reigh.py"):
         path = tools_dir / name
         if path.is_file():
             prints[name] = hashlib.sha1(path.read_bytes()).hexdigest()[:10]

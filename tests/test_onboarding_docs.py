@@ -22,9 +22,9 @@ class OnboardingDocsTest(unittest.TestCase):
             )
         )
 
-    def run_pipeline(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_artagents(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(ROOT / "pipeline.py"), *args],
+            [sys.executable, "-m", "artagents", *args],
             cwd=ROOT,
             text=True,
             stdout=subprocess.PIPE,
@@ -39,12 +39,11 @@ class OnboardingDocsTest(unittest.TestCase):
             "executors",
             "elements",
             "git status --short",
-            "python3 pipeline.py doctor",
-            "python3 pipeline.py --help",
+            "python3 -m artagents doctor",
             "python3 -m artagents --help",
             "python3 -m artagents",
             "executable package gateway",
-            "python3 pipeline.py setup",
+            "python3 -m artagents setup",
             "single command gateway",
             ".artagents/elements/overrides",
             "python3 scripts/gen_effect_registry.py",
@@ -69,10 +68,12 @@ class OnboardingDocsTest(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, text)
         forbidden = (
-            "python3 pipeline.py conductors list",
-            "python3 pipeline.py performers list",
-            "python3 pipeline.py instruments list",
-            "python3 pipeline.py primitives list",
+            "python3 pipeline.py",
+            "pipeline.py remains",
+            "python3 -m artagents conductors list",
+            "python3 -m artagents performers list",
+            "python3 -m artagents instruments list",
+            "python3 -m artagents primitives list",
             "artagents/performers/curated",
             "artagents/conductors/curated",
             "Legacy public alias",
@@ -96,7 +97,7 @@ class OnboardingDocsTest(unittest.TestCase):
         )
         for command in commands:
             with self.subTest(command=command):
-                result = self.run_pipeline(*command)
+                result = self.run_artagents(*command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(result.stdout.strip())
 

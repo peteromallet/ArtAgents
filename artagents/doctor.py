@@ -48,7 +48,7 @@ def run_checks(*, optional_binaries: tuple[str, ...] = ("ffmpeg", "npx", "uv", "
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="pipeline.py doctor", description="Check the ArtAgents environment.")
+    parser = argparse.ArgumentParser(prog="python3 -m artagents doctor", description="Check the ArtAgents environment.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable diagnostics.")
     parser.add_argument(
         "--strict-optional",

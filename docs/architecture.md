@@ -7,9 +7,8 @@ ArtAgents has three canonical public concepts:
 - **Elements** are render/custom building blocks such as effects, animations, and transitions.
 
 Canonical packages and commands are first-class. `python3 -m artagents` is the
-executable package gateway for normal work. `python3 pipeline.py` remains a
-compatibility launcher. Retained `bin/*.py` launchers route to canonical
-executor or orchestrator folders for specialized/manual use.
+executable package gateway for normal work. Retained `bin/*.py` launchers route
+to canonical executor or orchestrator folders for specialized/manual use.
 
 ## Onboarding Commands
 
@@ -17,23 +16,22 @@ Run these from the repository root before editing:
 
 ```bash
 python3 -m artagents --help
-python3 pipeline.py --help
 git status --short
-python3 pipeline.py doctor
-python3 pipeline.py orchestrators list
-python3 pipeline.py executors list
-python3 pipeline.py elements list
-python3 pipeline.py setup
+python3 -m artagents doctor
+python3 -m artagents orchestrators list
+python3 -m artagents executors list
+python3 -m artagents elements list
+python3 -m artagents setup
 ```
 
-`setup` is dry-run by default. `python3 pipeline.py setup --apply` is the explicit local mutation path and delegates to element sync/install helpers.
+`setup` is dry-run by default. `python3 -m artagents setup --apply` is the explicit local mutation path and delegates to element sync/install helpers.
 
 Canonical discovery commands are:
 
 ```bash
-python3 pipeline.py orchestrators inspect builtin.hype --json
-python3 pipeline.py executors inspect builtin.render --json
-python3 pipeline.py elements inspect effects text-card --json
+python3 -m artagents orchestrators inspect builtin.hype --json
+python3 -m artagents executors inspect builtin.render --json
+python3 -m artagents elements inspect effects text-card --json
 ```
 
 These JSON commands are the runtime index for agents. Folder-backed
@@ -65,7 +63,6 @@ executor.
 | Module or entry point | Classification | Notes |
 | --- | --- | --- |
 | `python3 -m artagents`, `artagents/__main__.py` | System entry point | Executable package gateway for all canonical commands. |
-| `pipeline.py` | Compatibility launcher | Root wrapper that dispatches to the executable package gateway. |
 | `artagents/pipeline.py` | System command and dispatcher | Cache-aware hype command support and source of `STEP_ORDER`; not a second orchestrator format. |
 | `artagents/orchestrators/hype` | Orchestrator | Canonical built-in hype orchestrator folder. |
 | `artagents/orchestrators/event_talks` | Orchestrator | Canonical event-talk discovery and rendering workflow folder. |
@@ -118,7 +115,7 @@ This classification keeps only retained root and bin launchers; executor-owned p
 
 ## Structure Enforcement
 
-`python3 pipeline.py doctor` fails when canonical repository structure drifts.
+`python3 -m artagents doctor` fails when canonical repository structure drifts.
 Public executor folders under `artagents/executors/<slug>/` must include
 `executor.yaml`, `run.py`, and `SKILL.md`. Public orchestrator folders under
 `artagents/orchestrators/<slug>/` must include `orchestrator.yaml`, `run.py`,

@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="pipeline.py elements",
+        prog="python3 -m artagents elements",
         description="List, inspect, validate, sync, fork, install, and update ArtAgents render elements.",
     )
     parser.add_argument("--theme", help="Active theme id, theme directory, or path to theme.json.")

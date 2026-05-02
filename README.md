@@ -14,9 +14,8 @@ The public model has three canonical concepts:
 Use canonical commands for new work.
 
 `python3 -m artagents` is the executable package gateway and single command gateway.
-Use it to discover, inspect, validate, install, and run every
-orchestrator, executor, and element. `python3 pipeline.py` remains a
-compatibility launcher, and the `bin/*.py` scripts are thin direct launchers for
+Use it to discover, inspect, validate, install, and run every orchestrator,
+executor, and element. The `bin/*.py` scripts are thin direct launchers for
 specialized/manual use.
 
 ## Agent Prompt
@@ -29,7 +28,7 @@ https://github.com/banodoco/ArtAgents
 
 First read AGENTS.md, README.md, and SKILL.md, then run:
 git status --short
-python3 pipeline.py doctor
+python3 -m artagents doctor
 
 Use canonical terms and commands: orchestrators, executors, and elements.
 
@@ -43,35 +42,34 @@ dirty user files and do not overwrite unrelated changes.
 Run these from the repository root before making changes:
 
 ```bash
-python3 pipeline.py --help
 python3 -m artagents --help
 git status --short
-python3 pipeline.py doctor
-python3 pipeline.py orchestrators list
-python3 pipeline.py executors list
-python3 pipeline.py elements list
-python3 pipeline.py setup
+python3 -m artagents doctor
+python3 -m artagents orchestrators list
+python3 -m artagents executors list
+python3 -m artagents elements list
+python3 -m artagents setup
 ```
 
 `setup` is dry-run by default. It reports the managed default element sync and
 local dependency-install plan without mutating the workspace. Use
-`python3 pipeline.py setup --apply` only when you intend to materialize defaults
+`python3 -m artagents setup --apply` only when you intend to materialize defaults
 and run local element install helpers.
 
 ## Quick Start
 
 ```bash
 # Source-video hype cut
-python3 pipeline.py --video source.mp4 --brief brief.txt --out runs/example --render
+python3 -m artagents --video source.mp4 --brief brief.txt --out runs/example --render
 
 # Audio-backed timeline
-python3 pipeline.py --audio rant.wav --brief brief.txt --out runs/audio --render
+python3 -m artagents --audio rant.wav --brief brief.txt --out runs/audio --render
 
 # Pure-generative timeline
-python3 pipeline.py --brief brief.txt --theme 2rp --out runs/generative --render --target-duration 28
+python3 -m artagents --brief brief.txt --theme 2rp --out runs/generative --render --target-duration 28
 
 # Pure-generative sample brief
-python3 pipeline.py --brief examples/briefs/cinematic.txt --out runs/cinematic --render --target-duration 15
+python3 -m artagents --brief examples/briefs/cinematic.txt --out runs/cinematic --render --target-duration 15
 
 # Event-talk render
 python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
@@ -83,12 +81,12 @@ contain frames, JSON files, audits, and rendered videos from local experiments.
 ## Discovery
 
 ```bash
-python3 pipeline.py orchestrators list
-python3 pipeline.py orchestrators inspect builtin.hype --json
-python3 pipeline.py executors list
-python3 pipeline.py executors inspect builtin.render --json
-python3 pipeline.py elements list
-python3 pipeline.py elements inspect effects text-card --json
+python3 -m artagents orchestrators list
+python3 -m artagents orchestrators inspect builtin.hype --json
+python3 -m artagents executors list
+python3 -m artagents executors inspect builtin.render --json
+python3 -m artagents elements list
+python3 -m artagents elements inspect effects text-card --json
 ```
 
 Use these JSON commands as the runtime index for agents. The registry output
@@ -122,10 +120,10 @@ Default elements are bundled in this repository and can be synced into
 `.artagents/elements/overrides`:
 
 ```bash
-python3 pipeline.py elements sync --dry-run
-python3 pipeline.py elements fork effects text-card
-python3 pipeline.py elements install effects text-card
-python3 pipeline.py elements update --dry-run
+python3 -m artagents elements sync --dry-run
+python3 -m artagents elements fork effects text-card
+python3 -m artagents elements install effects text-card
+python3 -m artagents elements update --dry-run
 ```
 
 Element source priority is active theme, then `.artagents/elements/overrides`,
@@ -136,14 +134,14 @@ then `.artagents/elements/managed`, then bundled defaults in
 
 ```bash
 # Rerun a pipeline from a specific stage
-python3 pipeline.py --video source.mp4 --brief brief.txt --out runs/example --from cut --render
+python3 -m artagents --video source.mp4 --brief brief.txt --out runs/example --from cut --render
 
 # Audit a run
-python3 pipeline.py audit --run runs/example
-python3 pipeline.py audit --run runs/example --json
+python3 -m artagents audit --run runs/example
+python3 -m artagents audit --run runs/example --json
 
 # Fetch canonical Reigh data through the app Edge Function
-python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
+python3 -m artagents reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
 
 # Render a Reigh-compatible timeline/assets pair
 python3 bin/render_remotion.py \
@@ -170,10 +168,10 @@ _reference/                Copied Reigh contract references
 runs/                      Ignored local outputs
 ```
 
-`python3 -m artagents` is the package entry point. `pipeline.py` remains a
-compatibility launcher, and `bin/*.py` launchers call the matching canonical
-executor or orchestrator modules when you need a single stage directly.
-`python3 pipeline.py doctor` also validates the canonical repo structure: public
+`python3 -m artagents` is the package entry point. `bin/*.py` launchers call
+the matching canonical executor or orchestrator modules when you need a single
+stage directly.
+`python3 -m artagents doctor` also validates the canonical repo structure: public
 executor folders must contain `executor.yaml`, `run.py`, and `SKILL.md`; public
 orchestrator folders must contain `orchestrator.yaml`, `run.py`, and `SKILL.md`;
 legacy public packages such as conductor/performer folders are rejected.

@@ -8,7 +8,7 @@ for visual review after transcript, scene, shot, or quality-zone analysis.
 All executor inputs are passed with `--input NAME=VALUE`:
 
 ```bash
-python3 pipeline.py executors run builtin.boundary_candidates \
+python3 -m artagents executors run builtin.boundary_candidates \
   --out runs/boundary-review \
   --input video=source.mp4 \
   --input manifest=runs/boundary-review/boundary_manifest.json

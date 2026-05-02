@@ -342,7 +342,7 @@ def _resolve_python_exec(executor: ExecutorDefinition, request: ExecutorRunReque
             return str(installed_python)
         raise ExecutorRunnerError(
             f"executor {executor.id!r} requires an installed Python environment; "
-            f"run `python3 pipeline.py executors install {executor.id}` or pass python_exec as an input override"
+            f"run `python3 -m artagents executors install {executor.id}` or pass python_exec as an input override"
         )
     return sys.executable
 

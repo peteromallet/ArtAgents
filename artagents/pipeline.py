@@ -178,35 +178,35 @@ def build_parser() -> argparse.ArgumentParser:
 def load_config(path_text: str) -> dict:
     path = Path(path_text).expanduser().resolve()
     if not path.is_file():
-        usage_error(f"pipeline.py: config file not found: {path}")
+        usage_error(f"artagents: config file not found: {path}")
     suffix = path.suffix.lower()
     text = path.read_text(encoding="utf-8")
     if suffix == ".json":
         try:
             data = json.loads(text)
         except json.JSONDecodeError as exc:
-            usage_error(f"pipeline.py: invalid JSON config {path}: {exc.msg}")
+            usage_error(f"artagents: invalid JSON config {path}: {exc.msg}")
     elif suffix in {".yaml", ".yml"}:
         if yaml is None:
-            usage_error(f"pipeline.py: YAML config requires PyYAML: {path}")
+            usage_error(f"artagents: YAML config requires PyYAML: {path}")
         try:
             data = yaml.safe_load(text)
         except Exception as exc:
-            usage_error(f"pipeline.py: invalid YAML config {path}: {exc}")
+            usage_error(f"artagents: invalid YAML config {path}: {exc}")
     else:
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
             if yaml is None:
-                usage_error(f"pipeline.py: unsupported config format for {path}; use JSON or install PyYAML for YAML")
+                usage_error(f"artagents: unsupported config format for {path}; use JSON or install PyYAML for YAML")
             try:
                 data = yaml.safe_load(text)
             except Exception as exc:
-                usage_error(f"pipeline.py: invalid config {path}: {exc}")
+                usage_error(f"artagents: invalid config {path}: {exc}")
     if data is None:
         return {}
     if not isinstance(data, dict):
-        usage_error(f"pipeline.py: config must decode to an object: {path}")
+        usage_error(f"artagents: config must decode to an object: {path}")
     return data
 
 
@@ -223,19 +223,19 @@ def normalize_config(raw: dict) -> dict:
 
 def parse_asset_entry(raw: str) -> tuple[str, Path | str]:
     if "=" not in raw:
-        usage_error(f"pipeline.py: invalid --asset value {raw!r}; expected KEY=PATH")
+        usage_error(f"artagents: invalid --asset value {raw!r}; expected KEY=PATH")
     key, path_text = raw.split("=", 1)
     key = key.strip()
     path_text = path_text.strip()
     if not key or not path_text:
-        usage_error(f"pipeline.py: invalid --asset value {raw!r}; expected KEY=PATH")
+        usage_error(f"artagents: invalid --asset value {raw!r}; expected KEY=PATH")
     if key == "main":
-        usage_error("pipeline.py: asset key 'main' is reserved; pass the primary video via --video")
+        usage_error("artagents: asset key 'main' is reserved; pass the primary video via --video")
     if asset_cache.is_url(path_text):
         return key, path_text
     path = Path(path_text).expanduser().resolve()
     if not path.exists():
-        usage_error(f"pipeline.py: asset path not found for {key!r}: {path}")
+        usage_error(f"artagents: asset path not found for {key!r}: {path}")
     return key, path
 
 
@@ -245,7 +245,7 @@ def normalize_many(raw: object, *, key_name: str) -> list[str]:
     if isinstance(raw, str):
         return [raw]
     if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
-        usage_error(f"pipeline.py: {key_name} must be a string or list of strings")
+        usage_error(f"artagents: {key_name} must be a string or list of strings")
     return list(raw)
 
 
@@ -253,14 +253,14 @@ def normalize_extra_args(raw: object) -> dict[str, list[str]]:
     if raw is None:
         return {}
     if not isinstance(raw, dict):
-        usage_error("pipeline.py: extra_args must be an object keyed by step name")
+        usage_error("artagents: extra_args must be an object keyed by step name")
     allowed_steps = set(STEP_ORDER)
     extra_args: dict[str, list[str]] = {}
     for step_name, values in raw.items():
         if step_name not in allowed_steps:
-            usage_error(f"pipeline.py: unknown extra_args step {step_name!r}")
+            usage_error(f"artagents: unknown extra_args step {step_name!r}")
         if not isinstance(values, list) or not all(isinstance(item, (str, int, float)) for item in values):
-            usage_error(f"pipeline.py: extra_args[{step_name!r}] must be a list of CLI tokens")
+            usage_error(f"artagents: extra_args[{step_name!r}] must be a list of CLI tokens")
         extra_args[step_name] = [str(item) for item in values]
     return extra_args
 
@@ -273,12 +273,12 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     if not merged.get("out"):
         missing = []
         missing.append("--out")
-        usage_error(f"pipeline.py: missing required inputs: {', '.join(missing)}")
+        usage_error(f"artagents: missing required inputs: {', '.join(missing)}")
 
     if not merged.get("brief") and not merged.get("plan"):
-        usage_error("pipeline.py: missing required inputs: --brief")
+        usage_error("artagents: missing required inputs: --brief")
     if merged.get("brief") and merged.get("plan"):
-        usage_error("pipeline.py: pass only one of --brief or --plan")
+        usage_error("artagents: pass only one of --brief or --plan")
     if merged.get("plan"):
         warnings.warn("--plan is deprecated; use --brief", DeprecationWarning)
         merged["brief"] = merged["plan"]
@@ -299,9 +299,9 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     args.target_duration = getattr(args, "target_duration", None)
     if args.video is None and args.audio is None:
         if args.target_duration is None:
-            usage_error("pipeline.py: --target-duration is required when both --video and --audio are omitted")
+            usage_error("artagents: --target-duration is required when both --video and --audio are omitted")
         if float(args.target_duration) <= 0:
-            usage_error("pipeline.py: --target-duration must be greater than 0")
+            usage_error("artagents: --target-duration must be greater than 0")
     cache_dir = getattr(args, "cache_dir", None)
     if cache_dir:
         args.cache_dir = Path(cache_dir).expanduser().resolve()
@@ -323,7 +323,7 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     raw_editor_passes = int(getattr(args, "max_editor_passes", 2))
     if not 1 <= raw_editor_passes <= 2:
         usage_error(
-            f"pipeline.py: --max-editor-passes must be 1 or 2 (got {raw_editor_passes}); "
+            f"artagents: --max-editor-passes must be 1 or 2 (got {raw_editor_passes}); "
             "vision budget is hard-capped."
         )
     args.max_editor_passes = raw_editor_passes
@@ -349,24 +349,24 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
         if asset_cache.is_url(path):
             continue
         if not path.exists():
-            usage_error(f"pipeline.py: {key} input not found: {path}")
+            usage_error(f"artagents: {key} input not found: {path}")
     allowed_skips = set(STEP_ORDER)
     unknown_skips = [name for name in args.skip if name not in allowed_skips]
     if unknown_skips:
-        usage_error(f"pipeline.py: unknown --skip step(s): {', '.join(unknown_skips)}")
+        usage_error(f"artagents: unknown --skip step(s): {', '.join(unknown_skips)}")
     allowed_from_steps = set(STEP_ORDER)
     if getattr(args, "from_step", None) and args.from_step not in allowed_from_steps:
-        usage_error(f"pipeline.py: unknown --from step: {args.from_step}")
+        usage_error(f"artagents: unknown --from step: {args.from_step}")
     if "cut" in args.skip:
         timeline_path = args.brief_out / "hype.timeline.json"
         if args.render and not timeline_path.exists():
-            usage_error("pipeline.py: cannot --skip cut while --render is set and hype.timeline.json is missing")
+            usage_error("artagents: cannot --skip cut while --render is set and hype.timeline.json is missing")
     primary = getattr(args, "primary_asset", None)
     if primary and primary != "main":
         extra_keys = {key for key, _ in args.asset_pairs}
         if primary not in extra_keys:
             usage_error(
-                f"pipeline.py: --primary-asset={primary!r} has no matching --asset entry. "
+                f"artagents: --primary-asset={primary!r} has no matching --asset entry. "
                 "The primary video is registered as 'main', so --primary-asset must either be omitted, "
                 f"set to 'main', or backed by an explicit --asset {primary}=<path>."
             )
@@ -1065,7 +1065,7 @@ def _preflight_url_expiry(label: str, url: str) -> None:
     if not isinstance(expires_at, str):
         return
     if _parse_url_expiry(expires_at) <= dt.datetime.now(dt.timezone.utc):
-        raise SystemExit(f"pipeline.py: {label} URL expired at {expires_at}; refresh upstream before running")
+        raise SystemExit(f"artagents: {label} URL expired at {expires_at}; refresh upstream before running")
 
 
 def _url_inputs(args: argparse.Namespace) -> list[tuple[str, str]]:
@@ -1280,12 +1280,6 @@ Usage:
   python3 -m artagents audit --run RUN_DIR
   python3 -m artagents --video SRC --brief BRIEF --out runs/name [--render]
   python3 -m artagents --brief BRIEF --out runs/name --target-duration SECONDS [--render]
-
-Compatibility:
-  python3 pipeline.py doctor
-  python3 pipeline.py --video SRC --brief BRIEF --out runs/name [--render]
-  python3 pipeline.py --brief BRIEF --out runs/name --target-duration SECONDS [--render]
-
 Start here:
   python3 -m artagents doctor
   python3 -m artagents orchestrators list
@@ -1302,7 +1296,7 @@ Run any tool through this gateway:
   python3 -m artagents executors run EXECUTOR_ID ...
 
 Notes:
-  python3 -m artagents is the package entry point. pipeline.py remains a compatibility launcher.
+  python3 -m artagents is the package entry point.
   bin/*.py files are thin direct launchers.
   Use orchestrators for workflows, executors for concrete work, and elements for render building blocks.
 """
