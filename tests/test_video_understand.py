@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents import understand
-from artagents.video_understand import main
+from artagents.orchestrators.understand import run as understand
+from artagents.executors.video_understand.run import main
 
 
 def _write_test_video(path: Path, *, duration: float = 1.2) -> None:

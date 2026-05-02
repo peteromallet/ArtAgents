@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents import render_remotion
+from artagents.executors.render import run as render_remotion
 from artagents import timeline
 
 

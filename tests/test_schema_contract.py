@@ -72,6 +72,7 @@ class SchemaContractTest(unittest.TestCase):
         config = timeline.load_timeline(EXAMPLES / "hype.timeline.full.json")
         registry = timeline.load_registry(EXAMPLES / "hype.assets.full.json")
 
+        self.assertIn("generation_defaults", timeline._TIMELINE_TOP_ALLOWED)
         clip_keys = {key for clip in config["clips"] for key in timeline._normalize_clip_for_validation(clip)}
         track_keys = {key for track in config.get("tracks", []) for key in track}
         theme_overrides_keys = set(config.get("theme_overrides") or {})
@@ -107,6 +108,40 @@ class SchemaContractTest(unittest.TestCase):
             set(config["clips"][0]["effects"]),
             {"fade_in", "fade_out"},
         )
+
+    def test_generation_defaults_roundtrip_preserves_nested_object(self) -> None:
+        config = {
+            "theme": "banodoco-default",
+            "theme_overrides": {"visual": {"canvas": {"fps": 24}}},
+            "generation_defaults": {
+                "model": "sequence-v1",
+                "image": {"quality": "high", "provider": "reigh"},
+                "provider_settings": {"seed": 1234, "flags": ["keep", "open"]},
+            },
+            "clips": [],
+        }
+        path = self._make_tempdir("generation-defaults-") / "timeline.json"
+
+        timeline.save_timeline(config, path)  # type: ignore[arg-type]
+        loaded = timeline.load_timeline(path)
+
+        self.assertEqual(loaded["generation_defaults"], config["generation_defaults"])
+
+    def test_generation_defaults_validation_does_not_inspect_inner_keys(self) -> None:
+        config = {
+            "theme": "banodoco-default",
+            "generation_defaults": {
+                "model": "sequence-v1",
+                "image": {"quality": "high"},
+            },
+            "clips": [],
+        }
+
+        timeline.validate_timeline(config, strict=False)
+
+    def test_validate_timeline_rejects_missing_theme_after_shared_shape_check(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Timeline.theme must be a non-empty slug"):
+            timeline.validate_timeline({"clips": []}, strict=False)
 
     def test_effect_params_accept_animation_reference_arrays(self) -> None:
         config = {

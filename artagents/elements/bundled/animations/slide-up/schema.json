@@ -1,0 +1,6 @@
+{
+  "type": "object",
+  "properties": {
+    "durationFrames": {"type": "number", "minimum": 1}
+  }
+}

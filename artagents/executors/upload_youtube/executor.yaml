@@ -1,0 +1,68 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "description": "Upload a finished video to YouTube via the shared banodoco-social Zapier integration.",
+  "id": "upload.youtube",
+  "inputs": [
+    {
+      "description": "Reachable http(s) URL for the finished video.",
+      "name": "video_url",
+      "type": "string"
+    },
+    {
+      "description": "YouTube video title.",
+      "name": "title",
+      "type": "string"
+    },
+    {
+      "description": "YouTube video description.",
+      "name": "description",
+      "type": "string"
+    },
+    {
+      "description": "YouTube tag. May be repeated.",
+      "name": "tag",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Comma-separated YouTube tags.",
+      "name": "tags",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "private, unlisted, or public.",
+      "name": "privacy_status",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Optional YouTube playlist ID.",
+      "name": "playlist_id",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Mark the video as made for kids.",
+      "name": "made_for_kids",
+      "required": false,
+      "type": "boolean"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess"
+  },
+  "kind": "built_in",
+  "metadata": {
+    "backend": "banodoco-social",
+    "command": "pipeline.py upload-youtube",
+    "requires_reachable_video_url": true,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.executors.upload_youtube.run"
+  },
+  "name": "Upload to YouTube",
+  "version": "1.0"
+}

@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents import arrange
-from artagents import editor_review
-from artagents import human_notes
+from artagents.executors.arrange import run as arrange
+from artagents.executors.editor_review import run as editor_review
+from artagents.executors.human_notes import run as human_notes
 from artagents import timeline
 
 

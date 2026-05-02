@@ -1,0 +1,11 @@
+{
+  "id": "slide-left",
+  "name": "Slide Left",
+  "kind": "wrapper",
+  "phase": "entrance",
+  "defaultDurationFrames": 18,
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

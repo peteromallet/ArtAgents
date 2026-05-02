@@ -1,13 +1,17 @@
 # ArtAgents
 
-![ArtAgents orchestration: conductors route work to player agents](docs/assets/artagents-orchestration.png)
+![ArtAgents architecture: orchestrators route work to executors and render elements](docs/assets/artagents-orchestration.png)
 
 ArtAgents is a file-based toolkit for producing Reigh-compatible video edits,
 event-talk renders, generative timelines, and image/video assets.
 
-The core idea is simple: **conductors orchestrate**, **players execute**.
-You ask an agent for an outcome, and ArtAgents routes the work through the
-right existing nodes or newly built nodes.
+The public model has three canonical concepts:
+
+- **Orchestrators** coordinate workflows.
+- **Executors** run concrete work.
+- **Elements** are render/custom building blocks such as effects, animations, and transitions.
+
+Use canonical commands for new work.
 
 ## Agent Prompt
 
@@ -17,19 +21,34 @@ Copy this into a coding agent:
 Use the ArtAgents repo:
 https://github.com/banodoco/ArtAgents
 
-First read README.md and SKILL.md, then run:
+First read AGENTS.md, README.md, and SKILL.md, then run:
 git status --short
+python3 pipeline.py doctor
 
-Keep generated files under runs/.
-Do not commit secrets or media.
+Use canonical terms and commands: orchestrators, executors, and elements.
 
-Run:
-python3 pipeline.py --brief brief.txt --out runs/example --render
-
-While working, call out friction points, suggest fixes, and recommend PRs to
-the original upstream repos when the durable fix belongs there rather than as
-a local workaround.
+Keep generated files under runs/ unless the task explicitly touches generated
+Remotion registries. Do not commit secrets or media. Before editing, check for
+dirty user files and do not overwrite unrelated changes.
 ```
+
+## First Commands
+
+Run these from the repository root before making changes:
+
+```bash
+git status --short
+python3 pipeline.py doctor
+python3 pipeline.py orchestrators list
+python3 pipeline.py executors list
+python3 pipeline.py elements list
+python3 pipeline.py setup
+```
+
+`setup` is dry-run by default. It reports the managed default element sync and
+local dependency-install plan without mutating the workspace. Use
+`python3 pipeline.py setup --apply` only when you intend to materialize defaults
+and run local element install helpers.
 
 ## Quick Start
 
@@ -50,6 +69,52 @@ python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir run
 Generated outputs belong under `runs/`. That directory is ignored by git and can
 contain frames, JSON files, audits, and rendered videos from local experiments.
 
+## Discovery
+
+```bash
+python3 pipeline.py orchestrators list
+python3 pipeline.py orchestrators inspect builtin.hype --json
+python3 pipeline.py executors list
+python3 pipeline.py executors inspect builtin.render --json
+python3 pipeline.py elements list
+python3 pipeline.py elements inspect effects text-card --json
+```
+
+Use these JSON commands as the runtime index for agents. The registry output
+includes each folder-backed orchestrator or executor root and its `skill_file`,
+so agents should load only the entrypoint repo skill plus the specific
+folder-level `SKILL.md` needed for the task. Do not merge every executor and
+orchestrator skill into one large runtime prompt.
+
+Runnable implementations have exactly one public folder format:
+`artagents/orchestrators/<slug>/{orchestrator.yaml,SKILL.md,run.py}` for
+orchestrators and `artagents/executors/<slug>/{executor.yaml,SKILL.md,run.py}`
+for executors, with optional local `src/` modules. Top-level `artagents/*.py`
+files are shared libraries or system commands, not alternate runnable
+implementations.
+
+Default orchestrators include `builtin.hype`, `builtin.event_talks`,
+`builtin.thumbnail_maker`, and `builtin.understand`. Default executors include the built-in pipeline
+stages such as `builtin.transcribe`, `builtin.cut`, `builtin.render`, and
+`builtin.validate`, plus external executors such as `external.moirae` and
+`external.vibecomfy.run`. VibeComfy is an executor only,
+not an orchestrator.
+
+Default elements are bundled in this repository and can be synced into
+`.artagents/elements/managed`. User-editable forks and overrides live under
+`.artagents/elements/overrides`:
+
+```bash
+python3 pipeline.py elements sync --dry-run
+python3 pipeline.py elements fork effects text-card
+python3 pipeline.py elements install effects text-card
+python3 pipeline.py elements update --dry-run
+```
+
+Element source priority is active theme, then `.artagents/elements/overrides`,
+then `.artagents/elements/managed`, then bundled defaults in
+`artagents/elements/bundled`.
+
 ## Main Commands
 
 ```bash
@@ -59,10 +124,6 @@ python3 pipeline.py --video source.mp4 --brief brief.txt --out runs/example --fr
 # Audit a run
 python3 pipeline.py audit --run runs/example
 python3 pipeline.py audit --run runs/example --json
-
-# Inspect available conductors and performers
-python3 pipeline.py conductors list
-python3 pipeline.py performers list
 
 # Fetch canonical Reigh data through the app Edge Function
 python3 pipeline.py reigh-data --project-id <PROJECT_UUID> --shot-id <SHOT_UUID> --out runs/reigh/shot.json
@@ -77,19 +138,25 @@ python3 bin/render_remotion.py \
 ## Repo Map
 
 ```text
-artagents/             Python implementation
-artagents/conductors/  Workflow orchestration
-artagents/performers/  Executable player actions
-bin/                   Direct stage launchers
-remotion/              Remotion renderer project
-scripts/               Development and code-generation scripts
-examples/              Small schema fixtures
-_reference/            Copied Reigh contract references
-runs/                  Ignored local outputs
+artagents/                 Python implementation
+artagents/orchestrators/   Canonical orchestrator folders, registry, runner, and CLI
+artagents/executors/       Canonical executor folders, registry, runner, and CLI
+artagents/elements/        Element schema, registry, CLI, and bundled defaults
+.artagents/elements/       Local managed defaults and user overrides
+bin/                       Direct launchers backed by canonical executor and orchestrator folders
+remotion/                  Remotion renderer project
+scripts/                   Development and code-generation scripts
+examples/                  Small schema fixtures
+_reference/                Copied Reigh contract references
+runs/                      Ignored local outputs
 ```
 
 `pipeline.py` is the primary entry point. `bin/*.py` launchers call the matching
-modules under `artagents/` when you need a single stage directly.
+canonical executor or orchestrator modules when you need a single stage directly.
+`python3 pipeline.py doctor` also validates the canonical repo structure: public
+executor folders must contain `executor.yaml`, `run.py`, and `SKILL.md`; public
+orchestrator folders must contain `orchestrator.yaml`, `run.py`, and `SKILL.md`;
+legacy public packages such as conductor/performer folders are rejected.
 
 ## Outputs
 
@@ -113,6 +180,22 @@ runs/example/
       validation.json
 ```
 
+## Generated Files
+
+Normal generated media, frames, intermediate JSON, and local reports belong
+under `runs/` or another ignored output directory. Do not commit secrets, large
+source media, rendered videos, or local dependency environments.
+
+Generated Remotion registry files are source artifacts when element code
+changes. Keep generated siblings synchronized across `.ts`, `.js`, `.d.ts`, and
+`.map` outputs in `remotion/src`, and scan for stale element aliases after
+regeneration:
+
+```bash
+python3 scripts/gen_effect_registry.py
+rg "@workspace-|workspace-effects|workspace-animations|workspace-transitions" remotion/src scripts remotion -n
+```
+
 ## Development
 
 ```bash
@@ -125,11 +208,17 @@ npm run smoke
 npm run gen-types
 ```
 
-Run `npm run gen-types` after effect, animation, or theme primitive changes.
+Run `npm run gen-types` after effect, animation, transition, or theme element
+changes. Local secrets belong in `.env`, `.env.*`, or `this.env`; these are
+ignored by git.
 
-Local secrets belong in `.env`, `.env.*`, or `this.env`; these are ignored by
-git. Large source media and generated artifacts should stay under `runs/` or
-another ignored output directory.
+## Dirty-File Caution
+
+Always inspect `git status --short` before editing. This repository often has
+active generated artifacts and local skill edits. In particular, do not overwrite
+unrelated changes in curated executor skill files such as
+`artagents/executors/moirae/SKILL.md` or
+`artagents/executors/vibecomfy/SKILL.md`.
 
 ## License
 

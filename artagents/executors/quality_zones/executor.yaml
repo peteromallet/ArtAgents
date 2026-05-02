@@ -1,0 +1,62 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": false,
+    "sentinels": [
+      "quality_zones.json"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "video",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "ArtAgents pipeline step: quality_zones.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes"
+    ],
+    "provides": [
+      "quality_zones"
+    ]
+  },
+  "id": "builtin.quality_zones",
+  "inputs": [
+    {
+      "description": "Source video to analyze for quality zones.",
+      "name": "video",
+      "required": true,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "artagents.pipeline.build_pool_steps",
+    "pipeline_step": "quality_zones",
+    "pipeline_step_order": 2,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.executors.quality_zones.run"
+  },
+  "name": "Quality Zones",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "quality_zones",
+      "path_template": "{out}/quality_zones.json",
+      "type": "file"
+    }
+  ],
+  "version": "1.0"
+}

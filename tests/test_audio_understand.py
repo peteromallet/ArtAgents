@@ -5,7 +5,7 @@ import math
 import wave
 from pathlib import Path
 
-from artagents.audio_understand import main
+from artagents.executors.audio_understand.run import main
 
 
 def _write_tone(path: Path, *, freq: float = 440.0, duration: float = 0.35, sample_rate: int = 16000) -> None:

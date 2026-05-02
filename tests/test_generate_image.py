@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from artagents.generate_image import load_api_key, main
+from artagents.executors.generate_image.run import load_api_key, main
 from artagents.llm_clients import _load_api_key
 
 

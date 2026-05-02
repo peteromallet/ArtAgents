@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 
-from artagents import arrange
+from artagents.executors.arrange import run as arrange
 from artagents import timeline
 
 

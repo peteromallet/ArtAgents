@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents import cut
+from artagents.executors.cut import run as cut
 
 
 ROOT = Path(__file__).resolve().parents[1]

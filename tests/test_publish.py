@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from artagents import publish  # noqa: E402  (path tweak above is intentional)
+from artagents.executors.publish import run as publish  # noqa: E402  (path tweak above is intentional)
 
 
 def _make_jwt(payload: dict) -> str:

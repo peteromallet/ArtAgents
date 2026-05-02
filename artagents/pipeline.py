@@ -20,9 +20,8 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     yaml = None
 
-from . import editor_review
-from . import asset_cache
 from .audit import AuditContext, PARENT_IDS_ENV
+from .executors.asset_cache import run as asset_cache
 from . import timeline
 from ._paths import REPO_ROOT, WORKSPACE_ROOT, cli_script_path
 
@@ -937,10 +936,14 @@ def write_skip_log(step: Step, args: argparse.Namespace, message: str) -> None:
 
 
 def _notes_overlap_ratio(prev: list[dict[str, Any]], curr: list[dict[str, Any]]) -> float:
+    from .executors.editor_review import run as editor_review
+
     return editor_review.notes_overlap_ratio(prev, curr)
 
 
 def _plan_action(review: dict[str, Any]) -> str:
+    from .executors.editor_review import run as editor_review
+
     return editor_review.plan_next_action(review)
 
 
@@ -1213,31 +1216,43 @@ def main(argv: list[str] | None = None) -> int:
     # timelines into a Reigh project (Sprint 6, Phase 6). Every other token
     # (legacy positional flags) flows to the cache-aware orchestrator below.
     if raw and raw[0] == "publish":
-        import publish
+        from .executors.publish import run as publish
 
         return publish.main(raw[1:])
     if raw and raw[0] == "publish-youtube":
-        import publish_youtube
+        from .executors.upload_youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "upload-youtube":
-        import publish_youtube
+        from .executors.upload_youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
-    if raw and raw[0] == "performers":
-        from .performers import cli as performers_cli
+    if raw and raw[0] == "executors":
+        from .executors import cli as executors_cli
 
-        return performers_cli.main(raw[1:])
-    if raw and raw[0] == "conductors":
-        from .conductors import cli as conductors_cli
+        return executors_cli.main(raw[1:])
+    if raw and raw[0] == "orchestrators":
+        from .orchestrators import cli as orchestrators_cli
 
-        return conductors_cli.main(raw[1:])
+        return orchestrators_cli.main(raw[1:])
+    if raw and raw[0] == "elements":
+        from .elements import cli as elements_cli
+
+        return elements_cli.main(raw[1:])
+    if raw and raw[0] == "doctor":
+        from . import doctor
+
+        return doctor.main(raw[1:])
+    if raw and raw[0] == "setup":
+        from . import setup_cli
+
+        return setup_cli.main(raw[1:])
     if raw and raw[0] == "audit":
         from . import audit
 
         return audit.main(raw[1:])
     if raw and raw[0] == "reigh-data":
-        from . import reigh_data
+        from .executors.reigh_data import run as reigh_data
 
         return reigh_data.main(raw[1:])
     args = resolve_args(argv)

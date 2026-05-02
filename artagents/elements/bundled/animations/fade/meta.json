@@ -1,0 +1,11 @@
+{
+  "id": "fade",
+  "name": "Fade",
+  "kind": "wrapper",
+  "phase": ["entrance", "exit"],
+  "defaultDurationFrames": 12,
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

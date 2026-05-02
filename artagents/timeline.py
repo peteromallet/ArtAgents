@@ -85,6 +85,7 @@ except ImportError:
     class SharedTimelineConfig(TypedDict, total=False):
         theme: str
         theme_overrides: SharedThemeOverrides
+        generation_defaults: dict[str, Any]
         clips: list[SharedTimelineClip]
         tracks: list[dict[str, Any]]
         pinnedShotGroups: list[dict[str, Any]]
@@ -341,7 +342,7 @@ class PipelineMetadata(TypedDict):
 # `from` is a Python keyword, so TimelineClip stores it as `from_` in memory and
 # swaps to/from `"from"` at the JSON boundary. Every other field is 1:1 with TS.
 _FROM_ALIAS = ("from_", "from")
-_TIMELINE_TOP_ALLOWED = frozenset({"theme", "theme_overrides", "clips", "tracks", "pinnedShotGroups", "output"})
+_TIMELINE_TOP_ALLOWED = frozenset({"theme", "theme_overrides", "generation_defaults", "clips", "tracks", "pinnedShotGroups", "output"})
 _THEME_OVERRIDES_ALLOWED = frozenset({"visual", "generation", "voice", "audio", "pacing"})
 _CLIP_ALLOWED = frozenset(
     {
@@ -442,30 +443,30 @@ def _normalize_clip_for_validation(clip: dict[str, Any]) -> dict[str, Any]:
 
 def _effect_ids(theme: str | None = None) -> set[str]:
     try:
-        import effects_catalog
+        from . import effects_catalog
     except ImportError:
-        return set()
+        import effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_effect_ids(theme=theme))
 
 def _animation_ids() -> set[str]:
     try:
-        import effects_catalog
+        from . import effects_catalog
     except ImportError:
-        return set()
+        import effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_animation_ids())
 
 def _transition_ids() -> set[str]:
     try:
-        import effects_catalog
+        from . import effects_catalog
     except ImportError:
-        return set()
+        import effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_transition_ids())
 
 def _animation_meta(animation_id: str) -> dict[str, Any]:
     try:
-        import effects_catalog
+        from . import effects_catalog
     except ImportError:
-        return {}
+        import effects_catalog  # type: ignore[no-redef]
     try:
         return effects_catalog.read_animation_meta(animation_id)
     except Exception:
@@ -539,10 +540,14 @@ def _validate_effect_params(effect_id: str, params: Any, path: str, theme: str |
         if phase in params:
             _validate_animation_reference_list(params[phase], phase, f"{path}.{phase}", known_animation_ids)
     try:
-        import effects_catalog
+        from . import effects_catalog
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
-        return
+        try:
+            import effects_catalog  # type: ignore[no-redef]
+            import jsonschema  # type: ignore[import-not-found,no-redef]
+        except ImportError:
+            return
     schema = effects_catalog.read_effect_schema(effect_id, theme=theme)
     jsonschema.validate(_schema_params_for_animation_refs(schema, params), schema)
 

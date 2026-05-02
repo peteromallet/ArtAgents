@@ -115,6 +115,9 @@ def generate() -> str:
         if index:
             blocks.append("")
         blocks.append(_render_interface(name, typed_dict))
+        if name == "TimelineClip":
+            blocks.append("")
+            blocks.append("export type Clip = TimelineClip;")
     blocks.append("")
     blocks.extend(_render_allowed_arrays())
     blocks.append("")

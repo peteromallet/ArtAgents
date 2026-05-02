@@ -65,7 +65,7 @@ const EXPECTED_ALLOWED = {
     'y',
   ],
   _THEME_OVERRIDES_ALLOWED: ['audio', 'generation', 'pacing', 'visual', 'voice'],
-  _TIMELINE_TOP_ALLOWED: ['clips', 'output', 'pinnedShotGroups', 'theme', 'theme_overrides', 'tracks'],
+  _TIMELINE_TOP_ALLOWED: ['clips', 'generation_defaults', 'output', 'pinnedShotGroups', 'theme', 'theme_overrides', 'tracks'],
   _TRACK_ALLOWED: ['blendMode', 'fit', 'id', 'kind', 'label', 'muted', 'opacity', 'scale', 'volume'],
 };
 

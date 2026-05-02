@@ -6,9 +6,9 @@ from argparse import Namespace
 from pathlib import Path
 from unittest import mock
 
-from artagents import cut
+from artagents.executors.cut import run as cut
 from artagents import timeline
-from artagents import validate
+from artagents.executors.validate import run as validate
 from artagents.arrangement_rules import ROLE_DURATION_BOUNDS
 
 

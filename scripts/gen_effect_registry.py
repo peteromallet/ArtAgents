@@ -13,6 +13,12 @@ from pathlib import Path
 from typing import Any, Literal
 
 TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+from artagents.elements.registry import ElementRegistry, load_default_registry
+from artagents.elements.schema import ElementDefinition
+
 WORKSPACE_ROOT = TOOLS_DIR.parent
 THEMES_ROOT = WORKSPACE_ROOT / "themes"
 REMOTION_SRC = TOOLS_DIR / "remotion" / "src"
@@ -22,7 +28,12 @@ REMOTION_SRC = TOOLS_DIR / "remotion" / "src"
 # single owner of its own runtime tables. The in-tree shell at
 # tools/remotion/ keeps a re-export shim (effects.generated.ts) for
 # back-compat with tests that imported from the old location.
-PACKAGE_SRC = WORKSPACE_ROOT / "packages" / "timeline-composition" / "typescript" / "src"
+PACKAGE_SRC = Path(
+    os.environ.get(
+        "ARTAGENTS_TIMELINE_COMPOSITION_SRC",
+        str(WORKSPACE_ROOT / "packages" / "timeline-composition" / "typescript" / "src"),
+    )
+)
 OUTPUT = PACKAGE_SRC / "effects.generated.ts"
 OUTPUTS = {
     "effects": PACKAGE_SRC / "effects.generated.ts",
@@ -36,21 +47,23 @@ SHIM_OUTPUTS = {
     "animations": REMOTION_SRC / "animations.generated.ts",
     "transitions": REMOTION_SRC / "transitions.generated.ts",
 }
+SHIM_EXTENSIONS = (".ts", ".js", ".d.ts", ".js.map", ".d.ts.map")
 ACTIVE_THEME_LINK = TOOLS_DIR / "remotion" / "_active_theme"
 ACTIVE_THEME_POINTER = TOOLS_DIR / "remotion" / "_active_theme.txt"
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
-PrimitiveKind = Literal["effects", "animations", "transitions"]
+ElementKind = Literal["effects", "animations", "transitions"]
 REQUIRED_PLUGIN_FILES = ("component.tsx", "schema.json", "defaults.json", "meta.json")
 
 
 @dataclass(frozen=True)
 class PluginRecord:
     plugin_id: str
-    kind: PrimitiveKind
+    kind: ElementKind
     scope: str
     root: Path
     meta: dict[str, Any]
+    import_scope: str | None = None
 
 
 EffectRecord = PluginRecord
@@ -77,30 +90,30 @@ def _theme_id(theme_dir: Path | None) -> str | None:
 
 def _validate_kind(kind: str) -> None:
     if kind not in {"effects", "animations", "transitions"}:
-        raise ValueError(f"Invalid primitive kind {kind!r}")
+        raise ValueError(f"Invalid element kind {kind!r}")
 
 
-def _singular(kind: PrimitiveKind) -> str:
+def _singular(kind: ElementKind) -> str:
     return kind[:-1]
 
 
-def _constant_prefix(kind: PrimitiveKind) -> str:
+def _constant_prefix(kind: ElementKind) -> str:
     return _singular(kind).upper()
 
 
-def _type_name(kind: PrimitiveKind) -> str:
+def _type_name(kind: ElementKind) -> str:
     return f"{_singular(kind).capitalize()}Id"
 
 
-def _registry_name(kind: PrimitiveKind) -> str:
+def _registry_name(kind: ElementKind) -> str:
     return f"{_constant_prefix(kind)}_REGISTRY"
 
 
-def _ids_name(kind: PrimitiveKind) -> str:
+def _ids_name(kind: ElementKind) -> str:
     return f"{_constant_prefix(kind)}_IDS"
 
 
-def _workspace_root(kind: PrimitiveKind) -> Path:
+def _workspace_root(kind: ElementKind) -> Path:
     _validate_kind(kind)
     return WORKSPACE_ROOT / kind
 
@@ -120,7 +133,7 @@ def _load_plugin(
     root: Path,
     plugin_id: str,
     *,
-    kind: PrimitiveKind,
+    kind: ElementKind,
     scope: str,
 ) -> PluginRecord | None:
     missing = _missing_required_files(root)
@@ -135,7 +148,7 @@ def _load_plugin(
     return PluginRecord(plugin_id=plugin_id, kind=kind, scope=scope, root=root, meta=meta)
 
 
-def _scan_plugins(root: Path, *, kind: PrimitiveKind, scope: str) -> dict[str, PluginRecord]:
+def _scan_plugins(root: Path, *, kind: ElementKind, scope: str) -> dict[str, PluginRecord]:
     if not root.is_dir():
         return {}
     plugins: dict[str, PluginRecord] = {}
@@ -152,21 +165,19 @@ def _scan_plugins(root: Path, *, kind: PrimitiveKind, scope: str) -> dict[str, P
     return plugins
 
 
-def discover_plugins(kind: PrimitiveKind, theme_dir: Path | None = None) -> dict[str, PluginRecord]:
+def discover_plugins(kind: ElementKind, theme_dir: Path | None = None) -> dict[str, PluginRecord]:
     _validate_kind(kind)
-    plugins = _scan_plugins(_workspace_root(kind), kind=kind, scope="workspace")
-    if theme_dir is None:
-        return plugins
-    theme_plugins = _scan_plugins(theme_dir / kind, kind=kind, scope="theme")
-    theme_name = _theme_id(theme_dir) or "unknown"
+    registry = _element_registry(theme_dir)
+    plugins: dict[str, PluginRecord] = {}
     singular = _singular(kind)
-    for plugin_id, plugin in theme_plugins.items():
-        if plugin_id in plugins:
+    for conflict in registry.conflicts():
+        if conflict.kind == kind and conflict.winner.source == "active_theme":
             print(
-                f"WARN theme '{theme_name}' overrides workspace {singular} '{plugin_id}'",
+                f"WARN theme '{_theme_id(theme_dir) or _theme_id_from_element(conflict.winner) or 'unknown'}' overrides workspace {singular} '{conflict.id}'",
                 file=sys.stderr,
             )
-        plugins[plugin_id] = plugin
+    for element in registry.list(kind=kind):
+        plugins[element.id] = _plugin_from_element(element, theme_dir=theme_dir)
     return plugins
 
 
@@ -183,9 +194,47 @@ def discover_transitions(theme_dir: Path | None = None) -> dict[str, PluginRecor
 
 
 def _import_path(plugin: PluginRecord) -> str:
-    if plugin.scope == "theme":
-        return f"@theme-{plugin.kind}/{plugin.plugin_id}/component"
-    return f"@workspace-{plugin.kind}/{plugin.plugin_id}/component"
+    scope = plugin.import_scope or plugin.scope
+    return f"@{scope}-{plugin.kind}/{plugin.plugin_id}/component"
+
+
+def _element_registry(theme_dir: Path | None) -> ElementRegistry:
+    return load_default_registry(active_theme=theme_dir, project_root=TOOLS_DIR)
+
+
+def _plugin_from_element(element: ElementDefinition, *, theme_dir: Path | None) -> PluginRecord:
+    return PluginRecord(
+        plugin_id=element.id,
+        kind=element.kind,
+        scope=element.source,
+        root=element.root,
+        meta=element.metadata,
+        import_scope=_import_scope_for_element(element, theme_dir=theme_dir),
+    )
+
+
+def _import_scope_for_element(element: ElementDefinition, *, theme_dir: Path | None) -> str:
+    if element.source == "active_theme":
+        if theme_dir is not None:
+            theme_elements = theme_dir / "elements" / element.kind / element.id
+            if element.root == theme_elements.resolve():
+                return "theme-elements"
+        return "theme"
+    if element.source == "overrides":
+        return "override-elements"
+    if element.source == "managed":
+        return "managed-elements"
+    if element.source == "bundled":
+        return "bundled-elements"
+    return "managed-elements"
+
+
+def _theme_id_from_element(element: ElementDefinition) -> str | None:
+    if element.source != "active_theme":
+        return None
+    if element.root.parent.parent.name == "elements":
+        return element.root.parent.parent.parent.name
+    return element.root.parent.parent.name
 
 
 def _clip_type_aliases(effects: dict[str, EffectRecord]) -> dict[str, str]:
@@ -234,11 +283,55 @@ def _write_active_theme_pointer(theme_dir: Path | None) -> None:
     ACTIVE_THEME_LINK.symlink_to(theme_dir.resolve(), target_is_directory=True)
 
 
+def _shim_module_text(kind: ElementKind, *, extension: str) -> str:
+    package_module = f"@banodoco/timeline-composition/typescript/src/{kind}.generated"
+    if extension in {".ts", ".js"}:
+        return (
+            "// DO NOT EDIT - generated shim by tools/scripts/gen_effect_registry.py\n"
+            "// Re-exports the package-owned registry.\n"
+            f"export * from '{package_module}';\n"
+        )
+    if extension == ".d.ts":
+        return (
+            "// DO NOT EDIT - generated shim by tools/scripts/gen_effect_registry.py\n"
+            f"export * from '{package_module}';\n"
+            f"//# sourceMappingURL={kind}.generated.d.ts.map\n"
+        )
+    raise ValueError(f"unsupported shim extension: {extension}")
+
+
+def _empty_source_map(path: Path) -> str:
+    return json.dumps(
+        {"version": 3, "file": path.name, "sources": [], "names": [], "mappings": ""},
+        sort_keys=True,
+    ) + "\n"
+
+
+def _write_shim_family(kind: ElementKind, shim_ts: Path) -> None:
+    shim_ts.parent.mkdir(parents=True, exist_ok=True)
+    base = shim_ts.with_suffix("")
+    for extension in SHIM_EXTENSIONS:
+        path = Path(f"{base}{extension}")
+        if extension.endswith(".map"):
+            path.write_text(_empty_source_map(path), encoding="utf-8")
+        else:
+            path.write_text(_shim_module_text(kind, extension=extension), encoding="utf-8")
+
+
+def _write_generated_registry(path: Path, content: str) -> bool:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_text(content, encoding="utf-8")
+    except PermissionError:
+        return False
+    return True
+
+
 def generate(*, theme_dir: Path | None = None) -> str:
-    return generate_primitive_registry("effects", theme_dir=theme_dir)
+    return generate_element_registry("effects", theme_dir=theme_dir)
 
 
-def generate_primitive_registry(kind: PrimitiveKind, *, theme_dir: Path | None = None) -> str:
+def generate_element_registry(kind: ElementKind, *, theme_dir: Path | None = None) -> str:
     _validate_kind(kind)
     if kind == "effects":
         return _generate_effect_registry(theme_dir=theme_dir)
@@ -341,21 +434,22 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     theme_dir = _resolve_theme_dir(args.theme)
     _write_active_theme_pointer(theme_dir)
+    failed_outputs: list[Path] = []
     for kind, output in OUTPUTS.items():
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(generate_primitive_registry(kind, theme_dir=theme_dir), encoding="utf-8")
-    # Sprint 5: in-tree shim re-exports for back-compat. Anything that
-    # still imports from `tools/remotion/src/{effects,animations,
-    # transitions}.generated` resolves through the package.
+        content = generate_element_registry(kind, theme_dir=theme_dir)
+        if not _write_generated_registry(output, content):
+            failed_outputs.append(output)
     for kind, shim in SHIM_OUTPUTS.items():
-        shim.parent.mkdir(parents=True, exist_ok=True)
-        shim.write_text(
-            "// DO NOT EDIT - generated shim by tools/scripts/gen_effect_registry.py\n"
-            "// Re-exports the package's registry from\n"
-            "// `@banodoco/timeline-composition/typescript/src/<kind>.generated`.\n"
-            f"export * from '@banodoco/timeline-composition/typescript/src/{kind}.generated';\n",
-            encoding="utf-8",
+        _write_shim_family(kind, shim)
+    if failed_outputs:
+        formatted = "\n".join(f"  - {path}" for path in failed_outputs)
+        print(
+            "ERROR failed to write package-owned generated registries:\n"
+            f"{formatted}\n"
+            "Remotion shim files were refreshed, but package outputs must be writable.",
+            file=sys.stderr,
         )
+        return 1
     return 0
 
 

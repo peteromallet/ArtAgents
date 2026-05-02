@@ -1,0 +1,61 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": false,
+    "sentinels": [
+      "scenes.json"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "video",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Detect source-video scene boundaries.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe"
+    ],
+    "provides": [
+      "scenes"
+    ]
+  },
+  "id": "builtin.scenes",
+  "inputs": [
+    {
+      "description": "Source video to segment into scenes.",
+      "name": "video",
+      "required": true,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "artagents.pipeline.build_pool_steps",
+    "pipeline_step": "scenes",
+    "pipeline_step_order": 1,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.executors.scenes.run"
+  },
+  "name": "Scenes",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "scenes",
+      "path_template": "{out}/scenes.json",
+      "type": "file"
+    }
+  ],
+  "version": "1.0"
+}

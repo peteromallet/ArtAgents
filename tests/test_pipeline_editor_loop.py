@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from artagents import editor_review
+from artagents.executors.editor_review import run as editor_review
 from artagents import pipeline
 from artagents import timeline
 

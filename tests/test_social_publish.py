@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-from types import SimpleNamespace
+import sys
 
 import pytest
 
@@ -11,6 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from artagents import pipeline, social_publish  # noqa: E402
+from artagents.executors.upload_youtube import run as publish_youtube  # noqa: E402
 
 
 def test_publish_youtube_video_forwards_metadata(monkeypatch):
@@ -71,11 +71,7 @@ def test_pipeline_publish_youtube_dispatch_reaches_wrapper(monkeypatch):
         captured["argv"] = argv
         return 17
 
-    monkeypatch.setitem(
-        sys.modules,
-        "publish_youtube",
-        SimpleNamespace(main=fake_main),
-    )
+    monkeypatch.setattr(publish_youtube, "main", fake_main)
 
     result = pipeline.main(
         [

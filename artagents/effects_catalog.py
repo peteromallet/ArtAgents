@@ -1,63 +1,56 @@
 #!/usr/bin/env python3
-"""Read workspace-level and active-theme Remotion primitive folders."""
+"""Element catalog facade over the ArtAgents elements registry."""
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
 from typing import Any, Literal
 
 from ._paths import REPO_ROOT, WORKSPACE_ROOT
+from .elements.registry import ElementRegistry, ElementSource, load_default_registry, load_source_elements
+from .elements.schema import ELEMENT_KINDS, REQUIRED_ELEMENT_FILES
 
 TOOLS_DIR = REPO_ROOT
 THEMES_ROOT = WORKSPACE_ROOT / "themes"
 
+ElementKind = Literal["effects", "animations", "transitions"]
+
 
 def _initial_active_theme() -> Path | None:
-    """Pick up an active theme from the HYPE_ACTIVE_THEME env var on import.
-
-    Each pipeline script (pool_merge, arrange, cut, validate, render_remotion)
-    runs in its own subprocess and re-imports this module; the env var lets
-    pipeline.py thread the active theme through without each script having to
-    call set_active_theme() from its own --theme arg.
-    """
     raw = os.environ.get("HYPE_ACTIVE_THEME")
     if not raw:
         return None
     return _resolve_theme_dir(raw)
 
 
-_ACTIVE_THEME_DIR: Path | None = None  # initialized after _resolve_theme_dir is defined
-
-PrimitiveKind = Literal["effects", "animations", "transitions"]
-REQUIRED_PLUGIN_FILES = ("component.tsx", "schema.json", "defaults.json", "meta.json")
+_ACTIVE_THEME_DIR: Path | None = None
 
 
 def effects_root() -> Path:
-    return primitive_root("effects")
+    return element_root("effects")
 
 
 def animations_root() -> Path:
-    return primitive_root("animations")
+    return element_root("animations")
 
 
 def transitions_root() -> Path:
-    return primitive_root("transitions")
+    return element_root("transitions")
 
 
-def primitive_root(kind: PrimitiveKind) -> Path:
+def element_root(kind: ElementKind) -> Path:
     _validate_kind(kind)
     return WORKSPACE_ROOT / kind
 
 
 def _validate_kind(kind: str) -> None:
-    if kind not in {"effects", "animations", "transitions"}:
-        raise ValueError(f"Invalid primitive kind {kind!r}")
+    if kind not in ELEMENT_KINDS:
+        raise ValueError(f"Invalid element kind {kind!r}")
 
 
-def _singular(kind: PrimitiveKind) -> str:
+def _singular(kind: ElementKind) -> str:
     return kind[:-1]
 
 
@@ -84,146 +77,120 @@ def _active_theme_dir(theme: str | Path | None = None) -> Path | None:
     return _resolve_theme_dir(theme) if theme is not None else _ACTIVE_THEME_DIR
 
 
-def _is_valid_plugin_dir(root: Path) -> bool:
-    return all((root / filename).is_file() for filename in REQUIRED_PLUGIN_FILES)
+def _registry(theme: str | Path | None = None) -> ElementRegistry:
+    theme_dir = _active_theme_dir(theme)
+    registry = load_default_registry(active_theme=theme_dir, project_root=TOOLS_DIR)
+    legacy_root = WORKSPACE_ROOT
+    if legacy_root.exists():
+        legacy_source = ElementSource("legacy_workspace", legacy_root, 15, True)
+        for element in load_source_elements(legacy_source):
+            registry.register(element)
+    return registry
 
 
-def _scan_primitive_ids(root: Path) -> list[str]:
-    if not root.is_dir():
-        return []
-    ids: list[str] = []
-    for child in sorted(root.iterdir(), key=lambda path: path.name):
-        if not child.is_dir():
+def _warn_conflicts(registry: ElementRegistry, *, kind: ElementKind) -> None:
+    singular = _singular(kind)
+    for conflict in registry.conflicts():
+        if conflict.kind != kind:
             continue
-        if _is_valid_plugin_dir(child):
-            ids.append(child.name)
-    return ids
+        if conflict.winner.source == "active_theme":
+            for shadowed in conflict.shadowed:
+                if shadowed.source in {"legacy_workspace", "overrides", "managed", "bundled"}:
+                    print(
+                        f"WARN theme '{_theme_name_for_element(conflict.winner)}' overrides workspace {singular} '{conflict.id}'",
+                        file=sys.stderr,
+                    )
+                    break
 
 
-def _validate_primitive_id(primitive_id: str, *, kind: PrimitiveKind) -> None:
-    if "/" in primitive_id or "\\" in primitive_id or primitive_id in {"", ".", ".."}:
-        raise ValueError(f"Invalid {_singular(kind)} id {primitive_id!r}")
+def _theme_name_for_element(element: Any) -> str:
+    if element.root.parent.parent.name == "elements":
+        return element.root.parent.parent.parent.name
+    return element.root.parent.parent.name
 
 
-def _primitive_dir(
-    primitive_id: str,
-    *,
-    kind: PrimitiveKind,
-    theme: str | Path | None = None,
-) -> Path:
+def list_element_ids(kind: ElementKind, theme: str | Path | None = None) -> list[str]:
     _validate_kind(kind)
-    _validate_primitive_id(primitive_id, kind=kind)
-    theme_dir = _active_theme_dir(theme)
-    if theme_dir is not None:
-        themed = theme_dir / kind / primitive_id
-        if _is_valid_plugin_dir(themed):
-            return themed
-    return primitive_root(kind) / primitive_id
+    registry = _registry(theme)
+    _warn_conflicts(registry, kind=kind)
+    return [element.id for element in registry.list(kind=kind)]
 
 
-def _read_json(
-    primitive_id: str,
-    filename: str,
-    *,
-    kind: PrimitiveKind,
-    theme: str | Path | None = None,
-) -> dict[str, Any]:
-    path = _primitive_dir(primitive_id, kind=kind, theme=theme) / filename
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError(f"{path} must contain a JSON object")
-    return data
-
-
-def list_primitive_ids(kind: PrimitiveKind, theme: str | Path | None = None) -> list[str]:
+def _element(element_id: str, *, kind: ElementKind, theme: str | Path | None = None):
     _validate_kind(kind)
-    primitive_ids = set(_scan_primitive_ids(primitive_root(kind)))
-    theme_dir = _active_theme_dir(theme)
-    if theme_dir is not None:
-        theme_ids = _scan_primitive_ids(theme_dir / kind)
-        singular = _singular(kind)
-        for primitive_id in theme_ids:
-            if primitive_id in primitive_ids:
-                print(
-                    f"WARN theme '{theme_dir.name}' overrides workspace {singular} '{primitive_id}'",
-                    file=sys.stderr,
-                )
-            primitive_ids.add(primitive_id)
-    return sorted(primitive_ids)
+    return _registry(theme).get(kind, element_id)
 
 
-def read_primitive_schema(
-    primitive_id: str,
+def read_element_schema(
+    element_id: str,
     *,
-    kind: PrimitiveKind,
+    kind: ElementKind,
     theme: str | Path | None = None,
 ) -> dict[str, Any]:
-    return _read_json(primitive_id, "schema.json", kind=kind, theme=theme)
+    return dict(_element(element_id, kind=kind, theme=theme).schema)
 
 
-def read_primitive_meta(
-    primitive_id: str,
+def read_element_meta(
+    element_id: str,
     *,
-    kind: PrimitiveKind,
+    kind: ElementKind,
     theme: str | Path | None = None,
 ) -> dict[str, Any]:
-    return _read_json(primitive_id, "meta.json", kind=kind, theme=theme)
+    return dict(_element(element_id, kind=kind, theme=theme).metadata)
 
 
-def read_primitive_defaults(
-    primitive_id: str,
+def read_element_defaults(
+    element_id: str,
     *,
-    kind: PrimitiveKind,
+    kind: ElementKind,
     theme: str | Path | None = None,
 ) -> dict[str, Any]:
-    return _read_json(primitive_id, "defaults.json", kind=kind, theme=theme)
+    return dict(_element(element_id, kind=kind, theme=theme).defaults)
 
 
 def list_effect_ids(theme: str | Path | None = None) -> list[str]:
-    return list_primitive_ids("effects", theme=theme)
+    return list_element_ids("effects", theme=theme)
 
 
 def read_effect_schema(effect_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_schema(effect_id, kind="effects", theme=theme)
+    return read_element_schema(effect_id, kind="effects", theme=theme)
 
 
 def read_effect_meta(effect_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_meta(effect_id, kind="effects", theme=theme)
+    return read_element_meta(effect_id, kind="effects", theme=theme)
 
 
 def read_effect_defaults(effect_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_defaults(effect_id, kind="effects", theme=theme)
+    return read_element_defaults(effect_id, kind="effects", theme=theme)
 
 
 def list_animation_ids(theme: str | Path | None = None) -> list[str]:
-    return list_primitive_ids("animations", theme=theme)
+    return list_element_ids("animations", theme=theme)
 
 
 def read_animation_schema(animation_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_schema(animation_id, kind="animations", theme=theme)
+    return read_element_schema(animation_id, kind="animations", theme=theme)
 
 
 def read_animation_meta(animation_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_meta(animation_id, kind="animations", theme=theme)
+    return read_element_meta(animation_id, kind="animations", theme=theme)
 
 
 def read_animation_defaults(animation_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_defaults(animation_id, kind="animations", theme=theme)
+    return read_element_defaults(animation_id, kind="animations", theme=theme)
 
 
 def list_transition_ids(theme: str | Path | None = None) -> list[str]:
-    return list_primitive_ids("transitions", theme=theme)
+    return list_element_ids("transitions", theme=theme)
 
 
 def read_transition_schema(transition_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_schema(transition_id, kind="transitions", theme=theme)
+    return read_element_schema(transition_id, kind="transitions", theme=theme)
 
 
 def read_transition_meta(transition_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_meta(transition_id, kind="transitions", theme=theme)
+    return read_element_meta(transition_id, kind="transitions", theme=theme)
 
 
 def read_transition_defaults(transition_id: str, theme: str | Path | None = None) -> dict[str, Any]:
-    return read_primitive_defaults(transition_id, kind="transitions", theme=theme)
+    return read_element_defaults(transition_id, kind="transitions", theme=theme)

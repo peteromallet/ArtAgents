@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents import scene_describe
+from artagents.executors.scene_describe import run as scene_describe
 
 
 def has_forbidden_time_keys(value, forbidden) -> bool:

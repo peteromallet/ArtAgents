@@ -1,4 +1,4 @@
-"""Neutral shared schema primitives for ArtAgents executable contracts."""
+"""Neutral shared schema dataclasses for ArtAgents executable contracts."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Shared ArtAgents schema contracts used across performers and conductors."""
+"""Shared ArtAgents schema contracts used across executors and orchestrators."""
 
 from .schema import (
     CACHE_MODES,

@@ -7,10 +7,10 @@ import wave
 from pathlib import Path
 from unittest import mock
 
-from artagents import arrange
-from artagents import cut
+from artagents.executors.arrange import run as arrange
+from artagents.executors.cut import run as cut
 from artagents import pipeline
-from artagents import pool_merge
+from artagents.executors.pool_merge import run as pool_merge
 from artagents import timeline
 
 

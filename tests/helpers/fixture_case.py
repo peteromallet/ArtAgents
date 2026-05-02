@@ -4,7 +4,7 @@ import tempfile
 from argparse import Namespace
 from pathlib import Path
 
-from artagents import cut
+from artagents.executors.cut import run as cut
 from artagents import timeline
 
 

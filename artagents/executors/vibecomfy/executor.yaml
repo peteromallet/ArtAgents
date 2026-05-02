@@ -1,0 +1,162 @@
+{
+  "executors": [
+    {
+      "cache": {
+        "mode": "none"
+      },
+      "command": {
+        "argv": [
+          "{python_exec}",
+          "-m",
+          "artagents.executors.vibecomfy.run",
+          "run",
+          "{workflow}"
+        ]
+      },
+      "conditions": [
+        {
+          "input": "workflow",
+          "kind": "requires_input"
+        }
+      ],
+      "description": "Run a VibeComfy workflow through the VibeComfy CLI.",
+      "graph": {
+        "consumes": [
+          "workflow"
+        ],
+        "provides": [
+          "vibecomfy_run"
+        ]
+      },
+      "id": "external.vibecomfy.run",
+      "inputs": [
+        {
+          "description": "VibeComfy workflow JSON file.",
+          "name": "workflow",
+          "required": true,
+          "type": "file"
+        }
+      ],
+      "isolation": {
+        "mode": "subprocess",
+        "network": true,
+        "requirements": [
+          "vibecomfy"
+        ]
+      },
+      "kind": "external",
+      "metadata": {
+        "catalog_source": "none_declared",
+        "cli_module": "vibecomfy.cli",
+        "command_names": [
+          "run",
+          "validate"
+        ],
+        "homepage": "https://github.com/peteromallet/VibeComfy",
+        "network_behavior": {
+          "run": true,
+          "validate": false
+        },
+        "nodes": [],
+        "package_id": "vibecomfy",
+        "prompts": [],
+        "requirements": [
+          "vibecomfy"
+        ],
+        "requirements_source": "requirements.txt",
+        "runtime_file": "run.py",
+        "runtime_module": "artagents.executors.vibecomfy.run",
+        "vibecomfy_command": "run",
+        "workflow_input_contract": {
+          "description": "VibeComfy workflow JSON file.",
+          "format": "ComfyUI/VibeComfy workflow JSON",
+          "name": "workflow",
+          "required": true,
+          "type": "file"
+        },
+        "workflows": []
+      },
+      "name": "VibeComfy Run",
+      "version": "0.1.0"
+    },
+    {
+      "cache": {
+        "mode": "none"
+      },
+      "command": {
+        "argv": [
+          "{python_exec}",
+          "-m",
+          "artagents.executors.vibecomfy.run",
+          "validate",
+          "{workflow}"
+        ]
+      },
+      "conditions": [
+        {
+          "input": "workflow",
+          "kind": "requires_input"
+        }
+      ],
+      "description": "Validate a VibeComfy workflow through the VibeComfy CLI.",
+      "graph": {
+        "consumes": [
+          "workflow"
+        ],
+        "provides": [
+          "vibecomfy_validation"
+        ]
+      },
+      "id": "external.vibecomfy.validate",
+      "inputs": [
+        {
+          "description": "VibeComfy workflow JSON file.",
+          "name": "workflow",
+          "required": true,
+          "type": "file"
+        }
+      ],
+      "isolation": {
+        "mode": "subprocess",
+        "network": false,
+        "requirements": [
+          "vibecomfy"
+        ]
+      },
+      "kind": "external",
+      "metadata": {
+        "catalog_source": "none_declared",
+        "cli_module": "vibecomfy.cli",
+        "command_names": [
+          "run",
+          "validate"
+        ],
+        "homepage": "https://github.com/peteromallet/VibeComfy",
+        "network_behavior": {
+          "run": true,
+          "validate": false
+        },
+        "nodes": [],
+        "package_id": "vibecomfy",
+        "prompts": [],
+        "requirements": [
+          "vibecomfy"
+        ],
+        "requirements_source": "requirements.txt",
+        "runtime_file": "run.py",
+        "runtime_module": "artagents.executors.vibecomfy.run",
+        "vibecomfy_command": "validate",
+        "workflow_input_contract": {
+          "description": "VibeComfy workflow JSON file.",
+          "format": "ComfyUI/VibeComfy workflow JSON",
+          "name": "workflow",
+          "required": true,
+          "type": "file"
+        },
+        "workflows": []
+      },
+      "name": "VibeComfy Validate",
+      "version": "0.1.0"
+    }
+  ]
+}

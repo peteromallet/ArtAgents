@@ -11,10 +11,10 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-from artagents import asset_cache
-from artagents import cut
+from artagents.executors.asset_cache import run as asset_cache
+from artagents.executors.cut import run as cut
 from artagents import timeline
-from artagents.render_remotion import _RangeHTTPRequestHandler
+from artagents.executors.render.run import _RangeHTTPRequestHandler
 
 
 class UrlPipelineSmokeTests(unittest.TestCase):

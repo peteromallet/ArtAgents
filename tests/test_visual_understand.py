@@ -4,7 +4,7 @@ import json
 
 from PIL import Image
 
-from artagents.visual_understand import main
+from artagents.executors.visual_understand.run import main
 
 
 def test_visual_understand_builds_numbered_contact_sheet(capsys, tmp_path):

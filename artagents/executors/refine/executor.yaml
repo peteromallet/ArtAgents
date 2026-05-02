@@ -1,0 +1,126 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": true,
+    "sentinels": [
+      "refine.json"
+    ]
+  },
+  "conditions": [],
+  "description": "ArtAgents pipeline step: refine.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes",
+      "builtin.quality_zones",
+      "builtin.shots",
+      "builtin.triage",
+      "builtin.scene_describe",
+      "builtin.quote_scout",
+      "builtin.pool_build",
+      "builtin.pool_merge",
+      "builtin.arrange",
+      "builtin.cut"
+    ],
+    "provides": [
+      "refine",
+      "timeline",
+      "assets",
+      "metadata"
+    ]
+  },
+  "id": "builtin.refine",
+  "inputs": [
+    {
+      "description": "",
+      "name": "arrangement",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "pool",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "timeline",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "assets",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "metadata",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "transcript",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "env_file",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "artagents.pipeline.build_pool_steps",
+    "pipeline_step": "refine",
+    "pipeline_step_order": 11,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.executors.refine.run"
+  },
+  "name": "Refine",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "refine",
+      "path_template": "{brief_out}/refine.json",
+      "type": "file"
+    },
+    {
+      "description": "",
+      "mode": "mutate",
+      "name": "timeline",
+      "path_template": "{brief_out}/hype.timeline.json",
+      "type": "file"
+    },
+    {
+      "description": "",
+      "mode": "mutate",
+      "name": "assets",
+      "path_template": "{brief_out}/hype.assets.json",
+      "type": "file"
+    },
+    {
+      "description": "",
+      "mode": "mutate",
+      "name": "metadata",
+      "path_template": "{brief_out}/hype.metadata.json",
+      "type": "file"
+    }
+  ],
+  "version": "1.0"
+}

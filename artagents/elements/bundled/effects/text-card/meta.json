@@ -1,0 +1,10 @@
+{
+  "id": "text-card",
+  "label": "Text Card",
+  "description": "Default text card effect.",
+  "whenToUse": "Use for simple rendered text cards and captions.",
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

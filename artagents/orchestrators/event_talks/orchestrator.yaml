@@ -1,0 +1,34 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "description": "Orchestrates event-talk template, search, holding-screen, and render commands.",
+  "id": "builtin.event_talks",
+  "kind": "built_in",
+  "metadata": {
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.orchestrators.event_talks.run",
+    "subcommands": [
+      "ados-sunday-template",
+      "search-transcript",
+      "find-holding-screens",
+      "render"
+    ]
+  },
+  "name": "Event Talks",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.orchestrators.event_talks.run",
+        "{orchestrator_args}"
+      ]
+    },
+    "kind": "command"
+  },
+  "version": "1.0"
+}

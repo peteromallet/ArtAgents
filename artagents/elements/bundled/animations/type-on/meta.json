@@ -1,0 +1,11 @@
+{
+  "id": "type-on",
+  "name": "Type On",
+  "kind": "hook",
+  "phase": "entrance",
+  "defaultDurationFrames": 120,
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

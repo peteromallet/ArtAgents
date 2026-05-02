@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 from artagents import enriched_arrangement
-from artagents import quality_zones
+from artagents.executors.quality_zones import run as quality_zones
 
 
 class QualityZonesTest(unittest.TestCase):

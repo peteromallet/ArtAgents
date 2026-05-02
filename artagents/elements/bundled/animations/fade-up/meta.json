@@ -1,0 +1,11 @@
+{
+  "id": "fade-up",
+  "name": "Fade Up",
+  "kind": "wrapper",
+  "phase": "entrance",
+  "defaultDurationFrames": 18,
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

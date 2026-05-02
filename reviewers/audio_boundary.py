@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from artagents import asset_cache
+from artagents.executors.asset_cache import run as asset_cache
 from artagents import enriched_arrangement
 from artagents.arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
 from reviewers import Reviewer

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 import importlib.util
+from unittest import mock
 from pathlib import Path
 
 from artagents import effects_catalog
@@ -17,13 +18,18 @@ GENERATOR = ROOT / "scripts" / "gen_effect_registry.py"
 # `tools/remotion/src/<kind>.generated.ts` files are now back-compat
 # shims that re-export from the package.
 WORKSPACE_ROOT = ROOT.parent
-PACKAGE_SRC = WORKSPACE_ROOT / "packages" / "timeline-composition" / "typescript" / "src"
-GENERATED = PACKAGE_SRC / "effects.generated.ts"
-GENERATED_ANIMATIONS = PACKAGE_SRC / "animations.generated.ts"
-GENERATED_TRANSITIONS = PACKAGE_SRC / "transitions.generated.ts"
+PACKAGE_SRC = Path(
+    os.environ.get(
+        "ARTAGENTS_TIMELINE_COMPOSITION_SRC",
+        str(WORKSPACE_ROOT / "packages" / "timeline-composition" / "typescript" / "src"),
+    )
+)
 GENERATED_SHIM = ROOT / "remotion" / "src" / "effects.generated.ts"
 GENERATED_SHIM_ANIMATIONS = ROOT / "remotion" / "src" / "animations.generated.ts"
 GENERATED_SHIM_TRANSITIONS = ROOT / "remotion" / "src" / "transitions.generated.ts"
+GENERATED = PACKAGE_SRC / "effects.generated.ts"
+GENERATED_ANIMATIONS = PACKAGE_SRC / "animations.generated.ts"
+GENERATED_TRANSITIONS = PACKAGE_SRC / "transitions.generated.ts"
 ACTIVE_THEME_LINK = ROOT / "remotion" / "_active_theme"
 ACTIVE_THEME_POINTER = ROOT / "remotion" / "_active_theme.txt"
 THEME_FIXTURE = ROOT / "tests" / "fixtures" / "themes" / "_t"
@@ -112,6 +118,12 @@ class EffectsCatalogTest(unittest.TestCase):
         self.assertIn("EFFECT_IDS = ['text-card']", generated)
         self.assertIn("'text-card': TextCard", generated)
         self.assertIn("text: 'text-card'", generated)
+        generated_shim = GENERATED_SHIM.read_text(encoding="utf-8")
+        self.assertIn(
+            "export * from '@banodoco/timeline-composition/typescript/src/effects.generated';",
+            generated_shim,
+        )
+        self.assertNotIn("EFFECT_IDS = ['text-card']", generated_shim)
         generated_animations = GENERATED_ANIMATIONS.read_text(encoding="utf-8")
         generated_transitions = GENERATED_TRANSITIONS.read_text(encoding="utf-8")
         self.assertIn("ANIMATION_IDS = ['fade', 'fade-up', 'scale-in', 'slide-left', 'slide-up', 'type-on']", generated_animations)
@@ -119,7 +131,30 @@ class EffectsCatalogTest(unittest.TestCase):
         json.loads(json.dumps(schema := effects_catalog.read_effect_schema("text-card")))
         self.assertEqual(schema["properties"]["align"]["enum"], ["left", "center", "right"])
 
-    def test_catalog_uses_same_contract_for_all_primitive_kinds(self) -> None:
+    def test_generator_preserves_remotion_shims_when_package_outputs_fail(self) -> None:
+        def deny_package_output(path: Path, content: str) -> bool:
+            if path in gen_effect_registry.OUTPUTS.values():
+                return False
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+            return True
+
+        with mock.patch.object(
+            gen_effect_registry,
+            "_write_generated_registry",
+            side_effect=deny_package_output,
+        ):
+            exit_code = gen_effect_registry.main([])
+
+        self.assertEqual(exit_code, 1)
+        generated_shim = GENERATED_SHIM.read_text(encoding="utf-8")
+        self.assertIn(
+            "export * from '@banodoco/timeline-composition/typescript/src/effects.generated';",
+            generated_shim,
+        )
+        self.assertNotIn("EFFECT_IDS = ['text-card']", generated_shim)
+
+    def test_catalog_uses_same_contract_for_all_element_kinds(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "workspace"
             theme = workspace / "themes" / "brand"
@@ -156,9 +191,10 @@ class EffectsCatalogTest(unittest.TestCase):
                 effects_catalog.THEMES_ROOT = workspace / "themes"
                 effects_catalog.set_active_theme(None)
 
-                self.assertEqual(effects_catalog.list_effect_ids(), ["stamp"])
-                self.assertEqual(effects_catalog.list_animation_ids(), ["fade-up"])
-                self.assertEqual(effects_catalog.list_transition_ids(), ["crossfade"])
+                self.assertIn("stamp", effects_catalog.list_effect_ids())
+                self.assertIn("text-card", effects_catalog.list_effect_ids())
+                self.assertIn("fade-up", effects_catalog.list_animation_ids())
+                self.assertIn("crossfade", effects_catalog.list_transition_ids())
                 self.assertEqual(
                     effects_catalog.read_animation_defaults("fade-up"),
                     {"enabled": True},
@@ -169,7 +205,7 @@ class EffectsCatalogTest(unittest.TestCase):
                 )
 
                 effects_catalog.set_active_theme(theme)
-                self.assertEqual(effects_catalog.list_animation_ids(), ["fade-up"])
+                self.assertIn("fade-up", effects_catalog.list_animation_ids())
                 self.assertEqual(
                     effects_catalog.read_animation_meta("fade-up")["label"],
                     "fade-up",
@@ -195,8 +231,12 @@ class EffectsCatalogTest(unittest.TestCase):
         self.assertIn("ACTIVE_THEME_ID = null", generated_without_theme)
         self.assertIn("ACTIVE_THEME_ID = null", GENERATED_ANIMATIONS.read_text(encoding="utf-8"))
         self.assertIn("ACTIVE_THEME_ID = null", GENERATED_TRANSITIONS.read_text(encoding="utf-8"))
+        self.assertIn(
+            "export * from '@banodoco/timeline-composition/typescript/src/effects.generated';",
+            GENERATED_SHIM.read_text(encoding="utf-8"),
+        )
 
-    def test_generator_builds_primitive_registries_with_workspace_and_theme_imports(self) -> None:
+    def test_generator_builds_element_registries_with_workspace_and_theme_imports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp) / "workspace"
             theme = workspace / "themes" / "brand"
@@ -225,30 +265,34 @@ class EffectsCatalogTest(unittest.TestCase):
                 (plugin_root / "defaults.json").write_text(json.dumps(defaults) + "\n", encoding="utf-8")
                 (plugin_root / "meta.json").write_text(json.dumps(meta) + "\n", encoding="utf-8")
 
-            write_plugin("effects", "stamp")
-            write_plugin("animations", "fade-up")
+            project = workspace / "project"
+            managed = project / ".artagents" / "elements" / "managed"
+            write_plugin("effects", "stamp", root=managed)
+            write_plugin("animations", "fade-up", root=managed)
             write_plugin("animations", "type-on", root=theme)
-            write_plugin("transitions", "crossfade")
+            write_plugin("transitions", "crossfade", root=managed)
             write_plugin("transitions", "crossfade", root=theme)
 
-            old_workspace_root = gen_effect_registry.WORKSPACE_ROOT
+            old_tools_dir = gen_effect_registry.TOOLS_DIR
             old_themes_root = gen_effect_registry.THEMES_ROOT
             try:
-                gen_effect_registry.WORKSPACE_ROOT = workspace
+                gen_effect_registry.TOOLS_DIR = project
                 gen_effect_registry.THEMES_ROOT = workspace / "themes"
 
-                effects = gen_effect_registry.generate_primitive_registry("effects", theme_dir=theme)
-                animations = gen_effect_registry.generate_primitive_registry("animations", theme_dir=theme)
-                transitions = gen_effect_registry.generate_primitive_registry("transitions", theme_dir=theme)
+                effects = gen_effect_registry.generate_element_registry("effects", theme_dir=theme)
+                animations = gen_effect_registry.generate_element_registry("animations", theme_dir=theme)
+                transitions = gen_effect_registry.generate_element_registry("transitions", theme_dir=theme)
 
-                self.assertIn("import Stamp from '@workspace-effects/stamp/component';", effects)
-                self.assertIn("EFFECT_IDS = ['stamp']", effects)
+                self.assertIn("import Stamp from '@managed-elements-effects/stamp/component';", effects)
+                self.assertIn("'stamp'", effects)
+                self.assertIn("'text-card'", effects)
                 self.assertIn("'stamp': Stamp", effects)
                 self.assertIn("'stamp-alias': 'stamp'", effects)
 
-                self.assertIn("import FadeUp from '@workspace-animations/fade-up/component';", animations)
+                self.assertIn("import FadeUp from '@managed-elements-animations/fade-up/component';", animations)
                 self.assertIn("import TypeOn from '@theme-animations/type-on/component';", animations)
-                self.assertIn("ANIMATION_IDS = ['fade-up', 'type-on']", animations)
+                self.assertIn("'fade-up'", animations)
+                self.assertIn("'type-on'", animations)
                 self.assertIn("'fade-up': FadeUp", animations)
                 self.assertIn("'type-on': TypeOn", animations)
                 self.assertIn("'fade-up': {\"durationFrames\":12}", animations)
@@ -257,13 +301,14 @@ class EffectsCatalogTest(unittest.TestCase):
                 self.assertIn("'type-on': {\"defaultDurationFrames\":12,\"id\":\"type-on\",\"kind\":\"hook\",\"phase\":\"entrance\"}", animations)
 
                 self.assertIn("import Crossfade from '@theme-transitions/crossfade/component';", transitions)
-                self.assertNotIn("@workspace-transitions/crossfade/component", transitions)
-                self.assertIn("TRANSITION_IDS = ['crossfade']", transitions)
+                self.assertNotIn("@managed-elements-transitions/crossfade/component", transitions)
+                self.assertIn("'crossfade'", transitions)
+                self.assertIn("'cross-fade'", transitions)
                 self.assertIn("'crossfade': Crossfade", transitions)
                 self.assertIn("'crossfade': {\"durationFrames\":9}", transitions)
                 self.assertIn("'crossfade': {\"id\":\"crossfade\",\"label\":\"Crossfade\"}", transitions)
             finally:
-                gen_effect_registry.WORKSPACE_ROOT = old_workspace_root
+                gen_effect_registry.TOOLS_DIR = old_tools_dir
                 gen_effect_registry.THEMES_ROOT = old_themes_root
 
     def test_theme_effect_collision_warns_and_theme_version_wins(self) -> None:
@@ -275,7 +320,7 @@ class EffectsCatalogTest(unittest.TestCase):
 
         generated = GENERATED.read_text(encoding="utf-8")
         self.assertIn("import TextCard from '@theme-effects/text-card/component';", generated)
-        self.assertNotIn("import TextCard from '@workspace-effects/text-card/component';", generated)
+        self.assertNotIn("import TextCard from '@bundled-elements-effects/text-card/component';", generated)
 
     def test_generator_is_idempotent_for_same_theme(self) -> None:
         self._run_generator("--theme", str(THEME_FIXTURE))

@@ -5,7 +5,7 @@ description: "Use for the ArtAgents repo: file-based hype-cut/video pipeline wor
 
 # ArtAgents
 
-ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `pipeline.py` stays at the root as the primary entry point; direct stage launchers live under `bin/` and call `artagents/*` modules.
+ArtAgents is a file-based toolkit for producing Reigh-compatible video edits and generative timelines. Use repo-local CLIs from the repository root. `pipeline.py` stays at the root as the primary entry point; direct launchers live under `bin/` and call canonical executor or orchestrator folder entrypoints.
 
 ## First Checks
 
@@ -13,10 +13,13 @@ Run these before editing:
 
 ```bash
 git status --short
-rg --files
+python3 pipeline.py doctor
+python3 pipeline.py orchestrators list
+python3 pipeline.py executors list
+python3 pipeline.py elements list
 ```
 
-Do not overwrite unrelated local changes. Large source media and generated artifacts should stay out of git under `runs/` or another ignored output directory.
+Do not overwrite unrelated local changes. In particular, preserve local edits in curated executor skill files such as `artagents/executors/moirae/SKILL.md` and `artagents/executors/vibecomfy/SKILL.md` unless the user explicitly asks to edit them. Large source media and generated artifacts should stay out of git under `runs/` or another ignored output directory.
 
 ## Upstream Friction
 
@@ -46,20 +49,38 @@ python3 bin/event_talks.py search-transcript --transcript runs/event/transcript/
 python3 bin/event_talks.py render --manifest runs/event/talks.json --out-dir runs/event/rendered
 ```
 
-ArtAgents has two first-class workflow roles: conductors and performers. Conductors are the coordination layer. Performers are the human-facing actions a conductor can call. Use `performers` for executable units such as rendering, external tools, and uploading to YouTube. Do not introduce another workflow role for this layer; coordination belongs to conductors, execution belongs to performers. New code should import from `artagents.performers`.
+ArtAgents has three canonical public concepts: orchestrators, executors, and elements. Orchestrators coordinate workflows. Executors run concrete work such as rendering, external tools, understanding actions, and uploading to YouTube. Elements are user-editable render building blocks such as effects, animations, and transitions.
+
+Runnable implementations have exactly one public folder format:
+`artagents/orchestrators/<slug>/{orchestrator.yaml,SKILL.md,run.py}` for
+orchestrators and `artagents/executors/<slug>/{executor.yaml,SKILL.md,run.py}`
+for executors, with optional local `src/` modules. Top-level `artagents/*.py`
+files are shared libraries or system commands, not alternate runnable
+implementations.
+
+Use canonical packages and commands for new code:
 
 ```bash
-python3 pipeline.py performers list
-python3 pipeline.py performers inspect builtin.render --json
-python3 pipeline.py performers run builtin.render --out runs/<name> --brief brief.txt --dry-run
-python3 pipeline.py performers inspect upload.youtube
-python3 pipeline.py performers run upload.youtube --dry-run --video-url https://cdn.example.com/talk.mp4 --title "Talk" --description "Description"
-python3 pipeline.py conductors list
-python3 pipeline.py conductors inspect builtin.hype --json
-python3 pipeline.py conductors validate
-python3 pipeline.py conductors run builtin.hype --out runs/<name> --brief brief.txt --dry-run -- --target-duration 12 --from cut
-python3 pipeline.py conductors run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
+python3 pipeline.py orchestrators list
+python3 pipeline.py orchestrators inspect builtin.hype --json
+python3 pipeline.py orchestrators validate
+python3 pipeline.py orchestrators run builtin.hype --out runs/<name> --brief brief.txt --dry-run -- --target-duration 12 --from cut
+python3 pipeline.py orchestrators run builtin.event_talks --out runs/event --dry-run -- ados-sunday-template --out runs/event/talks.json
+python3 pipeline.py executors list
+python3 pipeline.py executors inspect builtin.render --json
+python3 pipeline.py executors run builtin.render --out runs/<name> --brief brief.txt --dry-run
+python3 pipeline.py executors inspect upload.youtube
+python3 pipeline.py executors run upload.youtube --dry-run --video-url https://cdn.example.com/talk.mp4 --title "Talk" --description "Description"
+python3 pipeline.py elements list
+python3 pipeline.py elements inspect effects text-card --json
+python3 pipeline.py elements fork effects text-card
 ```
+
+VibeComfy and Moirae are external executors only; do not expose them as orchestrators.
+
+`python3 pipeline.py setup` is dry-run by default. Use `python3 pipeline.py setup --apply` only when the user wants local managed element sync and local element dependency installation.
+
+Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, and `builtin.understand`. Default executors include the `STEP_ORDER` built-ins plus external executors such as `external.moirae` and `external.vibecomfy.run`. Default elements are bundled under `artagents/elements/bundled` and sync into `.artagents/elements/managed`; editable forks go under `.artagents/elements/overrides`.
 
 ## Reigh Data Tool
 
@@ -105,7 +126,7 @@ npm run smoke
 npm run gen-types
 ```
 
-Run `gen-types` after effect/theme primitive changes. For long event talks, prefer `bin/event_talks.py render --renderer remotion-wrapper`; use full `--renderer remotion` only when the whole talk must go through timeline/assets rendering.
+Run `gen-types` after effect/theme element changes. For long event talks, prefer `bin/event_talks.py render --renderer remotion-wrapper`; use full `--renderer remotion` only when the whole talk must go through timeline/assets rendering.
 
 Guardrails: `TimelineComposition` lives in `remotion/src/Root.tsx`; use `calculateMetadata` for timeline/theme-derived duration, dimensions, fps, or props; keep props JSON-serializable; use explicit frame math and clamped `interpolate()` timing; consume registry URLs prepared by `bin/render_remotion.py`; preserve `_reference/README.md` semantics; do not put large media in `remotion/public/` or commit generated renders.
 
@@ -327,15 +348,16 @@ For web delivery, prefer the default WebP atlas plus `sprite_web_manifest.json` 
 ## Important Contracts
 
 - `pipeline.py --brief ...` is the canonical top-level flow.
-- Performers execute one unit; conductors orchestrate performers and may call declared child conductors. Performers must not call conductors.
+- Orchestrators coordinate executors and may call declared child orchestrators. Executors execute one unit and must not call orchestrators.
 - `bin/cut.py` emits `hype.timeline.json`, `hype.assets.json`, `hype.metadata.json`, and `hype.edl.csv`.
 - Reigh-facing JSON should round-trip through existing helpers and tests.
 - Source-cut timelines preserve legacy `clipType="text"` overlays.
 - Pure-generative timelines may use extended `clipType` values and `params`.
-- Effects live under workspace-level `effects/<id>/` or theme-level `themes/<id>/effects/<id>/`.
-- After adding or renaming effects, run:
+- Elements resolve in priority order: active theme, `.artagents/elements/overrides`, `.artagents/elements/managed`, then `artagents/elements/bundled`.
+- After adding or renaming effects, animations, transitions, or theme elements, run:
 
 ```bash
+python3 scripts/gen_effect_registry.py
 cd remotion
 npm run gen-types
 ```

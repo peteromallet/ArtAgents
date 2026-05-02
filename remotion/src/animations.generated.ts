@@ -1,4 +1,3 @@
 // DO NOT EDIT - generated shim by tools/scripts/gen_effect_registry.py
-// Re-exports the package's registry from
-// `@banodoco/timeline-composition/typescript/src/<kind>.generated`.
+// Re-exports the package-owned registry.
 export * from '@banodoco/timeline-composition/typescript/src/animations.generated';

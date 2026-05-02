@@ -1,0 +1,11 @@
+{
+  "id": "slide-up",
+  "name": "Slide Up",
+  "kind": "wrapper",
+  "phase": "exit",
+  "defaultDurationFrames": 12,
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

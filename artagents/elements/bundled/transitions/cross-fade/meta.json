@@ -1,0 +1,8 @@
+{
+  "id": "cross-fade",
+  "label": "Cross Fade",
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

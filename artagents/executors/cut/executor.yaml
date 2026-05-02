@@ -1,0 +1,118 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": true,
+    "sentinels": [
+      "hype.timeline.json",
+      "hype.assets.json",
+      "hype.metadata.json"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "brief",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Create Reigh-compatible timeline, assets, and metadata JSON.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes",
+      "builtin.quality_zones",
+      "builtin.shots",
+      "builtin.triage",
+      "builtin.scene_describe",
+      "builtin.quote_scout",
+      "builtin.pool_build",
+      "builtin.pool_merge",
+      "builtin.arrange"
+    ],
+    "provides": [
+      "timeline",
+      "assets",
+      "metadata"
+    ]
+  },
+  "id": "builtin.cut",
+  "inputs": [
+    {
+      "description": "",
+      "name": "pool",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "arrangement",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "brief",
+      "required": true,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "video",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "audio",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "theme",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "artagents.pipeline.build_pool_steps",
+    "pipeline_step": "cut",
+    "pipeline_step_order": 10,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.executors.cut.run"
+  },
+  "name": "Cut",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "timeline",
+      "path_template": "{brief_out}/hype.timeline.json",
+      "type": "file"
+    },
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "assets",
+      "path_template": "{brief_out}/hype.assets.json",
+      "type": "file"
+    },
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "metadata",
+      "path_template": "{brief_out}/hype.metadata.json",
+      "type": "file"
+    }
+  ],
+  "version": "1.0"
+}

@@ -110,7 +110,7 @@ def test_pipeline_audit_env_propagation_and_fallback(monkeypatch, tmp_path: Path
 
 
 def test_ambient_register_outputs_from_producer(monkeypatch, tmp_path: Path) -> None:
-    from artagents import scenes
+    from artagents.executors.scenes import run as scenes
 
     run = tmp_path / "run"
     monkeypatch.setenv("ARTAGENTS_AUDIT_RUN_DIR", str(run))
@@ -125,7 +125,7 @@ def test_ambient_register_outputs_from_producer(monkeypatch, tmp_path: Path) -> 
 
 
 def test_ambient_register_outputs_inherits_parent_ids(monkeypatch, tmp_path: Path) -> None:
-    from artagents import scenes
+    from artagents.executors.scenes import run as scenes
 
     run = tmp_path / "run"
     parent_id = "source-parent"

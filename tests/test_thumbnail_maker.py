@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents import thumbnail_maker
+from artagents.orchestrators.thumbnail_maker import run as thumbnail_maker
 
 
 class ThumbnailMakerTest(unittest.TestCase):
@@ -154,10 +154,10 @@ class ThumbnailMakerTest(unittest.TestCase):
 
             with (
                 mock.patch.object(thumbnail_maker.asset_cache, "resolve_input", side_effect=fake_resolve),
-                mock.patch("artagents.scenes.detect_scenes", side_effect=fake_detect),
-                mock.patch("artagents.scenes.write_outputs"),
-                mock.patch("artagents.shots.build_shots", side_effect=fake_build_shots),
-                mock.patch("artagents.generate_image.main", side_effect=fake_generate),
+                mock.patch("artagents.executors.scenes.run.detect_scenes", side_effect=fake_detect),
+                mock.patch("artagents.executors.scenes.run.write_outputs"),
+                mock.patch("artagents.executors.shots.run.build_shots", side_effect=fake_build_shots),
+                mock.patch("artagents.executors.generate_image.run.main", side_effect=fake_generate),
             ):
                 result = thumbnail_maker.main(
                     [
@@ -227,7 +227,7 @@ class ThumbnailMakerTest(unittest.TestCase):
                 )
                 return 0
 
-            with mock.patch("artagents.generate_image.main", side_effect=fake_generate) as generate_main:
+            with mock.patch("artagents.executors.generate_image.run.main", side_effect=fake_generate) as generate_main:
                 manifest = thumbnail_maker.generate_thumbnail_outputs(args, layout, plan, reference_pack)
 
         generate_main.assert_called_once()

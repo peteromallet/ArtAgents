@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents import validate
+from artagents.executors.validate import run as validate
 
 
 class ValidateNoAudioTest(unittest.TestCase):
