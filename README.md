@@ -2,13 +2,7 @@
 
 ArtAgents is a harness for helping you use agents to make art and creative work.
 
-## How it works (for humans)
-
-Executors perform one concrete piece of work. Orchestrators combine executors into workflows. Elements are reusable render pieces (effects, animations, transitions) used by both. Everything is invoked through a single gateway: `python3 -m artagents`.
-
-![ArtAgents architecture: orchestrators route work to executors and render elements](docs/assets/artagents-orchestration.png)
-
-## How it works (for agents)
+## How it works
 
 Give this to your agents to get started:
 
