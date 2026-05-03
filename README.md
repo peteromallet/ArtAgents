@@ -9,7 +9,7 @@ Give this to your agents to get started:
 <div align="center">
 
 ```text
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃                                                                            ┃
 ┃   ╲╱╲╱╲╱╲╱╳────────────────────────────────────────────────────╳╲╱╲╱╲╱╲╱   ┃
 ┃                        ═══  A R T A G E N T S  ═══                         ┃
@@ -29,7 +29,7 @@ Give this to your agents to get started:
 ┃    ·  every summons passes through one gate:   python3 -m artagents  ·     ┃
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
-┃                                                                            ┃
+◇                                                                            ◇
 ┃                         ──  ◇  Using Tools  ◇  ──                          ┃
 ┃                                                                            ┃
 ┃                              ·  find an id  ·                              ┃
@@ -47,7 +47,7 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃             ·  to create a new executor (a piece of work):  ·              ┃
 ┃                       copy  docs/templates/executor/                       ┃
-┃                                                                            ┃
+◇                                                                            ◇
 ┃         ·  to combine executors in a new way (an orchestrator):  ·         ┃
 ┃                     copy  docs/templates/orchestrator/                     ┃
 ┃                                                                            ┃
@@ -67,7 +67,7 @@ Give this to your agents to get started:
 ┃             ·  LEAVE THE WOODPILE HIGHER THAN YOU FOUND IT  ·              ┃
 ┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
 </div>
