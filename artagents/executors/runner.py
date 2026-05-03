@@ -26,7 +26,7 @@ class ExecutorRunnerError(ExecutorValidationError):
 
 
 def _pipeline_module():
-    from artagents import pipeline
+    from artagents.orchestrators.hype import run as pipeline
 
     return pipeline
 

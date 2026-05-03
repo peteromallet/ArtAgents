@@ -19,9 +19,34 @@ from artagents.contracts.schema import (
     Output as ExecutorOutput,
     Port as ExecutorPort,
 )
+from artagents.timeline import ClipClassifiedKind
 
 EXECUTOR_KINDS = {"built_in", "external"}
 CONDITION_KINDS = {"requires_input", "requires_file", "skip_if_input", "always"}
+CLIP_KIND_VALUES = tuple(kind.value for kind in ClipClassifiedKind)
+PIPELINE_REQUIREMENT_FACTS = {
+    "assets",
+    "audio",
+    "brief",
+    "generative_visuals_enabled",
+    "metadata",
+    "pool",
+    "quality_zones",
+    "quote_candidates",
+    "rendered_video",
+    "scene_descriptions",
+    "scene_triage",
+    "scenes",
+    "shots",
+    "source_audio",
+    "source_media",
+    "source_video",
+    "target_duration",
+    "theme",
+    "timeline",
+    "transcript",
+    "video",
+}
 
 KNOWN_RUNTIME_PLACEHOLDERS = {
     "asset_pairs",
@@ -84,6 +109,8 @@ class ExecutorDefinition:
     cache: CachePolicy = field(default_factory=CachePolicy)
     conditions: tuple[ConditionSpec, ...] = ()
     graph: GraphMetadata = field(default_factory=GraphMetadata)
+    clip_kinds_supported: tuple[str, ...] = ()
+    pipeline_requirements: tuple[str, ...] = ()
     isolation: IsolationMetadata = field(default_factory=IsolationMetadata)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -157,6 +184,8 @@ def _parse_executor(raw: Any) -> ExecutorDefinition:
         for index, item in enumerate(_optional_list(data, "conditions", "executor.conditions"))
     )
     graph = _parse_graph(data.get("graph", {}), "executor.graph")
+    clip_kinds_supported = tuple(_parse_clip_kinds_supported(data))
+    pipeline_requirements = tuple(_optional_string_list(data, "pipeline_requirements", "executor.pipeline_requirements"))
     isolation = _parse_isolation(data.get("isolation", {}), "executor.isolation")
     metadata = data.get("metadata", {})
     if not isinstance(metadata, dict):
@@ -174,6 +203,8 @@ def _parse_executor(raw: Any) -> ExecutorDefinition:
         cache=cache,
         conditions=conditions,
         graph=graph,
+        clip_kinds_supported=clip_kinds_supported,
+        pipeline_requirements=pipeline_requirements,
         isolation=isolation,
         metadata=dict(metadata),
     )
@@ -294,6 +325,8 @@ def _validate_executor(executor: ExecutorDefinition) -> None:
     _validate_cache(executor.cache)
     _validate_conditions(executor.conditions, input_names)
     _validate_graph(executor.graph)
+    _validate_clip_kinds_supported(executor.clip_kinds_supported)
+    _validate_pipeline_requirements(executor.pipeline_requirements)
     _validate_isolation(executor.isolation)
     if executor.command is not None:
         _validate_command(executor.command, placeholders)
@@ -342,6 +375,30 @@ def _validate_graph(graph: GraphMetadata) -> None:
     for label, values in (("depends_on", graph.depends_on), ("provides", graph.provides), ("consumes", graph.consumes)):
         for value in values:
             _validate_non_empty_string(value, f"graph.{label}[]")
+
+
+def _validate_clip_kinds_supported(values: tuple[str, ...]) -> None:
+    seen: set[str] = set()
+    for index, value in enumerate(values):
+        if value not in CLIP_KIND_VALUES:
+            raise ExecutorValidationError(
+                f"clip_kinds_supported[{index}] must be one of {sorted(CLIP_KIND_VALUES)}"
+            )
+        if value in seen:
+            raise ExecutorValidationError(f"clip_kinds_supported contains duplicate kind {value!r}")
+        seen.add(value)
+
+
+def _validate_pipeline_requirements(values: tuple[str, ...]) -> None:
+    seen: set[str] = set()
+    for index, value in enumerate(values):
+        if value not in PIPELINE_REQUIREMENT_FACTS:
+            raise ExecutorValidationError(
+                f"pipeline_requirements[{index}] must be one of {sorted(PIPELINE_REQUIREMENT_FACTS)}"
+            )
+        if value in seen:
+            raise ExecutorValidationError(f"pipeline_requirements contains duplicate fact {value!r}")
+        seen.add(value)
 
 
 def _validate_isolation(isolation: IsolationMetadata) -> None:
@@ -453,6 +510,30 @@ def _optional_string_list(data: dict[str, Any], key: str, path: str) -> list[str
     if key not in data:
         return []
     return _string_list(data[key], path)
+
+
+def _parse_clip_kinds_supported(data: dict[str, Any]) -> list[str]:
+    has_canonical = "clip_kinds_supported" in data
+    has_alias = "produces_for" in data
+    if not has_canonical and not has_alias:
+        return []
+    key = "clip_kinds_supported" if has_canonical else "produces_for"
+    path = f"executor.{key}"
+    values = _string_list(data[key], path)
+    normalized: list[str] = []
+    for index, value in enumerate(values):
+        candidate = value.strip()
+        try:
+            kind = ClipClassifiedKind(candidate.lower())
+        except ValueError:
+            try:
+                kind = ClipClassifiedKind[candidate.upper()]
+            except KeyError as exc:
+                raise ExecutorValidationError(
+                    f"{path}[{index}] must be one of {sorted(CLIP_KIND_VALUES)}"
+                ) from exc
+        normalized.append(kind.value)
+    return normalized
 
 
 def _drop_none(value: Any) -> Any:
@@ -606,8 +687,10 @@ __all__ = [
     "CONDITION_KINDS",
     "ISOLATION_MODES",
     "KNOWN_RUNTIME_PLACEHOLDERS",
+    "CLIP_KIND_VALUES",
     "EXECUTOR_KINDS",
     "OUTPUT_MODES",
+    "PIPELINE_REQUIREMENT_FACTS",
     "PORT_REQUIRED_TYPES",
     "CachePolicy",
     "CommandSpec",
