@@ -37,6 +37,7 @@ def plan_setup(*, apply: bool = False, project_root: str | Path | None = None) -
             detail="local mutations enabled" if apply else "no files or dependencies will be changed",
         )
     )
+    steps.append(_plan_agents_symlink(root, apply=apply))
     for action in _sync_managed_defaults(dry_run=not apply, overwrite=False, project_root=root):
         steps.append(SetupStep(name="elements sync", status="applied" if apply else "planned", detail=action))
 
@@ -51,6 +52,28 @@ def plan_setup(*, apply: bool = False, project_root: str | Path | None = None) -
         details = "; ".join(plan.command_lines())
         steps.append(SetupStep(name="elements install", status=status, detail=f"{element.kind}/{element.id}: {details}"))
     return tuple(steps)
+
+
+def _plan_agents_symlink(root: Path, *, apply: bool) -> SetupStep:
+    """Ensure AGENTS.md is a symlink to SKILL.md so both loaders read the same source."""
+    agents = root / "AGENTS.md"
+    target = "SKILL.md"
+    skill = root / target
+    if not skill.is_file():
+        return SetupStep(name="agents.md symlink", status="warn", detail=f"{skill} missing; cannot link AGENTS.md")
+    if agents.is_symlink() and (root / agents.readlink()).resolve() == skill.resolve():
+        return SetupStep(name="agents.md symlink", status="ok", detail=f"AGENTS.md → {target}")
+    if not agents.exists() and not agents.is_symlink():
+        if apply:
+            agents.symlink_to(target)
+            return SetupStep(name="agents.md symlink", status="applied", detail=f"created AGENTS.md → {target}")
+        return SetupStep(name="agents.md symlink", status="planned", detail=f"will create AGENTS.md → {target}")
+    kind = "wrong symlink" if agents.is_symlink() else "regular file"
+    if apply:
+        agents.unlink()
+        agents.symlink_to(target)
+        return SetupStep(name="agents.md symlink", status="applied", detail=f"replaced AGENTS.md ({kind}) with symlink → {target}")
+    return SetupStep(name="agents.md symlink", status="planned", detail=f"will replace AGENTS.md ({kind}) with symlink → {target}")
 
 
 def main(argv: list[str] | None = None) -> int:

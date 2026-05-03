@@ -153,7 +153,7 @@ def _attach_folder_metadata(executor: ExecutorDefinition, root: Path, source_pat
     for filename, key in (
         ("requirements.txt", "requirements_file"),
         ("pyproject.toml", "pyproject_file"),
-        ("SKILL.md", "skill_file"),
+        ("STAGE.md", "stage_file"),
     ):
         candidate = root / filename
         if candidate.is_file():

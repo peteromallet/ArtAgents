@@ -97,7 +97,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
             bundled_root = root / "manifest_executor"
             bundled_root.mkdir()
             (bundled_root / "requirements.txt").write_text("example-package\n", encoding="utf-8")
-            (bundled_root / "SKILL.md").write_text("# Example\n", encoding="utf-8")
+            (bundled_root / "STAGE.md").write_text("# Example\n", encoding="utf-8")
             (bundled_root / "assets").mkdir()
             (bundled_root / "assets" / "asset.txt").write_text("asset\n", encoding="utf-8")
             (bundled_root / "guides").mkdir()
@@ -140,7 +140,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
             self.assertEqual(metadata["executor_root"], str(bundled_root.resolve()))
             self.assertEqual(metadata["manifest_file"], str((bundled_root / "executor.yaml").resolve()))
             self.assertEqual(metadata["requirements_file"], str((bundled_root / "requirements.txt").resolve()))
-            self.assertEqual(metadata["skill_file"], str((bundled_root / "SKILL.md").resolve()))
+            self.assertEqual(metadata["stage_file"], str((bundled_root / "STAGE.md").resolve()))
             self.assertEqual(metadata["assets_dir"], str((bundled_root / "assets").resolve()))
             self.assertEqual(metadata["guides_dir"], str((bundled_root / "guides").resolve()))
             self.assertEqual(metadata["asset_files"], [str((bundled_root / "assets" / "asset.txt").resolve())])

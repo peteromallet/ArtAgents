@@ -67,7 +67,7 @@ class VibeComfyStructuredMetadataTest(unittest.TestCase):
             executor_root = root / "vibecomfy"
             executor_root.mkdir()
             (executor_root / "requirements.txt").write_text("different-package\n", encoding="utf-8")
-            (executor_root / "SKILL.md").write_text(
+            (executor_root / "STAGE.md").write_text(
                 "Fake structured catalog that must not be scraped: workflows=fake nodes=fake prompts=fake\n",
                 encoding="utf-8",
             )
@@ -110,7 +110,7 @@ class VibeComfyStructuredMetadataTest(unittest.TestCase):
         self.assertEqual(run.metadata["nodes"], [])
         self.assertEqual(run.metadata["prompts"], [])
         self.assertNotIn("fake", json.dumps(run.metadata).lower())
-        self.assertTrue(run.metadata["skill_file"].endswith("SKILL.md"))
+        self.assertTrue(run.metadata["stage_file"].endswith("STAGE.md"))
 
 
 if __name__ == "__main__":

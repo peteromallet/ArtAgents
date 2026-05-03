@@ -9,11 +9,27 @@ A file-based toolkit for agents to make art and creative work alongside a human.
 
 Three kinds of beings live here:
 
-- **Executors** — perform one piece of work
-- **Orchestrators** — combine executors together
-- **Elements** — reusable render pieces used by both
+- **Executors** — run one concrete unit of work
+- **Orchestrators** — coordinate executors (and other orchestrators) into workflows
+- **Elements** — reusable render building blocks (effects, animations, transitions)
 
-Every summons passes through one gate: `python3 -m artagents`.
+`python3 -m artagents` is the executable package gateway. Every summons passes through this one gate.
+
+## First commands
+
+Run from the repository root:
+
+```bash
+git status --short
+python3 -m artagents --help
+python3 -m artagents doctor
+python3 -m artagents orchestrators list
+python3 -m artagents executors list
+python3 -m artagents elements list
+python3 -m artagents setup
+```
+
+`setup` is dry-run by default; pass `--apply` to mutate.
 
 ## Using tools
 
@@ -26,7 +42,7 @@ python3 -m artagents [executors|orchestrators|elements] list
 Inspect to see inputs, outputs, and intent:
 
 ```bash
-python3 -m artagents [executors|orchestrators|elements] inspect <id>
+python3 -m artagents [executors|orchestrators|elements] inspect <id> --json
 ```
 
 Run it:
@@ -35,27 +51,53 @@ Run it:
 python3 -m artagents [executors|orchestrators] run <id> -- <args>
 ```
 
-Each tool has its own `SKILL.md` next to its `run.py`. That is the source of truth for the tool — read it before invoking.
+Each tool has its own `STAGE.md` next to its `run.py`. That is the source of truth — read it before invoking. The JSON inspect output points at the folder root and `stage_file`; load only the one relevant `STAGE.md`, not all of them.
 
-## Forge a new tool
+## Make something new
 
-Copy from `docs/templates/[executor|orchestrator|element]/`, then read `docs/creating-tools.md`.
+Read `docs/creating-tools.md`, then copy the closest template:
 
-## Rules that aren't in `inspect`
+- `docs/templates/executor/` — one concrete unit of work
+- `docs/templates/orchestrator/` — a workflow that combines executors
+- `docs/templates/element/` — a reusable render building block
 
-- Generated files live under `runs/` and stay out of git.
+Public folders have exactly one format: `artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` and `artagents/executors/<slug>/{executor.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Top-level `artagents/*.py` files are shared libraries or system commands, not alternate runnable implementations.
+
+Do not chain pipeline internals by hand unless you are debugging one specific stage. If the user gives a topic instead of a brief, use a brief-generation executor coordinated by an orchestrator — don't fake source media just to enter a source-video path. Render requires the `hype.timeline.json` and `hype.assets.json` pair produced by cut; don't skip cut unless both files already exist.
+
+## Defaults
+
+Built-in orchestrators: `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, `builtin.understand`.
+
+Built-in executors include `builtin.transcribe`, `builtin.cut`, `builtin.render`, `builtin.validate`, and the rest of the pipeline. External executors include `external.moirae` and `external.vibecomfy.run` (executor only, not an orchestrator).
+
+Element source priority: active theme → `.artagents/elements/overrides` → `.artagents/elements/managed` → `artagents/elements/bundled`.
+
+```bash
+python3 -m artagents elements sync --dry-run
+python3 -m artagents elements fork effects text-card
+```
+
+## Rules
+
+- Generated files live under `runs/` (or another ignored output directory) and stay out of git. Don't commit source media, rendered videos, local dependency envs, or secrets.
 - Don't print or hardcode API keys; use `--env-file` or nearby `.env` files.
-- Preserve local edits in curated tool skill files such as `artagents/executors/moirae/SKILL.md` and `artagents/executors/vibecomfy/SKILL.md` unless asked to edit them.
+- Treat curated tool stages as protected unless explicitly asked to edit them — notably `artagents/executors/moirae/STAGE.md` and `artagents/executors/vibecomfy/STAGE.md`.
 - Orchestrators may call declared child orchestrators; executors must not call orchestrators.
-- Element resolution order: active theme → `.artagents/elements/overrides` → `.artagents/elements/managed` → `artagents/elements/bundled`.
-- After adding or renaming effects, animations, transitions, or theme elements:
 
-  ```bash
-  python3 scripts/gen_effect_registry.py
-  cd remotion && npm run gen-types
-  ```
+After adding or renaming effects, animations, transitions, or theme elements:
 
-- `python3 -m artagents setup` is dry-run by default; only run `--apply` when the user wants local element sync.
+```bash
+python3 scripts/gen_effect_registry.py
+cd remotion && npm run gen-types
+```
+
+## Validate
+
+```bash
+pytest tests/test_doctor_setup.py tests/test_canonical_cli.py
+pytest --tb=no -q --no-header
+```
 
 ## Upstream friction
 

@@ -96,7 +96,7 @@ Executor folders use:
 artagents/executors/<slug>/
   executor.yaml
   run.py
-  SKILL.md
+  STAGE.md
   src/              optional private helper package
 ```
 
@@ -106,7 +106,7 @@ Orchestrator folders use:
 artagents/orchestrators/<slug>/
   orchestrator.yaml
   run.py
-  SKILL.md
+  STAGE.md
   src/              optional private helper package
 ```
 
@@ -149,9 +149,9 @@ Run only the inspect command that matches the thing you created.
 ## Review Checklist
 
 - The new capability is reachable through `python3 -m artagents`.
-- The folder has the required manifest, `run.py`, and `SKILL.md` or element
+- The folder has the required manifest, `run.py`, and `STAGE.md` or element
   files.
-- The `SKILL.md` says when to use it and gives the canonical command.
+- The `STAGE.md` says when to use it and gives the canonical command.
 - Inputs, outputs, cache behavior, isolation, dependencies, and network use are
   declared in metadata.
 - Runtime outputs go under `runs/` or another ignored directory.

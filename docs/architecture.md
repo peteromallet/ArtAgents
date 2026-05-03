@@ -36,18 +36,18 @@ python3 -m artagents elements inspect effects text-card --json
 
 These JSON commands are the runtime index for agents. Folder-backed
 orchestrators and executors include metadata such as `orchestrator_root`,
-`executor_root`, and `skill_file`; agents should load the ArtAgents entrypoint
-skill first, then open only the specific folder-level skill needed for the
-selected registry item. Do not package every executor and orchestrator skill
+`executor_root`, and `stage_file`; agents should load the top-level ArtAgents
+skill first, then open only the specific folder-level `STAGE.md` needed for the
+selected registry item. Do not package every executor and orchestrator stage
 into one merged runtime prompt.
 
 Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, and `builtin.understand`. Default executors include every `STEP_ORDER` built-in, upload/action executors, Moirae, and VibeComfy. Default elements include bundled effects, animations, and transitions that can be synced into `.artagents/elements/managed` and forked into `.artagents/elements/overrides`.
 
 Each runnable orchestrator has exactly one canonical implementation location:
-`artagents/orchestrators/<slug>/{orchestrator.yaml,SKILL.md,run.py}` with
+`artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` with
 optional local `src/` modules. Each runnable executor has exactly one canonical
 implementation location:
-`artagents/executors/<slug>/{executor.yaml,SKILL.md,run.py}` with optional local
+`artagents/executors/<slug>/{executor.yaml,STAGE.md,run.py}` with optional local
 `src/` modules. Top-level `artagents/*.py` modules are shared libraries or
 system commands only; they are not alternate executor or orchestrator
 implementations.
@@ -116,13 +116,13 @@ This classification keeps only retained root and bin launchers; executor-owned p
 
 `python3 -m artagents doctor` fails when canonical repository structure drifts.
 Public executor folders under `artagents/executors/<slug>/` must include
-`executor.yaml`, `run.py`, and `SKILL.md`. Public orchestrator folders under
+`executor.yaml`, `run.py`, and `STAGE.md`. Public orchestrator folders under
 `artagents/orchestrators/<slug>/` must include `orchestrator.yaml`, `run.py`,
-and `SKILL.md`. Executor folders must not contain orchestrator metadata, and
+and `STAGE.md`. Executor folders must not contain orchestrator metadata, and
 orchestrator folders must not contain executor metadata. Legacy public package
 directories are rejected so developers do not reintroduce removed concepts.
-Package-level skill directories are also rejected; skill guidance lives beside
-the executor or orchestrator it describes.
+A top-level `artagents/skills/` directory is also rejected; per-stage guidance
+lives beside the executor or orchestrator it describes.
 
 ## Generated Files and Dirty Worktrees
 
@@ -135,4 +135,4 @@ python3 scripts/gen_effect_registry.py
 rg "@workspace-|workspace-effects|workspace-animations|workspace-transitions" remotion/src scripts remotion -n
 ```
 
-Always inspect `git status --short` before editing. Preserve unrelated user changes, especially dirty curated executor skill files such as `artagents/executors/moirae/SKILL.md` and `artagents/executors/vibecomfy/SKILL.md`.
+Always inspect `git status --short` before editing. Preserve unrelated user changes, especially dirty curated executor stage files such as `artagents/executors/moirae/STAGE.md` and `artagents/executors/vibecomfy/STAGE.md`.

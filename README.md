@@ -43,10 +43,17 @@ Give this to your agents to get started:
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
-┃                       ──  ◇  Forge a New Tool  ◇  ──                       ┃
+┃                      ──  ◇  Make Something New  ◇  ──                      ┃
 ┃                                                                            ┃
-┃     ·  copy from   docs/templates/[executor|orchestrator|element]/  ·      ┃
-┃     ·  then read   docs/creating-tools.md                           ·      ┃
+┃             ·  to create a new executor (a piece of work):  ·              ┃
+┃                       copy  docs/templates/executor/                       ┃
+┃                                                                            ┃
+┃         ·  to combine executors in a new way (an orchestrator):  ·         ┃
+┃                     copy  docs/templates/orchestrator/                     ┃
+┃                                                                            ┃
+┃           ·  new render piece? copy  docs/templates/element/  ·            ┃
+┃                                                                            ┃
+┃                  ·  then read  docs/creating-tools.md  ·                   ┃
 ┃                                                                            ┃
 ┃                      ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·                       ┃
 ┃                                                                            ┃
@@ -57,7 +64,7 @@ Give this to your agents to get started:
 ┃                    ·  generated files live in  runs/  ·                    ┃
 ┃                                                                            ┃
 ┃   ╲╱╲╱╲╱╲╱╳────────────────────────────────────────────────────╳╲╱╲╱╲╱╲╱   ┃
-┃                      ·  ASK AND THOU SHALT RECEIVE  ·                      ┃
+┃             ·  LEAVE THE WOODPILE HIGHER THAN YOU FOUND IT  ·              ┃
 ┃   ╱╲╱╲╱╲╱╲╳────────────────────────────────────────────────────╳╱╲╱╲╱╲╱╲   ┃
 ┃                                                                            ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛

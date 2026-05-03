@@ -96,7 +96,7 @@ def _validate_executor_folders(executors_root: Path) -> list[str]:
 
     errors: list[str] = []
     for folder in _public_child_dirs(executors_root, INTERNAL_EXECUTOR_DIRS):
-        errors.extend(_require_files(folder, ("executor.yaml", "run.py", "SKILL.md"), root=executors_root.parents[1]))
+        errors.extend(_require_files(folder, ("executor.yaml", "run.py", "STAGE.md"), root=executors_root.parents[1]))
         if _has_any(folder, ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json", "orchestrator.py")):
             errors.append(f"executor folder contains orchestrator metadata: {folder.relative_to(executors_root.parents[1])}")
         try:
@@ -125,7 +125,7 @@ def _validate_orchestrator_folders(orchestrators_root: Path) -> list[str]:
 
     errors: list[str] = []
     for folder in _public_child_dirs(orchestrators_root, INTERNAL_ORCHESTRATOR_DIRS):
-        errors.extend(_require_files(folder, ("orchestrator.yaml", "run.py", "SKILL.md"), root=orchestrators_root.parents[1]))
+        errors.extend(_require_files(folder, ("orchestrator.yaml", "run.py", "STAGE.md"), root=orchestrators_root.parents[1]))
         if _has_any(folder, ("executor.yaml", "executor.yml", "executor.json", "executor.py")):
             errors.append(f"orchestrator folder contains executor metadata: {folder.relative_to(orchestrators_root.parents[1])}")
         try:
