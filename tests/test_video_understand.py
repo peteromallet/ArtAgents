@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.orchestrators.understand import run as understand
+from artagents.executors.understand import run as understand
 from artagents.executors.video_understand.run import main
 
 
@@ -89,5 +89,5 @@ def test_understand_dispatches_video(monkeypatch):
 
     monkeypatch.setitem(understand.ALIASES, "video", fake_video_main)
 
-    assert understand.main(["video", "--video", "source.mp4", "--dry-run"]) == 17
+    assert understand.main(["--mode", "video", "--video", "source.mp4", "--dry-run"]) == 17
     assert captured["argv"] == ["--video", "source.mp4", "--dry-run"]

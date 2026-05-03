@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import time
 from typing import Any
@@ -27,6 +28,19 @@ QUALITIES = {"low", "medium", "high", "auto"}
 FORMATS = {"png", "jpeg", "jpg", "webp"}
 BACKGROUNDS = {"opaque", "auto", "transparent"}
 MODERATION = {"auto", "low"}
+
+PRESETS: dict[str, dict[str, Any]] = {
+    "saint-peter-of-banodoco": {
+        "prompt": (
+            "An illuminated medieval manuscript page depicting Saint Peter of Banodoco, "
+            "patron of file-based pipelines, haloed in glowing unix prompts, quill in "
+            "hand inscribing ffmpeg incantations. Tiny familiar spirits labelled REIGH, "
+            "LOTA, and MOIRAE peer over his shoulders. Gold leaf, vellum, Celtic "
+            "knotwork border."
+        ),
+        "open_result": True,
+    },
+}
 
 GPT_IMAGE_2_MIN_PIXELS = 655_360
 GPT_IMAGE_2_MAX_PIXELS = 8_294_400
@@ -263,9 +277,24 @@ def _jobs_from_args(args: argparse.Namespace) -> list[dict[str, Any]]:
     jobs = [{"prompt": prompt} for prompt in args.prompt or []]
     if args.prompts_file:
         jobs.extend(_load_prompts(args.prompts_file))
+    if not jobs and args.preset:
+        preset = PRESETS.get(args.preset)
+        if preset is None:
+            _die(f"Unknown preset {args.preset!r}; available: {', '.join(sorted(PRESETS))}")
+        jobs.append({"prompt": preset["prompt"]})
     if not jobs:
-        _die("Provide --prompt or --prompts-file")
+        _die("Provide --prompt, --prompts-file, or --preset")
     return jobs
+
+
+def _open_first_rendered(out_dir: Path) -> None:
+    rendered = sorted(out_dir.glob("*.png")) + sorted(out_dir.glob("*.jpeg")) + sorted(out_dir.glob("*.webp"))
+    if not rendered:
+        print("No image was rendered; nothing to open.", file=sys.stderr)
+        return
+    target = rendered[0]
+    print(f"Opening {target}")
+    subprocess.run(["open", str(target)], check=False)
 
 
 def generate(args: argparse.Namespace) -> int:
@@ -355,6 +384,11 @@ def generate(args: argparse.Namespace) -> int:
                 metadata={"jobs": len(manifest)},
             )
         print(f"Wrote {args.manifest}")
+
+    if args.preset and not args.dry_run and not args.no_open:
+        preset = PRESETS.get(args.preset)
+        if preset and preset.get("open_result"):
+            _open_first_rendered(out_dir)
     return 0
 
 
@@ -363,6 +397,13 @@ def build_parser() -> argparse.ArgumentParser:
     add = parser.add_argument
     add("--prompt", action="append", help="Prompt; repeat for multiple prompts.")
     add("--prompts-file", type=Path, help="Text, JSON, or JSONL prompt list.")
+    add(
+        "--preset",
+        choices=sorted(PRESETS),
+        help="Use a canned prompt + behaviour preset (e.g. saint-peter-of-banodoco). "
+        "If no --prompt or --prompts-file is given, the preset's prompt is used.",
+    )
+    add("--no-open", action="store_true", help="Suppress opening the rendered image for presets that auto-open.")
     add("--model", default=DEFAULT_MODEL)
     add("--n", type=int, default=1, help="Images per prompt.")
     add("--size", default=DEFAULT_SIZE)

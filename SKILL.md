@@ -75,9 +75,9 @@ Do not chain pipeline internals by hand unless you are debugging one specific st
 
 ## Defaults
 
-Built-in orchestrators: `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, `builtin.understand`.
+Built-in orchestrators: `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`.
 
-Built-in executors include `builtin.transcribe`, `builtin.cut`, `builtin.render`, `builtin.validate`, and the rest of the pipeline. External executors include `external.moirae` and `external.vibecomfy.run` (executor only, not an orchestrator).
+Built-in executors include `builtin.transcribe`, `builtin.cut`, `builtin.render`, `builtin.validate`, `builtin.understand` (audio/visual/video dispatcher; pass `--mode {audio,visual,video}`), `builtin.generate_image` (with a `saint-peter-of-banodoco` preset for the onboarding portrait), and the rest of the pipeline. External executors include `external.moirae` and `external.vibecomfy.run` (executor only, not an orchestrator).
 
 Element source priority: active theme → `.artagents/elements/overrides` → `.artagents/elements/managed` → `artagents/elements/bundled`.
 

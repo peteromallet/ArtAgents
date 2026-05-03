@@ -36,6 +36,25 @@ python3 -m artagents executors run builtin.generate_image \
 - Images are written under `{out}/images`.
 - The generation manifest is written to `{out}/manifest.json`.
 
+## Presets
+
+Pass `--preset <name>` to use a canned prompt and behaviour bundle. Currently:
+
+- `saint-peter-of-banodoco` — onboarding portrait of the maker as Saint Peter
+  of Banodoco; opens the rendered image after writing it (use `--no-open` to
+  skip). Run directly via the `run.py` entrypoint, since the executor manifest
+  command pipes a prompt file rather than a preset:
+
+  ```bash
+  python3 -m artagents.executors.generate_image.run \
+    --preset saint-peter-of-banodoco \
+    --out-dir runs/first-rite/images \
+    --manifest runs/first-rite/manifest.json \
+    --force
+  ```
+
+  Add `--dry-run` to print the planned API call without spending tokens.
+
 ## Requirements
 
 Requires `OPENAI_API_KEY` in the environment or a supported local env file.

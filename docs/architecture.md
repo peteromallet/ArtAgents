@@ -41,7 +41,7 @@ skill first, then open only the specific folder-level `STAGE.md` needed for the
 selected registry item. Do not package every executor and orchestrator stage
 into one merged runtime prompt.
 
-Default orchestrators include `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`, and `builtin.understand`. Default executors include every `STEP_ORDER` built-in, upload/action executors, Moirae, and VibeComfy. Default elements include bundled effects, animations, and transitions that can be synced into `.artagents/elements/managed` and forked into `.artagents/elements/overrides`.
+Default orchestrators include `builtin.hype`, `builtin.event_talks`, and `builtin.thumbnail_maker`. Default executors include every `STEP_ORDER` built-in, upload/action executors, `builtin.understand` (audio/visual/video dispatcher), `builtin.generate_image` (with a `saint-peter-of-banodoco` onboarding preset), Moirae, and VibeComfy. Default elements include bundled effects, animations, and transitions that can be synced into `.artagents/elements/managed` and forked into `.artagents/elements/overrides`.
 
 Each runnable orchestrator has exactly one canonical implementation location:
 `artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` with
@@ -67,7 +67,6 @@ executor.
 | `artagents/orchestrators/hype` | Orchestrator | Canonical built-in hype orchestrator folder. |
 | `artagents/orchestrators/event_talks` | Orchestrator | Canonical event-talk discovery and rendering workflow folder. |
 | `artagents/orchestrators/thumbnail_maker` | Orchestrator | Canonical source-evidence thumbnail workflow folder. |
-| `artagents/orchestrators/understand` | Orchestrator | Canonical dispatcher for audio, visual, and video understanding executors. |
 | `artagents/orchestrators/*` | Orchestrator canonical package | Folderized orchestrator manifests, registry, runner, and CLI. |
 
 ## Executors
@@ -77,7 +76,7 @@ Every runnable tool is a built-in or external executor exposed from exactly one 
 | Executor group | Canonical location | Notes |
 | --- | --- | --- |
 | Hype pipeline stages | `artagents/executors/{transcribe,scenes,quality_zones,shots,triage,scene_describe,quote_scout,pool_build,pool_merge,arrange,cut,refine,render,editor_review,validate}` | `STEP_ORDER` stages used by the hype orchestrator. |
-| Understanding tools | `artagents/executors/{audio_understand,visual_understand,video_understand}` | Concrete media understanding tools used directly or by the understand orchestrator. |
+| Understanding tools | `artagents/executors/{audio_understand,visual_understand,video_understand,understand}` | Concrete media understanding tools, plus a thin `understand` dispatcher executor that selects modality via `--mode`. |
 | Standalone/service tools | `artagents/executors/{asset_cache,boundary_candidates,generate_image,human_notes,inspect_cut,open_in_reigh,publish,reigh_data,sprite_sheet,upload_youtube}` | Standalone executor capabilities. |
 | External tools | `artagents/executors/{vibecomfy,moirae}` | VibeComfy and Moirae are external executors only, not orchestrators. |
 
