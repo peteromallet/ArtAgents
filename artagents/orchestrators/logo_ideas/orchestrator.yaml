@@ -1,0 +1,36 @@
+{
+  "id": "builtin.logo_ideas",
+  "name": "Logo Ideas",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Generate a grid of distinct logo concepts: Kimi K2 (Fireworks) drafts the prompts, fal renders them via Z-Image or GPT Image 2.",
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.orchestrators.logo_ideas.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "metadata": {
+    "runtime_module": "artagents.orchestrators.logo_ideas.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main",
+    "env": [
+      "FIREWORKS_API_KEY",
+      "FAL_KEY"
+    ]
+  }
+}

@@ -172,6 +172,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Content drift handling mode for cached URL assets.",
         default=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        "--allow-generative-effects",
+        dest="allow_generative_effects",
+        action="store_true",
+        help=(
+            "Enable mixed-mode: allow the arrange step to include generative "
+            "visual_source pool entries even when --video is set. Overrides the "
+            "brief's allow_generative_visuals field for this run only. "
+            "Phase 3 mixed-mode."
+        ),
+        default=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help=(
+            "Plan the run without invoking any executor: prep the brief, "
+            "compute the step set + facts, build redacted commands, write "
+            "<out>/hype.plan.json, and exit. Phase 3 mixed-mode."
+        ),
+        default=argparse.SUPPRESS,
+    )
     return parser
 
 
@@ -312,6 +335,8 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
     args.python_exec = str(getattr(args, "python_exec", sys.executable))
     args.render = bool(getattr(args, "render", False))
     args.no_audit = bool(getattr(args, "no_audit", False))
+    args.allow_generative_effects = bool(getattr(args, "allow_generative_effects", False))
+    args.dry_run = bool(getattr(args, "dry_run", False))
     default_theme = WORKSPACE_ROOT / "themes" / "banodoco-default" / "theme.json"
     theme_value = getattr(args, "theme", default_theme)
     args.theme = _resolve_theme_arg(theme_value)
@@ -643,7 +668,7 @@ def build_pool_steps() -> list[Step]:
                         if (target_duration := _arrange_target_duration(args)) is not None
                         else []
                     ),
-                    *(["--allow-generative-effects"] if args.video is None else []),
+                    *(["--allow-generative-effects"] if (args.video is None or getattr(args, "allow_generative_effects", False)) else []),
                     *(["--no-audio"] if args.video is None and args.audio is None else []),
                     *(["--env-file", str(args.env_file)] if args.env_file else []),
                 ],
@@ -745,15 +770,132 @@ def build_pool_steps() -> list[Step]:
     ]
 
 
+def _initial_facts(args: argparse.Namespace) -> set[str]:
+    """Compute the set of pipeline facts available before any step runs.
+
+    Facts are matched against each executor's `pipeline_requirements`; a step
+    runs when its requirements are a subset of the running facts, where
+    each step that runs adds its `graph.provides` to the set.
+    """
+    facts: set[str] = {"brief", "theme"}
+    if args.video is not None:
+        facts.update({"source_video", "video", "source_media"})
+    if args.audio is not None:
+        facts.update({"source_audio", "audio", "source_media"})
+    if getattr(args, "target_duration", None) is not None:
+        facts.add("target_duration")
+    if getattr(args, "allow_generative_effects", False):
+        facts.add("generative_visuals_enabled")
+    return facts
+
+
+def select_steps(args: argparse.Namespace) -> list[Step]:
+    """Select pipeline steps via manifest-declared requirements.
+
+    Walks STEP_ORDER (used as the topological hint) and includes each step
+    whose executor's `pipeline_requirements` are satisfied by the running
+    facts set. Each step that runs contributes its `graph.provides` for
+    downstream steps. Replaces the old mode-fork logic; equivalent for
+    source-video, audio-only, and pure-generative briefs.
+    """
+    from artagents.executors.registry import load_default_registry
+
+    registry = load_default_registry()
+    facts = _initial_facts(args)
+    all_steps = {step.name: step for step in build_pool_steps()}
+    selected: list[Step] = []
+    for name in STEP_ORDER:
+        step = all_steps.get(name)
+        if step is None:
+            continue
+        executor_id = f"builtin.{name}"
+        try:
+            executor = registry.get(executor_id)
+        except KeyError:
+            selected.append(step)
+            continue
+        requirements = set(executor.pipeline_requirements)
+        if not requirements.issubset(facts):
+            continue
+        selected.append(step)
+        facts.update(executor.graph.provides or ())
+    return selected
+
+
 def build_steps(args: argparse.Namespace) -> list[Step]:
-    steps = build_pool_steps()
-    if args.video is None:
-        source_only = {"scenes", "quality_zones", "shots", "triage", "scene_describe", "quote_scout", "pool_build"}
-        steps = [step for step in steps if step.name not in source_only]
-    if args.audio is None:
-        audio_only = {"transcribe", "refine", "editor_review", "validate"}
-        steps = [step for step in steps if step.name not in audio_only]
-    return steps
+    """Backwards-compatible alias for select_steps()."""
+    return select_steps(args)
+
+
+def _redact_command(cmd: list[str]) -> list[str]:
+    """Strip env-file values from logged argv (paths can contain secrets)."""
+    out: list[str] = []
+    skip_next = False
+    for token in cmd:
+        if skip_next:
+            out.append("<redacted>")
+            skip_next = False
+            continue
+        if token in ("--env-file",):
+            out.append(token)
+            skip_next = True
+            continue
+        out.append(token)
+    return out
+
+
+def _write_dry_run_plan(args: argparse.Namespace) -> int:
+    """Write hype.plan.json with the computed step set + redacted commands."""
+    facts = sorted(_initial_facts(args))
+    selected = select_steps(args)
+    skipped_explicit = set(getattr(args, "skip", ()) or ())
+    final_steps = [step for step in selected if step.name not in skipped_explicit]
+    selected_step_payload: list[dict[str, Any]] = []
+    for step in final_steps:
+        try:
+            cmd = step.build_cmd(args)
+        except Exception as exc:  # pragma: no cover - dry-run never raises mid-loop
+            cmd = [f"<unbuildable: {exc}>"]
+        selected_step_payload.append(
+            {
+                "name": step.name,
+                "per_brief": step.per_brief,
+                "sentinels": list(step.sentinels),
+                "argv_redacted": _redact_command(cmd),
+            }
+        )
+    skipped_payload = [
+        {"name": step.name, "reason": "skipped via --skip"}
+        for step in selected
+        if step.name in skipped_explicit
+    ]
+    all_known = set(STEP_ORDER)
+    excluded_by_capability = sorted(all_known - {s.name for s in selected})
+    payload = {
+        "tool": "hype",
+        "phase": "dry-run",
+        "version": 1,
+        "runtime_facts": facts,
+        "capability_intent": {
+            "video": args.video is not None,
+            "audio": args.audio is not None,
+            "allow_generative_effects": args.allow_generative_effects,
+            "target_duration": getattr(args, "target_duration", None),
+        },
+        "selected_steps": selected_step_payload,
+        "skipped_steps": skipped_payload,
+        "excluded_by_capability": excluded_by_capability,
+    }
+    plan_path = args.out / "hype.plan.json"
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"hype.plan.json written: {plan_path}")
+    print(f"  selected steps ({len(selected_step_payload)}): {[s['name'] for s in selected_step_payload]}")
+    if skipped_payload:
+        print(f"  skipped via --skip: {[s['name'] for s in skipped_payload]}")
+    if excluded_by_capability:
+        print(f"  excluded by capability/facts: {excluded_by_capability}")
+    return 0
 
 
 def step_output_root(step: Step, args: argparse.Namespace) -> Path:
@@ -1082,6 +1224,12 @@ def pool_main(args: argparse.Namespace) -> int:
     prepare_brief_artifacts(args)
     for label, url in _url_inputs(args):
         _preflight_url_expiry(label, url)
+
+    # Phase 3 mixed-mode: --dry-run plans the run without invoking executors.
+    # Computes step set, builds redacted commands, writes hype.plan.json, exits.
+    if getattr(args, "dry_run", False):
+        return _write_dry_run_plan(args)
+
     _prefetch_url_inputs(args)
     steps = [step for step in build_steps(args) if step.name not in set(args.skip)]
     editor_steps = [step for step in steps if step.name != "validate"]

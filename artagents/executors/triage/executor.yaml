@@ -7,6 +7,9 @@
       "scene_triage.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: triage.",
   "graph": {
@@ -66,6 +69,10 @@
       "path_template": "{out}/scene_triage.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "scenes",
+    "shots"
   ],
   "version": "1.0"
 }

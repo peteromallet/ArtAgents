@@ -7,6 +7,13 @@
       "hype.mp4"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
   "conditions": [],
   "description": "Render the brief timeline to hype.mp4 through Remotion.",
   "graph": {
@@ -26,7 +33,7 @@
       "builtin.refine"
     ],
     "provides": [
-      "video"
+      "rendered_video"
     ]
   },
   "id": "builtin.render",
@@ -74,6 +81,11 @@
       "path_template": "{brief_out}/hype.mp4",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "timeline",
+    "assets",
+    "theme"
   ],
   "version": "1.0"
 }

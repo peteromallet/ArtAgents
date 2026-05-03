@@ -7,6 +7,10 @@
       "pool.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "audio"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: pool_build.",
   "graph": {
@@ -81,6 +85,11 @@
       "path_template": "{out}/pool.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "scene_triage",
+    "scene_descriptions",
+    "quote_candidates"
   ],
   "version": "1.0"
 }

@@ -5,6 +5,13 @@
     "per_brief": false,
     "sentinels": []
   },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: pool_merge.",
   "graph": {
@@ -62,6 +69,9 @@
       "path_template": "{out}/pool.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "brief"
   ],
   "version": "1.0"
 }

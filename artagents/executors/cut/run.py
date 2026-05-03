@@ -1146,8 +1146,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     pool = load_pool(pool_path)
     pool_ids = {entry["id"] for entry in pool["entries"]}
     arrangement = load_arrangement(arrangement_path, pool_ids, assign_missing_uuids=True)
-    if args.video is not None and arrangement_uses_generative_visuals(arrangement, pool):
-        raise SystemExit("Source-cut mode cannot materialize generative visual_source entries; rerun arrange without --allow-generative-effects.")
+    # Mixed-mode (Phase 3): cut accepts arrangements with both source-extracted
+    # video clips and generative visual entries. Pre-Phase-3 this was rejected
+    # via `args.video is not None and arrangement_uses_generative_visuals(...)`;
+    # the rejection is gone. The duration-window check stays gated on whether
+    # there is any source-derived material at all.
     if not is_all_generative_arrangement(arrangement, pool):
         validate_arrangement_duration_window(arrangement)
     compiled_plan = compile_arrangement_plan(arrangement, pool)

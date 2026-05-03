@@ -32,6 +32,29 @@ If the user gives a topic instead of a brief, create or use a brief-generation
 executor, then coordinate it from an orchestrator. Do not fake source media just
 to satisfy a source-video path.
 
+## Build Order
+
+Before adding anything, follow this order. Move to the next step only when the
+previous one cannot satisfy the request.
+
+1. **Try to compose existing executors.** Run `python3 -m artagents executors
+   list` and `inspect` the likely candidates. If a workflow can be built by
+   wiring existing executors together, write *only* an orchestrator that calls
+   them. Do not duplicate logic that already lives in an executor.
+2. **Create the missing executors.** Each new executor must do exactly one
+   concrete unit of work — independently runnable, inspectable, testable. Keep
+   it narrow: one network call, one transformation, one artifact in / one
+   artifact out. Workflow shape, retries-across-stages, and conditional
+   branching belong in the orchestrator, not the executor.
+3. **Write the orchestrator that composes them.** It calls the executors
+   (existing + new) and may call other orchestrators. Executors must not call
+   orchestrators.
+
+Anti-pattern: a single orchestrator `run.py` that opens HTTP sockets, parses
+model output, downloads files, and assembles grids — all inline. That is three
+or four executors hiding in a trench coat. Split them out so each piece is
+discoverable, reusable, and individually testable.
+
 ## Decision Rule
 
 Create an **executor** when the missing capability performs one concrete unit of

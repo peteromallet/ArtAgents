@@ -25,6 +25,7 @@ EXECUTOR_KINDS = {"built_in", "external"}
 CONDITION_KINDS = {"requires_input", "requires_file", "skip_if_input", "always"}
 CLIP_KIND_VALUES = tuple(kind.value for kind in ClipClassifiedKind)
 PIPELINE_REQUIREMENT_FACTS = {
+    "arrangement",
     "assets",
     "audio",
     "brief",

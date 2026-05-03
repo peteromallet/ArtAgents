@@ -7,6 +7,9 @@
       "scene_descriptions.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: scene_describe.",
   "graph": {
@@ -73,6 +76,10 @@
       "path_template": "{out}/scene_descriptions.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "scenes",
+    "scene_triage"
   ],
   "version": "1.0"
 }

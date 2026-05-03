@@ -9,6 +9,13 @@
       "hype.metadata.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
   "conditions": [
     {
       "input": "brief",
@@ -113,6 +120,10 @@
       "path_template": "{brief_out}/hype.metadata.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "arrangement",
+    "pool"
   ],
   "version": "1.0"
 }

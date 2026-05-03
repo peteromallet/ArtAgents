@@ -7,6 +7,10 @@
       "transcript.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "audio"
+  ],
   "conditions": [
     {
       "input": "audio",
@@ -60,6 +64,9 @@
       "path_template": "{out}/transcript.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "source_audio"
   ],
   "version": "1.0"
 }

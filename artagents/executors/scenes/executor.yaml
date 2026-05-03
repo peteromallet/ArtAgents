@@ -7,6 +7,9 @@
       "scenes.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video"
+  ],
   "conditions": [
     {
       "input": "video",
@@ -56,6 +59,9 @@
       "path_template": "{out}/scenes.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "source_video"
   ],
   "version": "1.0"
 }

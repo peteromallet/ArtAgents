@@ -55,7 +55,15 @@ Each tool has its own `STAGE.md` next to its `run.py`. That is the source of tru
 
 ## Make something new
 
-Read `docs/creating-tools.md`, then copy the closest template:
+Read `docs/creating-tools.md`, then follow this build order — every step before falling back to the next:
+
+1. **Compose existing executors first.** `python3 -m artagents executors list` and `inspect` the candidates. If existing executors can be wired together to do the job, build only an orchestrator that calls them.
+2. **Create the missing executors next.** Each new executor must do *one* concrete, focused unit of work — independently runnable, inspectable, and testable. Don't pack workflow logic into an executor; that belongs in an orchestrator.
+3. **Then write the orchestrator.** It composes the executors (existing + newly created) into the workflow. Orchestrators may call other orchestrators; executors must not.
+
+Skipping step 1 to write a god-orchestrator that bakes in network calls and business logic is the anti-pattern. Suspect it whenever a `run.py` grows past a couple of hundred lines without delegating to executors.
+
+Templates:
 
 - `docs/templates/executor/` — one concrete unit of work
 - `docs/templates/orchestrator/` — a workflow that combines executors

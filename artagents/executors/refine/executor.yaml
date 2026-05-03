@@ -7,6 +7,13 @@
       "refine.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: refine.",
   "graph": {
@@ -121,6 +128,12 @@
       "path_template": "{brief_out}/hype.metadata.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "timeline",
+    "assets",
+    "metadata",
+    "source_audio"
   ],
   "version": "1.0"
 }

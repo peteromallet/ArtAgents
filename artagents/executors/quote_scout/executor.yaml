@@ -7,6 +7,10 @@
       "quote_candidates.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "audio"
+  ],
   "conditions": [],
   "description": "ArtAgents pipeline step: quote_scout.",
   "graph": {
@@ -62,6 +66,10 @@
       "path_template": "{out}/quote_candidates.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "transcript",
+    "scenes"
   ],
   "version": "1.0"
 }

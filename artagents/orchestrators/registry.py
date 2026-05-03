@@ -199,7 +199,10 @@ def _builtin_folder_roots() -> tuple[Path, ...]:
     return tuple(
         path
         for path in sorted(root.iterdir())
-        if path.is_dir() and path.name not in skip and (path / "orchestrator.yaml").is_file()
+        if path.is_dir()
+        and path.name not in skip
+        and (path / "orchestrator.yaml").is_file()
+        and (path / "run.py").is_file()
     )
 
 

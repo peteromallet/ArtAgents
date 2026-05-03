@@ -7,6 +7,13 @@
       "arrangement.json"
     ]
   },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
   "conditions": [
     {
       "input": "brief",
@@ -88,6 +95,10 @@
       "path_template": "{brief_out}/arrangement.json",
       "type": "file"
     }
+  ],
+  "pipeline_requirements": [
+    "brief",
+    "pool"
   ],
   "version": "1.0"
 }
