@@ -161,6 +161,16 @@ class CutTimelineResumeTest(unittest.TestCase):
             self.skipTest("ffmpeg, npx, and remotion/node_modules are required for the render smoke")
 
         source_dir = self.copy_examples()
+        # The committed examples reference main.mp4 / broll.mp4 in
+        # hype.assets.json but do not ship the media files (the .mp4s are too
+        # heavy for a sample dir). Skip when the assets aren't present rather
+        # than fail with an opaque "Asset 'main' resolved to missing file"
+        # from the renderer's path resolver.
+        for asset_name in ("main.mp4", "broll.mp4"):
+            if not (source_dir / asset_name).exists():
+                self.skipTest(
+                    f"examples/ does not ship {asset_name}; render smoke needs real media"
+                )
         timeline_path = source_dir / "hype.timeline.json"
         out_dir = source_dir.parent / "rendered"
 

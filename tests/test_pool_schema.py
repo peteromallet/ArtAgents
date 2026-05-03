@@ -8,7 +8,27 @@ from artagents import timeline
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNS = ROOT / "runs" / "ados_loose"
+
+
+def _synthetic_scenes() -> list[dict]:
+    # The original test loaded runs/ados_loose/scenes.json, which is a per-user
+    # render output that has never been tracked in git. The pool-schema tests
+    # only need scenes[0] to supply start/end/duration/index — they do not
+    # depend on the real ados_loose values — so we generate a synthetic scene
+    # with the same shape.
+    return [
+        {"index": 0, "start": 0.0, "end": 5.4, "duration": 5.4},
+    ]
+
+
+def _synthetic_transcript() -> list[dict]:
+    # Same rationale as _synthetic_scenes: the test indexes segments 185 and
+    # 186 only to grab consistent timestamps. We pre-populate the indices used
+    # by the fixture (185, 186) with monotonically increasing timestamps.
+    segments = [{"start": float(i), "end": float(i) + 0.5} for i in range(187)]
+    segments[185] = {"start": 185.0, "end": 185.6}
+    segments[186] = {"start": 185.6, "end": 186.4}
+    return segments
 
 
 class PoolSchemaTest(unittest.TestCase):
@@ -20,8 +40,8 @@ class PoolSchemaTest(unittest.TestCase):
         return path
 
     def fixture_pool(self) -> tuple[dict, list[dict], list[dict]]:
-        scenes = json.loads((RUNS / "scenes.json").read_text(encoding="utf-8"))
-        transcript = json.loads((RUNS / "transcript.json").read_text(encoding="utf-8"))["segments"]
+        scenes = _synthetic_scenes()
+        transcript = _synthetic_transcript()
         scene = scenes[0]
         pool = {
             "version": timeline.POOL_VERSION,
