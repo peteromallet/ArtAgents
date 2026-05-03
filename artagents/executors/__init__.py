@@ -1,66 +1,77 @@
-"""Canonical executor APIs.
-
-Executors are ArtAgents execution units: built-in pipeline stages, action
-commands, service integrations, and external tools.
-"""
+"""Executor content package with compatibility aliases for framework modules."""
 
 from __future__ import annotations
 
-from importlib import import_module
+import sys
 from typing import Any
 
-_EXPORTS = {
-    "BanodocoCatalogConfig": "artagents.executors.banodoco_catalog",
-    "BanodocoCatalogError": "artagents.executors.banodoco_catalog",
-    "CachePolicy": "artagents.executors.schema",
-    "CommandSpec": "artagents.executors.schema",
-    "ConditionResult": "artagents.executors.runner",
-    "ConditionSpec": "artagents.executors.schema",
-    "ExecutorDefinition": "artagents.executors.schema",
-    "ExecutorInstallError": "artagents.executors.install",
-    "ExecutorInstallPlan": "artagents.executors.install",
-    "ExecutorInstallResult": "artagents.executors.install",
-    "ExecutorOutput": "artagents.executors.schema",
-    "ExecutorPort": "artagents.executors.schema",
-    "ExecutorRegistry": "artagents.executors.registry",
-    "ExecutorRegistryError": "artagents.executors.registry",
-    "ExecutorRunRequest": "artagents.executors.runner",
-    "ExecutorRunResult": "artagents.executors.runner",
-    "ExecutorRunnerError": "artagents.executors.runner",
-    "ExecutorSpec": "artagents.executors.api",
-    "ExecutorValidationError": "artagents.executors.schema",
-    "FolderExecutorError": "artagents.executors.folder",
-    "GraphMetadata": "artagents.executors.schema",
-    "IsolationMetadata": "artagents.executors.schema",
-    "build_executor_command": "artagents.executors.runner",
-    "build_executor_install_plan": "artagents.executors.install",
-    "build_pipeline_context": "artagents.executors.runner",
-    "check_executor_binaries": "artagents.executors.runner",
-    "discover_folder_executor_roots": "artagents.executors.folder",
-    "evaluate_conditions": "artagents.executors.runner",
-    "executor": "artagents.executors.api",
-    "executor_environment_path": "artagents.executors.install",
-    "executor_python_path": "artagents.executors.install",
-    "fetch_git_executor_manifest": "artagents.executors.install",
-    "install_executor": "artagents.executors.install",
-    "load_banodoco_catalog_executors": "artagents.executors.banodoco_catalog",
-    "load_builtin_executors": "artagents.executors.registry",
-    "load_bundled_executors": "artagents.executors.registry",
-    "load_curated_executors": "artagents.executors.registry",
-    "load_default_registry": "artagents.executors.registry",
-    "load_executor_manifest": "artagents.executors.schema",
-    "load_executor_manifest_definitions": "artagents.executors.schema",
-    "load_folder_executor": "artagents.executors.folder",
-    "load_folder_executors": "artagents.executors.folder",
-    "run_executor": "artagents.executors.runner",
-    "validate_executor_definition": "artagents.executors.schema",
+from artagents.core.executor import api, banodoco_catalog, cli, folder, install, registry, runner, schema
+
+_ALIASES = {
+    "api": api,
+    "banodoco_catalog": banodoco_catalog,
+    "cli": cli,
+    "folder": folder,
+    "install": install,
+    "registry": registry,
+    "runner": runner,
+    "schema": schema,
 }
 
-__all__ = sorted(_EXPORTS)
+for _name, _module in _ALIASES.items():
+    sys.modules[f"{__name__}.{_name}"] = _module
+
+_EXPORTS = {
+    "BanodocoCatalogConfig": banodoco_catalog,
+    "BanodocoCatalogError": banodoco_catalog,
+    "CachePolicy": schema,
+    "CommandSpec": schema,
+    "ConditionResult": runner,
+    "ConditionSpec": schema,
+    "ExecutorDefinition": schema,
+    "ExecutorInstallError": install,
+    "ExecutorInstallPlan": install,
+    "ExecutorInstallResult": install,
+    "ExecutorOutput": schema,
+    "ExecutorPort": schema,
+    "ExecutorRegistry": registry,
+    "ExecutorRegistryError": registry,
+    "ExecutorRunRequest": runner,
+    "ExecutorRunResult": runner,
+    "ExecutorRunnerError": runner,
+    "ExecutorSpec": api,
+    "ExecutorValidationError": schema,
+    "FolderExecutorError": folder,
+    "GraphMetadata": schema,
+    "IsolationMetadata": schema,
+    "build_executor_command": runner,
+    "build_executor_install_plan": install,
+    "build_pipeline_context": runner,
+    "check_executor_binaries": runner,
+    "discover_folder_executor_roots": folder,
+    "evaluate_conditions": runner,
+    "executor": api,
+    "executor_environment_path": install,
+    "executor_python_path": install,
+    "fetch_git_executor_manifest": install,
+    "install_executor": install,
+    "load_banodoco_catalog_executors": banodoco_catalog,
+    "load_builtin_executors": registry,
+    "load_bundled_executors": registry,
+    "load_curated_executors": registry,
+    "load_default_registry": registry,
+    "load_executor_manifest": schema,
+    "load_executor_manifest_definitions": schema,
+    "load_folder_executor": folder,
+    "load_folder_executors": folder,
+    "run_executor": runner,
+    "validate_executor_definition": schema,
+}
+
+__all__ = sorted([*_ALIASES, *_EXPORTS])
 
 
 def __getattr__(name: str) -> Any:
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module = import_module(_EXPORTS[name])
-    return getattr(module, name)
+    return getattr(_EXPORTS[name], name)

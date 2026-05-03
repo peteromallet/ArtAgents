@@ -3,8 +3,8 @@ import io
 import re
 from pathlib import Path
 
-from artagents.executors import cli as executors_cli
-from artagents.orchestrators import cli as orchestrators_cli
+from artagents.core.executor import cli as executors_cli
+from artagents.core.orchestrator import cli as orchestrators_cli
 from artagents.threads.index import ThreadIndexStore
 from artagents.threads.schema import make_thread_record
 

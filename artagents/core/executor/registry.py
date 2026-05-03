@@ -152,28 +152,28 @@ def load_project_executors() -> tuple[ExecutorDefinition, ...]:
 
 
 def _curated_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(CURATED_PACKAGE, Path(__file__).with_name("curated"))
+    return _package_manifest_paths(CURATED_PACKAGE, _content_root() / "curated")
 
 
 def _curated_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(CURATED_PACKAGE, Path(__file__).with_name("curated"))
+    return _package_folder_roots(CURATED_PACKAGE, _content_root() / "curated")
 
 
 def _bundled_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(BUNDLED_PACKAGE, Path(__file__).parents[1] / "executors" / "bundled")
+    return _package_manifest_paths(BUNDLED_PACKAGE, _content_root() / "bundled")
 
 
 def _bundled_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(BUNDLED_PACKAGE, Path(__file__).parents[1] / "executors" / "bundled")
+    return _package_folder_roots(BUNDLED_PACKAGE, _content_root() / "bundled")
 
 
 def _builtin_folder_roots() -> tuple[Path, ...]:
-    source_root = Path(__file__).parent
+    source_root = _content_root()
     return tuple(source_root / step_name for step_name in BUILTIN_STEP_ORDER if (source_root / step_name).is_dir())
 
 
 def _project_folder_roots() -> tuple[Path, ...]:
-    source_root = Path(__file__).parent
+    source_root = _content_root()
     skipped = {"__pycache__", "actions", "builtin", "bundled", "curated"}
     if not source_root.is_dir():
         return ()
@@ -184,6 +184,10 @@ def _project_folder_roots() -> tuple[Path, ...]:
             if path.is_dir() and path.name not in skipped and not path.name.startswith(".")
         )
     )
+
+
+def _content_root() -> Path:
+    return Path(__file__).resolve().parents[2] / "executors"
 
 
 def _package_manifest_paths(package: str, source_root: Path) -> tuple[Path, ...]:

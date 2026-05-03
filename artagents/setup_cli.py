@@ -8,9 +8,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from artagents._paths import REPO_ROOT
-from artagents.elements.cli import _sync_managed_defaults
-from artagents.elements.install import install_element
-from artagents.elements.registry import load_default_registry as load_element_registry
+from artagents.core.element.cli import _sync_managed_defaults
+from artagents.core.element.install import install_element
+from artagents.core.element.registry import load_default_registry as load_element_registry
 
 
 @dataclass(frozen=True)

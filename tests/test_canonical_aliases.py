@@ -1,18 +1,17 @@
 import importlib.util
 import unittest
 
-import artagents.executors as executors
-import artagents.orchestrators as orchestrators
-from artagents.executors import ExecutorDefinition, ExecutorRegistry, load_default_registry as load_executor_registry
-from artagents.orchestrators import OrchestratorDefinition, OrchestratorRegistry, load_default_registry as load_orchestrator_registry
+from artagents.core.executor import ExecutorDefinition, ExecutorRegistry, load_default_registry as load_executor_registry
+from artagents.core.orchestrator import OrchestratorDefinition, OrchestratorRegistry, load_default_registry as load_orchestrator_registry
+import artagents.elements as legacy_elements
+import artagents.executors as legacy_executors
+import artagents.orchestrators as legacy_orchestrators
 
 
 class CanonicalAliasTest(unittest.TestCase):
     def test_orchestrator_api_uses_canonical_implementation(self) -> None:
-        self.assertEqual(OrchestratorDefinition.__module__, "artagents.orchestrators.schema")
-        self.assertEqual(OrchestratorRegistry.__module__, "artagents.orchestrators.registry")
-        self.assertFalse(hasattr(orchestrators, "ConductorDefinition"))
-        self.assertFalse(hasattr(orchestrators, "PerformerRegistry"))
+        self.assertEqual(OrchestratorDefinition.__module__, "artagents.core.orchestrator.schema")
+        self.assertEqual(OrchestratorRegistry.__module__, "artagents.core.orchestrator.registry")
 
         registry = load_orchestrator_registry()
 
@@ -20,10 +19,8 @@ class CanonicalAliasTest(unittest.TestCase):
         self.assertIsInstance(registry, OrchestratorRegistry)
 
     def test_executor_api_uses_canonical_implementation(self) -> None:
-        self.assertEqual(ExecutorDefinition.__module__, "artagents.executors.schema")
-        self.assertEqual(ExecutorRegistry.__module__, "artagents.executors.registry")
-        self.assertFalse(hasattr(executors, "InstrumentDefinition"))
-        self.assertFalse(hasattr(executors, "PerformerDefinition"))
+        self.assertEqual(ExecutorDefinition.__module__, "artagents.core.executor.schema")
+        self.assertEqual(ExecutorRegistry.__module__, "artagents.core.executor.registry")
 
         registry = load_executor_registry()
 
@@ -34,6 +31,16 @@ class CanonicalAliasTest(unittest.TestCase):
     def test_legacy_public_packages_are_absent(self) -> None:
         self.assertIsNone(importlib.util.find_spec("artagents.performers"))
         self.assertIsNone(importlib.util.find_spec("artagents.conductors"))
+
+    def test_content_packages_keep_framework_api_exports(self) -> None:
+        self.assertEqual(legacy_executors.ExecutorRunRequest.__module__, "artagents.core.executor.runner")
+        self.assertEqual(legacy_executors.ExecutorRegistry.__module__, "artagents.core.executor.registry")
+        self.assertIs(legacy_executors.load_default_registry, load_executor_registry)
+        self.assertEqual(legacy_orchestrators.OrchestratorRunRequest.__module__, "artagents.core.orchestrator.runner")
+        self.assertEqual(legacy_orchestrators.OrchestratorRegistry.__module__, "artagents.core.orchestrator.registry")
+        self.assertIs(legacy_orchestrators.load_default_registry, load_orchestrator_registry)
+        self.assertEqual(legacy_elements.ElementRegistry.__module__, "artagents.core.element.registry")
+        self.assertEqual(legacy_elements.ElementDefinition.__module__, "artagents.core.element.schema")
 
     def test_top_level_orchestrator_modules_are_absent(self) -> None:
         self.assertIsNone(importlib.util.find_spec("artagents.event_talks"))

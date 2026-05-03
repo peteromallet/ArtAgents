@@ -24,9 +24,11 @@ FAL_QUEUE_URL = "https://queue.fal.run"
 
 DEFAULT_COUNT = 9
 DEFAULT_FIREWORKS_MODEL = "accounts/fireworks/models/kimi-k2p5"
-DEFAULT_PROVIDER = "z-image"
+DEFAULT_PROVIDER = "gpt-image"
 DEFAULT_IMAGE_SIZE = "square_hd"
 DEFAULT_OUTPUT_FORMAT = "png"
+
+GRID_PROVIDERS = {"gpt-image"}
 
 PROVIDER_MODEL_IDS = {
     "z-image": "fal-ai/z-image/turbo",
@@ -376,6 +378,52 @@ def render_concepts(
     return results
 
 
+def build_grid_prompt(ideas: str, concepts: list[dict[str, Any]]) -> str:
+    n = len(concepts)
+    cols = max(1, math.ceil(math.sqrt(n)))
+    rows = math.ceil(n / cols)
+    cells = "\n".join(
+        f"Cell {i + 1} ({c.get('name') or c['candidate_id']}): {c['prompt']}"
+        for i, c in enumerate(concepts)
+    )
+    return (
+        f"A {rows}x{cols} contact-sheet grid containing {n} distinct logo concepts on a "
+        f"clean neutral dark background. Each cell shows ONE complete, separate logo at "
+        f"equal size, with thin gutters between cells. No labels, captions, or watermark text.\n\n"
+        f"Brief: {ideas}\n\n"
+        f"Cells (in reading order, left-to-right, top-to-bottom):\n{cells}"
+    )
+
+
+def render_grid_image(
+    *,
+    ideas: str,
+    concepts: list[dict[str, Any]],
+    layout: dict[str, Path],
+    provider: str,
+    image_size: str | dict[str, int],
+    output_format: str,
+    fal_key: str | None,
+    dry_run: bool,
+) -> tuple[list[dict[str, Any]], dict[str, Any], str]:
+    ext = _ext_for_format(output_format)
+    grid_path = layout["root"] / f"grid.{ext}"
+    grid_prompt = build_grid_prompt(ideas, concepts)
+
+    if dry_run or not fal_key:
+        generated = _placeholder_image(grid_path, "grid (dry-run)")
+    else:
+        payload = _fal_payload(provider, grid_prompt, image_size, output_format)
+        submission = submit_fal_job(provider, payload, fal_key)
+        result = poll_fal_result(submission, fal_key)
+        generated = _save_first_image(result, grid_path)
+        generated["request_id"] = submission.get("request_id")
+
+    generated["grid_prompt"] = grid_prompt
+    results = [{**c, "generated": dict(generated)} for c in concepts]
+    return results, generated, grid_prompt
+
+
 def write_grid(results: list[dict[str, Any]], out_path: Path) -> dict[str, Any]:
     paths: list[tuple[Path, str]] = []
     for item in results:
@@ -476,17 +524,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     fal_key = None if args.dry_run else _load_env_var("FAL_KEY", args.env_file)
-    results = render_concepts(
-        concepts=concepts,
-        layout=layout,
-        provider=args.provider,
-        image_size=image_size_payload,
-        output_format=args.output_format,
-        fal_key=fal_key,
-        dry_run=args.dry_run,
-    )
+    grid_mode = args.provider in GRID_PROVIDERS
+    if grid_mode:
+        results, grid_generated, grid_prompt = render_grid_image(
+            ideas=args.ideas,
+            concepts=concepts,
+            layout=layout,
+            provider=args.provider,
+            image_size=image_size_payload,
+            output_format=args.output_format,
+            fal_key=fal_key,
+            dry_run=args.dry_run,
+        )
+        grid = {
+            "path": grid_generated.get("path"),
+            "image_count": 1,
+            "mode": "single-call",
+            "prompt": grid_prompt,
+            "placeholder": bool(grid_generated.get("placeholder")),
+        }
+    else:
+        results = render_concepts(
+            concepts=concepts,
+            layout=layout,
+            provider=args.provider,
+            image_size=image_size_payload,
+            output_format=args.output_format,
+            fal_key=fal_key,
+            dry_run=args.dry_run,
+        )
+        grid = write_grid(results, layout["root"] / "grid.jpg")
+        grid["mode"] = "composite"
 
-    grid = write_grid(results, layout["root"] / "grid.jpg")
     manifest = {
         "version": 1,
         "mode": plan["mode"],
@@ -499,12 +568,54 @@ def main(argv: Sequence[str] | None = None) -> int:
         "candidates": results,
     }
     write_json(layout["root"] / "logo-manifest.json", manifest)
-    write_variant_sidecar(layout["root"], _variant_artifacts_for_logo_ideas(results, run_id=os.environ.get("ARTAGENTS_RUN_ID", "").strip()))
+    run_id = os.environ.get("ARTAGENTS_RUN_ID", "").strip()
+    if grid_mode:
+        artifacts = _variant_artifacts_for_grid(grid_generated, results, run_id=run_id)
+    else:
+        artifacts = _variant_artifacts_for_logo_ideas(results, run_id=run_id)
+    write_variant_sidecar(layout["root"], artifacts)
 
     print(f"wrote_logo_manifest={layout['root'] / 'logo-manifest.json'}")
     if grid.get("path"):
         print(f"wrote_grid={grid['path']}")
     return 0
+
+
+def _variant_artifacts_for_grid(
+    grid_generated: dict[str, Any],
+    results: list[dict[str, Any]],
+    *,
+    run_id: str,
+) -> list[dict[str, Any]]:
+    path = grid_generated.get("path")
+    if not path:
+        return []
+    group = hashlib.sha256(f"{run_id}:logo_ideas_grid".encode("utf-8")).hexdigest()[:16]
+    return [
+        {
+            "path": path,
+            "role": "variant",
+            "group": group,
+            "group_index": 1,
+            "duration": None,
+            "variant_meta": {
+                "candidate_id": "grid",
+                "name": "Logo grid",
+                "rationale": "Single GPT image-2 render of all concepts as one grid.",
+                "prompt": grid_generated.get("grid_prompt"),
+                "generated": {k: v for k, v in grid_generated.items() if k != "grid_prompt"},
+                "concepts": [
+                    {
+                        "candidate_id": c.get("candidate_id"),
+                        "name": c.get("name"),
+                        "rationale": c.get("rationale"),
+                        "prompt": c.get("prompt"),
+                    }
+                    for c in results
+                ],
+            },
+        }
+    ]
 
 
 def _variant_artifacts_for_logo_ideas(results: list[dict[str, Any]], *, run_id: str) -> list[dict[str, Any]]:

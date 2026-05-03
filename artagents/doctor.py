@@ -83,19 +83,19 @@ def _capture_check(name: str, fn: Callable[[], str]) -> DoctorCheck:
 
 
 def load_executor_registry():
-    from artagents.executors.registry import load_default_registry
+    from artagents.core.executor.registry import load_default_registry
 
     return load_default_registry()
 
 
 def load_orchestrator_registry(*, executor_registry=None):
-    from artagents.orchestrators.registry import load_default_registry
+    from artagents.core.orchestrator.registry import load_default_registry
 
     return load_default_registry(executor_registry=executor_registry)
 
 
 def load_element_registry(*, project_root: Path):
-    from artagents.elements.registry import load_default_registry
+    from artagents.core.element.registry import load_default_registry
 
     return load_default_registry(project_root=project_root)
 
@@ -115,9 +115,9 @@ def _check_python_version() -> DoctorCheck:
 def _check_required_imports() -> DoctorCheck:
     modules = (
         "artagents.timeline",
-        "artagents.elements.registry",
-        "artagents.executors.registry",
-        "artagents.orchestrators.registry",
+        "artagents.core.element.registry",
+        "artagents.core.executor.registry",
+        "artagents.core.orchestrator.registry",
     )
     for module in modules:
         importlib.import_module(module)
@@ -193,7 +193,7 @@ def _check_remotion_config() -> str:
 
 
 def _check_timeline_catalog() -> str:
-    from artagents.elements.catalog import list_animation_ids, list_effect_ids, list_transition_ids
+    from artagents.core.element.catalog import list_animation_ids, list_effect_ids, list_transition_ids
 
     effects = set(list_effect_ids())
     animations = set(list_animation_ids())

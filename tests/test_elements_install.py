@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.elements.install import build_element_install_plan, install_element
-from artagents.elements.registry import load_default_registry
-from artagents.executors.install import build_executor_install_plan, executor_environment_path, executor_python_path
-from artagents.executors.registry import load_default_registry as load_executor_registry
+from artagents.core.element.install import build_element_install_plan, install_element
+from artagents.core.element.registry import load_default_registry
+from artagents.core.executor.install import build_executor_install_plan, executor_environment_path, executor_python_path
+from artagents.core.executor.registry import load_default_registry as load_executor_registry
 
 
 class ElementInstallTest(unittest.TestCase):
@@ -60,7 +60,7 @@ class ElementInstallTest(unittest.TestCase):
         element = self.element_with_dependencies()
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp)
-            with mock.patch("artagents.elements.install.subprocess.run") as run:
+            with mock.patch("artagents.core.element.install.subprocess.run") as run:
                 result = install_element(element, project_root=project_root, dry_run=True)
 
             self.assertEqual(result.returncode, 0)
@@ -72,7 +72,7 @@ class ElementInstallTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp)
             completed = mock.Mock(returncode=0)
-            with mock.patch("artagents.elements.install.subprocess.run", return_value=completed) as run:
+            with mock.patch("artagents.core.element.install.subprocess.run", return_value=completed) as run:
                 result = install_element(element, project_root=project_root, dry_run=False)
 
             self.assertEqual(result.returncode, 0)

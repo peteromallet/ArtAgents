@@ -24,7 +24,7 @@ class PipelineDispatchAliasTest(unittest.TestCase):
         self.assertNotIn("performers", help_text)
 
     def test_elements_dispatches_before_pipeline_validation(self) -> None:
-        from artagents.elements import cli as elements_cli
+        from artagents.core.element import cli as elements_cli
 
         with mock.patch.object(elements_cli, "main", return_value=31) as elements_main:
             self.assertEqual(pipeline.main(["elements", "list"]), 31)

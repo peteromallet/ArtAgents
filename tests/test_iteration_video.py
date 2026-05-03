@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from artagents.orchestrators.iteration_video import run as iteration_video
-from artagents.orchestrators.runner import OrchestratorRunRequest, run_orchestrator
+from artagents.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
 from artagents.threads.index import ThreadIndexStore
 from artagents.threads.schema import make_thread_record
 

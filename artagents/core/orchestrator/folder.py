@@ -157,8 +157,8 @@ import runpy
 import sys
 import traceback
 
-from artagents.orchestrators.api import OrchestratorSpec
-from artagents.orchestrators.schema import OrchestratorDefinition, validate_orchestrator_definition
+from artagents.core.orchestrator.api import OrchestratorSpec
+from artagents.core.orchestrator.schema import OrchestratorDefinition, validate_orchestrator_definition
 
 PREFIX = "__ARTAGENTS_ORCHESTRATOR_METADATA__="
 

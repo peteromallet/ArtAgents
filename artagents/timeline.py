@@ -458,30 +458,30 @@ def _known_timeline_payload(config: Mapping[str, Any]) -> dict[str, Any]:
 
 def _effect_ids(theme: str | None = None) -> set[str]:
     try:
-        from artagents.elements import catalog as effects_catalog
+        from artagents.core.element import catalog as effects_catalog
     except ImportError:
-        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
+        from artagents.core.element import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_effect_ids(theme=theme))
 
 def _animation_ids() -> set[str]:
     try:
-        from artagents.elements import catalog as effects_catalog
+        from artagents.core.element import catalog as effects_catalog
     except ImportError:
-        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
+        from artagents.core.element import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_animation_ids())
 
 def _transition_ids() -> set[str]:
     try:
-        from artagents.elements import catalog as effects_catalog
+        from artagents.core.element import catalog as effects_catalog
     except ImportError:
-        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
+        from artagents.core.element import catalog as effects_catalog  # type: ignore[no-redef]
     return set(effects_catalog.list_transition_ids())
 
 def _animation_meta(animation_id: str) -> dict[str, Any]:
     try:
-        from artagents.elements import catalog as effects_catalog
+        from artagents.core.element import catalog as effects_catalog
     except ImportError:
-        from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
+        from artagents.core.element import catalog as effects_catalog  # type: ignore[no-redef]
     try:
         return effects_catalog.read_animation_meta(animation_id)
     except Exception:
@@ -555,11 +555,11 @@ def _validate_effect_params(effect_id: str, params: Any, path: str, theme: str |
         if phase in params:
             _validate_animation_reference_list(params[phase], phase, f"{path}.{phase}", known_animation_ids)
     try:
-        from artagents.elements import catalog as effects_catalog
+        from artagents.core.element import catalog as effects_catalog
         import jsonschema  # type: ignore[import-not-found]
     except ImportError:
         try:
-            from artagents.elements import catalog as effects_catalog  # type: ignore[no-redef]
+            from artagents.core.element import catalog as effects_catalog  # type: ignore[no-redef]
             import jsonschema  # type: ignore[import-not-found,no-redef]
         except ImportError:
             return

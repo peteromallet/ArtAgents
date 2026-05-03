@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from artagents.executors.registry import ExecutorRegistry
-from artagents.executors.runner import ExecutorRunRequest, run_executor
-from artagents.executors.schema import ExecutorDefinition
+from artagents.core.executor.registry import ExecutorRegistry
+from artagents.core.executor.runner import ExecutorRunRequest, run_executor
+from artagents.core.executor.schema import ExecutorDefinition
 from artagents.contracts.schema import CommandSpec, Output
 from artagents.threads.ids import generate_run_id, generate_thread_id
 from artagents.threads.index import ThreadIndexStore

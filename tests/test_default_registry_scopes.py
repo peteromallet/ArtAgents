@@ -5,12 +5,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.executors.registry import (
+from artagents.core.executor.registry import (
     load_builtin_executors,
     load_bundled_executors,
     load_default_registry as load_executor_registry,
 )
-from artagents.orchestrators.registry import load_bundled_orchestrators, load_default_registry as load_orchestrator_registry
+from artagents.core.orchestrator.registry import load_bundled_orchestrators, load_default_registry as load_orchestrator_registry
 
 
 class DefaultRegistryScopeTest(unittest.TestCase):
@@ -71,7 +71,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
             (bundled_root / "executor.py").write_text(
                 "\n".join(
                     [
-                        "from artagents.executors.api import ExecutorSpec",
+                        "from artagents.core.executor.api import ExecutorSpec",
                         "executor = ExecutorSpec(",
                         "    id='external.bundled_executor',",
                         "    name='Bundled Executor',",
@@ -83,8 +83,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch("artagents.executors.registry._bundled_manifest_paths", return_value=()), mock.patch(
-                "artagents.executors.registry._bundled_folder_roots", return_value=(bundled_root,)
+            with mock.patch("artagents.core.executor.registry._bundled_manifest_paths", return_value=()), mock.patch(
+                "artagents.core.executor.registry._bundled_folder_roots", return_value=(bundled_root,)
             ):
                 bundled = load_bundled_executors()
 
@@ -128,8 +128,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch("artagents.executors.registry._bundled_manifest_paths", return_value=()), mock.patch(
-                "artagents.executors.registry._bundled_folder_roots", return_value=(bundled_root,)
+            with mock.patch("artagents.core.executor.registry._bundled_manifest_paths", return_value=()), mock.patch(
+                "artagents.core.executor.registry._bundled_folder_roots", return_value=(bundled_root,)
             ):
                 bundled = load_bundled_executors()
 
@@ -154,7 +154,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
             (bundled_root / "orchestrator.py").write_text(
                 "\n".join(
                     [
-                        "from artagents.orchestrators import OrchestratorSpec",
+                        "from artagents.core.orchestrator import OrchestratorSpec",
                         "orchestrator = OrchestratorSpec(",
                         "    id='external.bundled_orchestrator',",
                         "    name='Bundled Orchestrator',",
@@ -166,8 +166,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch("artagents.orchestrators.registry._bundled_manifest_paths", return_value=()), mock.patch(
-                "artagents.orchestrators.registry._bundled_folder_roots", return_value=(bundled_root,)
+            with mock.patch("artagents.core.orchestrator.registry._bundled_manifest_paths", return_value=()), mock.patch(
+                "artagents.core.orchestrator.registry._bundled_folder_roots", return_value=(bundled_root,)
             ):
                 bundled = load_bundled_orchestrators()
 

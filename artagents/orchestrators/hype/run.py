@@ -893,7 +893,7 @@ def select_steps(args: argparse.Namespace) -> list[Step]:
     downstream steps. Replaces the old mode-fork logic; equivalent for
     source-video, audio-only, and pure-generative briefs.
     """
-    from artagents.executors.registry import load_default_registry
+    from artagents.core.executor.registry import load_default_registry
 
     registry = load_default_registry()
     facts = _initial_facts(args)

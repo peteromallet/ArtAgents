@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.elements import cli
-from artagents.elements.install import build_element_install_plan
-from artagents.elements.registry import load_default_registry
+from artagents.core.element import cli
+from artagents.core.element.install import build_element_install_plan
+from artagents.core.element.registry import load_default_registry
 
 
 class ElementsCliTest(unittest.TestCase):

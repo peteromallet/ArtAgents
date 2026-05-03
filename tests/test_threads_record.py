@@ -8,12 +8,12 @@ from unittest import mock
 import pytest
 
 from artagents.contracts.schema import CommandSpec, Output, Port
-from artagents.executors.registry import ExecutorRegistry
-from artagents.executors.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
-from artagents.executors.schema import ExecutorDefinition
-from artagents.orchestrators.registry import OrchestratorRegistry
-from artagents.orchestrators.runner import OrchestratorRunRequest, run_orchestrator
-from artagents.orchestrators.schema import OrchestratorDefinition, RuntimeSpec
+from artagents.core.executor.registry import ExecutorRegistry
+from artagents.core.executor.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
+from artagents.core.executor.schema import ExecutorDefinition
+from artagents.core.orchestrator.registry import OrchestratorRegistry
+from artagents.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
+from artagents.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
 from artagents.threads.ids import is_ulid
 
 

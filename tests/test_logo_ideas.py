@@ -238,12 +238,7 @@ class DryRunSmokeTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, path, ignore_errors=True)
         return path
 
-    def test_dry_run_writes_all_manifest_artifacts_without_network(self):
-        out_dir = self.make_tempdir() / "logos"
-
-        # Belt-and-braces: even though dry-run skips both API calls, patch the
-        # network seams so any accidental call would blow up loudly rather than
-        # silently hitting the wire.
+    def _patch_network(self):
         boom_post = mock.patch.object(
             logo_ideas, "_http_post_json", side_effect=AssertionError("network call in dry-run")
         )
@@ -260,6 +255,10 @@ class DryRunSmokeTest(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
+    def test_dry_run_default_provider_writes_grid_artifacts_without_network(self):
+        out_dir = self.make_tempdir() / "logos"
+        self._patch_network()
+
         rc = logo_ideas.main(
             ["--ideas", "test brief", "--out", str(out_dir), "--count", "2", "--dry-run"]
         )
@@ -271,21 +270,42 @@ class DryRunSmokeTest(unittest.TestCase):
 
         plan = json.loads((root / "logo-plan.json").read_text())
         self.assertEqual(plan["mode"], "dry-run")
-        self.assertEqual(plan["count"], 2)
-        self.assertEqual(plan["ideas"], "test brief")
-
-        concepts_doc = json.loads((root / "concepts.json").read_text())
-        self.assertEqual(concepts_doc["mode"], "dry-run")
-        self.assertEqual(len(concepts_doc["concepts"]), 2)
-
-        prompts_doc = json.loads((root / "prompts.json").read_text())
-        self.assertEqual(len(prompts_doc["prompts"]), 2)
-        self.assertEqual(prompts_doc["prompts"][0]["candidate_id"], "logo-001")
+        self.assertEqual(plan["provider"], "gpt-image")
 
         manifest = json.loads((root / "logo-manifest.json").read_text())
-        self.assertEqual(manifest["mode"], "dry-run")
         self.assertEqual(len(manifest["candidates"]), 2)
-        # Each candidate should have a generated entry pointing at images/
+        # Grid mode: every candidate references the SAME grid image at root.
+        grid_path = manifest["grid"]["path"]
+        self.assertTrue(grid_path.endswith("/grid.png"), grid_path)
+        self.assertEqual(manifest["grid"]["mode"], "single-call")
+        for candidate in manifest["candidates"]:
+            generated = candidate["generated"]
+            self.assertTrue(generated.get("placeholder"))
+            self.assertEqual(generated["path"], grid_path)
+            self.assertIn("grid_prompt", generated)
+
+    def test_dry_run_z_image_provider_writes_per_concept_artifacts(self):
+        out_dir = self.make_tempdir() / "logos"
+        self._patch_network()
+
+        rc = logo_ideas.main(
+            [
+                "--ideas",
+                "test brief",
+                "--out",
+                str(out_dir),
+                "--count",
+                "2",
+                "--provider",
+                "z-image",
+                "--dry-run",
+            ]
+        )
+        self.assertEqual(rc, 0)
+
+        root = out_dir.expanduser().resolve()
+        manifest = json.loads((root / "logo-manifest.json").read_text())
+        self.assertEqual(len(manifest["candidates"]), 2)
         for candidate in manifest["candidates"]:
             generated = candidate["generated"]
             self.assertTrue(generated.get("placeholder"))

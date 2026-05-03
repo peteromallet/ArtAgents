@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from artagents.executors.banodoco_catalog import BanodocoCatalogConfig
+from artagents.core.executor.banodoco_catalog import BanodocoCatalogConfig
 
 from .registry import OrchestratorRegistry, load_default_registry
 from .schema import OrchestratorDefinition, OrchestratorValidationError

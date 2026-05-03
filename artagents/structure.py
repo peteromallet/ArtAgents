@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from artagents._paths import REPO_ROOT
-from artagents.executors.folder import load_folder_executors
-from artagents.orchestrators.folder import load_folder_orchestrators
+from artagents.core.executor.folder import load_folder_executors
+from artagents.core.orchestrator.folder import load_folder_orchestrators
 
 
 LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives")
@@ -29,6 +29,7 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "__pycache__",
     "audit",
     "contracts",
+    "core",
     "domains",
     "elements",
     "executors",

@@ -8,7 +8,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable
 
-from artagents.executors.registry import ExecutorRegistry, load_default_registry as load_default_executor_registry
+from artagents.core.executor.registry import ExecutorRegistry, load_default_registry as load_default_executor_registry
 
 from .schema import (
     OrchestratorDefinition,
@@ -178,23 +178,23 @@ def load_default_registry(
 
 
 def _curated_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(CURATED_PACKAGE, Path(__file__).with_name("curated"))
+    return _package_manifest_paths(CURATED_PACKAGE, _content_root() / "curated")
 
 
 def _curated_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(CURATED_PACKAGE, Path(__file__).with_name("curated"))
+    return _package_folder_roots(CURATED_PACKAGE, _content_root() / "curated")
 
 
 def _bundled_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(BUNDLED_PACKAGE, Path(__file__).parents[1] / "orchestrators" / "bundled")
+    return _package_manifest_paths(BUNDLED_PACKAGE, _content_root() / "bundled")
 
 
 def _bundled_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(BUNDLED_PACKAGE, Path(__file__).parents[1] / "orchestrators" / "bundled")
+    return _package_folder_roots(BUNDLED_PACKAGE, _content_root() / "bundled")
 
 
 def _builtin_folder_roots() -> tuple[Path, ...]:
-    root = Path(__file__).resolve().parent
+    root = _content_root()
     skip = {"__pycache__", "bundled", "curated"}
     return tuple(
         path
@@ -204,6 +204,10 @@ def _builtin_folder_roots() -> tuple[Path, ...]:
         and (path / "orchestrator.yaml").is_file()
         and (path / "run.py").is_file()
     )
+
+
+def _content_root() -> Path:
+    return Path(__file__).resolve().parents[2] / "orchestrators"
 
 
 def _package_manifest_paths(package: str, source_root: Path) -> tuple[Path, ...]:

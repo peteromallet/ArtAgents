@@ -16,8 +16,8 @@ TOOLS_DIR = Path(__file__).resolve().parents[1]
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from artagents.elements.registry import ElementRegistry, load_default_registry
-from artagents.elements.schema import ElementDefinition
+from artagents.core.element.registry import ElementRegistry, load_default_registry
+from artagents.core.element.schema import ElementDefinition
 
 WORKSPACE_ROOT = TOOLS_DIR.parent
 THEMES_ROOT = WORKSPACE_ROOT / "themes"

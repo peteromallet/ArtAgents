@@ -1,46 +1,59 @@
-"""Canonical orchestration APIs."""
+"""Orchestrator content package with compatibility aliases for framework modules."""
 
 from __future__ import annotations
 
-from importlib import import_module
+import sys
 from typing import Any
 
-_EXPORTS = {
-    "CachePolicy": "artagents.orchestrators.schema",
-    "CommandSpec": "artagents.orchestrators.schema",
-    "IsolationMetadata": "artagents.orchestrators.schema",
-    "OrchestratorDefinition": "artagents.orchestrators.schema",
-    "OrchestratorPlan": "artagents.orchestrators.runner",
-    "OrchestratorPlanStep": "artagents.orchestrators.runner",
-    "OrchestratorRegistry": "artagents.orchestrators.registry",
-    "OrchestratorRegistryError": "artagents.orchestrators.registry",
-    "OrchestratorRunError": "artagents.orchestrators.runner",
-    "OrchestratorRunRequest": "artagents.orchestrators.runner",
-    "OrchestratorRunResult": "artagents.orchestrators.runner",
-    "OrchestratorRunnerError": "artagents.orchestrators.runner",
-    "OrchestratorSpec": "artagents.orchestrators.api",
-    "OrchestratorValidationError": "artagents.orchestrators.schema",
-    "Output": "artagents.orchestrators.schema",
-    "Port": "artagents.orchestrators.schema",
-    "RuntimeSpec": "artagents.orchestrators.schema",
-    "build_orchestrator_command": "artagents.orchestrators.runner",
-    "load_builtin_orchestrators": "artagents.orchestrators.registry",
-    "load_bundled_orchestrators": "artagents.orchestrators.registry",
-    "load_curated_orchestrators": "artagents.orchestrators.registry",
-    "load_default_registry": "artagents.orchestrators.registry",
-    "load_folder_orchestrator": "artagents.orchestrators.folder",
-    "load_folder_orchestrators": "artagents.orchestrators.folder",
-    "load_orchestrator_manifest": "artagents.orchestrators.schema",
-    "orchestrator": "artagents.orchestrators.api",
-    "run_orchestrator": "artagents.orchestrators.runner",
-    "validate_orchestrator_definition": "artagents.orchestrators.schema",
+from artagents.core.orchestrator import api, cli, folder, registry, runner, schema
+
+_ALIASES = {
+    "api": api,
+    "cli": cli,
+    "folder": folder,
+    "registry": registry,
+    "runner": runner,
+    "schema": schema,
 }
 
-__all__ = sorted(_EXPORTS)
+for _name, _module in _ALIASES.items():
+    sys.modules[f"{__name__}.{_name}"] = _module
+
+_EXPORTS = {
+    "CachePolicy": schema,
+    "CommandSpec": schema,
+    "IsolationMetadata": schema,
+    "OrchestratorDefinition": schema,
+    "OrchestratorPlan": runner,
+    "OrchestratorPlanStep": runner,
+    "OrchestratorRegistry": registry,
+    "OrchestratorRegistryError": registry,
+    "OrchestratorRunError": runner,
+    "OrchestratorRunRequest": runner,
+    "OrchestratorRunResult": runner,
+    "OrchestratorRunnerError": runner,
+    "OrchestratorSpec": api,
+    "OrchestratorValidationError": schema,
+    "Output": schema,
+    "Port": schema,
+    "RuntimeSpec": schema,
+    "build_orchestrator_command": runner,
+    "load_builtin_orchestrators": registry,
+    "load_bundled_orchestrators": registry,
+    "load_curated_orchestrators": registry,
+    "load_default_registry": registry,
+    "load_folder_orchestrator": folder,
+    "load_folder_orchestrators": folder,
+    "load_orchestrator_manifest": schema,
+    "orchestrator": api,
+    "run_orchestrator": runner,
+    "validate_orchestrator_definition": schema,
+}
+
+__all__ = sorted([*_ALIASES, *_EXPORTS])
 
 
 def __getattr__(name: str) -> Any:
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module = import_module(_EXPORTS[name])
-    return getattr(module, name)
+    return getattr(_EXPORTS[name], name)

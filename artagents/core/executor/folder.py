@@ -179,8 +179,8 @@ import runpy
 import sys
 import traceback
 
-from artagents.executors.api import ExecutorSpec
-from artagents.executors.schema import ExecutorDefinition, validate_executor_definition
+from artagents.core.executor.api import ExecutorSpec
+from artagents.core.executor.schema import ExecutorDefinition, validate_executor_definition
 
 PREFIX = "__ARTAGENTS_EXECUTOR_METADATA__="
 

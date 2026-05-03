@@ -81,15 +81,15 @@ def main(argv: list[str] | None = None) -> int:
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "executors":
-        from .executors import cli as executors_cli
+        from .core.executor import cli as executors_cli
 
         return executors_cli.main(raw[1:])
     if raw and raw[0] == "orchestrators":
-        from .orchestrators import cli as orchestrators_cli
+        from .core.orchestrator import cli as orchestrators_cli
 
         return orchestrators_cli.main(raw[1:])
     if raw and raw[0] == "elements":
-        from .elements import cli as elements_cli
+        from .core.element import cli as elements_cli
 
         return elements_cli.main(raw[1:])
     if raw and raw[0] == "thread":

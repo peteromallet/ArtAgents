@@ -5,8 +5,8 @@ import unittest
 from unittest import mock
 
 from artagents import pipeline
-from artagents.executors import cli as executors_cli
-from artagents.orchestrators import cli as orchestrators_cli
+from artagents.core.executor import cli as executors_cli
+from artagents.core.orchestrator import cli as orchestrators_cli
 
 
 class CanonicalCliTest(unittest.TestCase):

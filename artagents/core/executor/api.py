@@ -1,6 +1,6 @@
 """Code-first authoring helpers for ArtAgents executors.
 
-This module is intentionally a thin facade over :mod:`artagents.executors.schema`.
+This module is intentionally a thin facade over :mod:`artagents.core.executor.schema`.
 `ExecutorSpec` validates into the existing `ExecutorDefinition` model immediately so
 folder executors do not introduce a second manifest schema.
 """

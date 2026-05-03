@@ -7,9 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.executors import cli as executors_cli
-from artagents.executors.folder import load_folder_executors
-from artagents.executors.registry import load_default_registry
+from artagents.core.executor import cli as executors_cli
+from artagents.core.executor.folder import load_folder_executors
+from artagents.core.executor.registry import load_default_registry
 
 
 class VibeComfyStructuredMetadataTest(unittest.TestCase):

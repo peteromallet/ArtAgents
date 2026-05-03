@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.elements import ElementRegistryError, load_default_registry
+from artagents.core.element import ElementRegistryError, load_default_registry
 
 
 def write_element(root: Path, kind: str, element_id: str, *, label: str, js_packages: list[str] | None = None) -> Path:

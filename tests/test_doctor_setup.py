@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from artagents import doctor, setup_cli
-from artagents.elements.registry import load_default_registry as load_element_registry
+from artagents.core.element.registry import load_default_registry as load_element_registry
 from artagents.structure import validate_repo_structure
 
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from artagents.contracts.schema import Output
-from artagents.executors.runner import _has_value, _stringify_value
+from artagents.core.executor.runner import _has_value, _stringify_value
 from artagents.threads import wrapper as thread_wrapper
 
 from .registry import OrchestratorRegistry, load_default_registry

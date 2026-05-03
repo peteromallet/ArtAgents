@@ -3,7 +3,7 @@
   "name": "Logo Ideas",
   "kind": "built_in",
   "version": "1.0",
-  "description": "Generate a grid of distinct logo concepts: Kimi K2 (Fireworks) drafts the prompts, fal renders them via Z-Image or GPT Image 2.",
+  "description": "Generate a grid of distinct logo concepts: Kimi K2 (Fireworks) drafts N prompts, then GPT Image 2 (default) renders them as one composite grid in a single fal call. Pass --provider z-image for per-image renders + a locally-assembled contact sheet.",
   "runtime": {
     "kind": "command",
     "command": {

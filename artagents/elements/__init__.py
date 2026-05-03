@@ -1,50 +1,47 @@
-"""First-class render element discovery.
+"""Element content package with compatibility aliases for framework modules."""
 
-Elements are user-editable render building blocks such as effects, animations, and
-transitions. Registry precedence is active theme, workspace overrides, managed
-installs, then bundled defaults.
-"""
+from __future__ import annotations
 
-from .registry import (
-    ElementConflict,
-    ElementRegistry,
-    ElementRegistryError,
-    ElementSource,
-    load_default_registry,
-)
-from .install import (
-    ElementInstallError,
-    ElementInstallPlan,
-    ElementInstallResult,
-    build_element_install_plan,
-    install_element,
-)
-from .schema import (
-    ELEMENT_KINDS,
-    REQUIRED_ELEMENT_FILES,
-    ElementDefinition,
-    ElementDependencies,
-    ElementValidationError,
-    load_element_definition,
-    validate_element_definition,
-)
+import sys
+from typing import Any
 
-__all__ = [
-    "ELEMENT_KINDS",
-    "REQUIRED_ELEMENT_FILES",
-    "ElementConflict",
-    "ElementDefinition",
-    "ElementDependencies",
-    "ElementInstallError",
-    "ElementInstallPlan",
-    "ElementInstallResult",
-    "ElementRegistry",
-    "ElementRegistryError",
-    "ElementSource",
-    "ElementValidationError",
-    "load_default_registry",
-    "load_element_definition",
-    "build_element_install_plan",
-    "install_element",
-    "validate_element_definition",
-]
+from artagents.core.element import catalog, cli, install, registry, schema
+
+_ALIASES = {
+    "catalog": catalog,
+    "cli": cli,
+    "install": install,
+    "registry": registry,
+    "schema": schema,
+}
+
+for _name, _module in _ALIASES.items():
+    sys.modules[f"{__name__}.{_name}"] = _module
+
+_EXPORTS = {
+    "ELEMENT_KINDS": schema,
+    "REQUIRED_ELEMENT_FILES": schema,
+    "ElementConflict": registry,
+    "ElementDefinition": schema,
+    "ElementDependencies": schema,
+    "ElementInstallError": install,
+    "ElementInstallPlan": install,
+    "ElementInstallResult": install,
+    "ElementRegistry": registry,
+    "ElementRegistryError": registry,
+    "ElementSource": registry,
+    "ElementValidationError": schema,
+    "build_element_install_plan": install,
+    "install_element": install,
+    "load_default_registry": registry,
+    "load_element_definition": schema,
+    "validate_element_definition": schema,
+}
+
+__all__ = sorted([*_ALIASES, *_EXPORTS])
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(_EXPORTS[name], name)
