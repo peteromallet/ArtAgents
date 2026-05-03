@@ -13,6 +13,7 @@ from .registry import (
     ElementRegistryError,
     ElementSource,
     load_default_registry,
+    load_pack_elements,
 )
 from .schema import (
     ELEMENT_KINDS,
@@ -40,6 +41,7 @@ __all__ = [
     "build_element_install_plan",
     "install_element",
     "load_default_registry",
+    "load_pack_elements",
     "load_element_definition",
     "validate_element_definition",
 ]

@@ -12,6 +12,7 @@ from types import MappingProxyType
 from typing import Iterable
 
 from artagents._paths import REPO_ROOT
+from artagents.core.pack import discover_packs, iter_element_roots, validate_element_pack_id
 
 from .schema import ELEMENT_KINDS, ElementDefinition, ElementKind, ElementValidationError, load_element_definition
 
@@ -103,6 +104,8 @@ def load_default_registry(
     include_missing_roots: bool = False,
 ) -> ElementRegistry:
     registry = ElementRegistry()
+    for element in load_pack_elements():
+        registry.register(element)
     for source in default_sources(active_theme=active_theme, project_root=project_root):
         if not source.root.exists():
             if include_missing_roots:
@@ -133,6 +136,22 @@ def default_sources(*, active_theme: str | Path | None = None, project_root: str
         ]
     )
     return tuple(sources)
+
+
+def load_pack_elements() -> tuple[ElementDefinition, ...]:
+    elements: list[ElementDefinition] = []
+    for pack in discover_packs():
+        for kind, root in iter_element_roots(pack):
+            element = load_element_definition(
+                root,
+                kind=kind,
+                source=f"pack:{pack.id}",
+                editable=pack.id == "local",
+                priority=30,
+            )
+            validate_element_pack_id(element.metadata.get("pack_id"), pack, element_root=root)
+            elements.append(element)
+    return tuple(elements)
 
 
 def load_source_elements(source: ElementSource) -> tuple[ElementDefinition, ...]:

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from importlib import resources
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable
+
+from artagents.core.pack import discover_packs, iter_executor_roots, validate_content_id_in_pack
 
 from .banodoco_catalog import BanodocoCatalogConfig, load_banodoco_catalog_executors
 from .folder import load_folder_executors
@@ -128,6 +131,8 @@ def load_bundled_executors() -> tuple[ExecutorDefinition, ...]:
 
 def load_default_registry(banodoco_config: BanodocoCatalogConfig | None = None) -> ExecutorRegistry:
     registry = ExecutorRegistry()
+    for executor in load_pack_executors():
+        registry.register(executor)
     for executor in load_builtin_executors():
         registry.register(executor)
     for executor in load_bundled_executors():
@@ -149,6 +154,22 @@ def load_project_executors() -> tuple[ExecutorDefinition, ...]:
     for path in _project_folder_roots():
         executors.extend(load_folder_executors(path))
     return tuple(executors)
+
+
+def load_pack_executors() -> tuple[ExecutorDefinition, ...]:
+    executors: list[ExecutorDefinition] = []
+    for pack in discover_packs():
+        for root in iter_executor_roots(pack):
+            for executor in load_folder_executors(root):
+                validate_content_id_in_pack(executor.id, pack, content_type="executor")
+                executors.append(_attach_pack_metadata(executor, pack.id))
+    return tuple(executors)
+
+
+def _attach_pack_metadata(executor: ExecutorDefinition, pack_id: str) -> ExecutorDefinition:
+    metadata = dict(executor.metadata)
+    metadata.update({"pack_id": pack_id, "source": "pack"})
+    return validate_executor_definition(replace(executor, metadata=metadata))
 
 
 def _curated_manifest_paths() -> tuple[Path, ...]:
@@ -231,5 +252,6 @@ __all__ = [
     "load_bundled_executors",
     "load_curated_executors",
     "load_project_executors",
+    "load_pack_executors",
     "load_default_registry",
 ]
