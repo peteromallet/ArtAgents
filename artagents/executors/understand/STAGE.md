@@ -19,10 +19,16 @@ python3 -m artagents executors inspect builtin.video_understand
 
 ## Examples
 
-Run via the executor module directly (the gateway is configured for the
-underlying single-modality executors):
+The gateway form passes only the `mode` selector through the executor
+registry. Modality-specific flags (`--video`, `--image`, `--at`, `--query`,
+…) are not declared as registry inputs, so for any non-trivial call invoke
+the dispatcher module directly:
 
 ```bash
+# Gateway form — useful for `--dry-run`, scripting, and CI shape checks.
+python3 -m artagents executors run builtin.understand --input mode=video --dry-run
+
+# Canonical form — full modality-specific flag passthrough.
 python3 -m artagents.executors.understand.run --mode image --image frame.jpg
 python3 -m artagents.executors.understand.run --mode audio --audio clip.wav
 python3 -m artagents.executors.understand.run --mode video --video source.mp4 --at 01:20

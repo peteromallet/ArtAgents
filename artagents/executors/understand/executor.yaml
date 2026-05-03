@@ -6,12 +6,21 @@
     "argv": [
       "{python_exec}",
       "-m",
-      "artagents.executors.understand.run"
+      "artagents.executors.understand.run",
+      "--mode",
+      "{mode}"
     ]
   },
   "description": "Dispatch to the audio, visual, or video understanding executor based on --mode.",
   "id": "builtin.understand",
-  "inputs": [],
+  "inputs": [
+    {
+      "description": "Understanding modality: audio | image | visual | video. Determines which underlying executor receives the call.",
+      "name": "mode",
+      "required": true,
+      "type": "string"
+    }
+  ],
   "isolation": {
     "mode": "subprocess"
   },
