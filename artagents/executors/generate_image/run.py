@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from artagents.audit import AuditContext
+from artagents.threads.variants import write_sidecar as write_variant_sidecar
 
 API_URL = "https://api.openai.com/v1/images/generations"
 DEFAULT_MODEL = "gpt-image-2"
@@ -303,7 +305,9 @@ def generate(args: argparse.Namespace) -> int:
     out_dir = args.out_dir
     default_format = _normalize_format(args.output_format)
     manifest: list[dict[str, Any]] = []
+    variant_artifacts: list[dict[str, Any]] = []
     audit = AuditContext.from_env()
+    run_id = os.environ.get("ARTAGENTS_RUN_ID", "").strip()
 
     for index, job in enumerate(jobs, start=1):
         prompt = str(job["prompt"]).strip()
@@ -331,6 +335,16 @@ def generate(args: argparse.Namespace) -> int:
         response = _call_image_api(payload, api_key, args.timeout)
         print(f"[{index}/{len(jobs)}] Completed in {time.time() - started:.1f}s", file=sys.stderr)
         written = _write_images(response, paths, args.force)
+        variant_artifacts.extend(
+            _variant_artifacts_for_generated_images(
+                run_id=run_id,
+                prompt_index=index,
+                prompt=prompt,
+                payload=payload,
+                response=response,
+                paths=written,
+            )
+        )
         if audit is not None:
             prompt_id = audit.register_prompt_ref(
                 prompt=prompt,
@@ -384,12 +398,50 @@ def generate(args: argparse.Namespace) -> int:
                 metadata={"jobs": len(manifest)},
             )
         print(f"Wrote {args.manifest}")
+    if not args.dry_run:
+        write_variant_sidecar(out_dir, variant_artifacts)
 
     if args.preset and not args.dry_run and not args.no_open:
         preset = PRESETS.get(args.preset)
         if preset and preset.get("open_result"):
             _open_first_rendered(out_dir)
     return 0
+
+
+def _variant_artifacts_for_generated_images(
+    *,
+    run_id: str,
+    prompt_index: int,
+    prompt: str,
+    payload: dict[str, Any],
+    response: dict[str, Any],
+    paths: list[str],
+) -> list[dict[str, Any]]:
+    if not paths:
+        return []
+    group = hashlib.sha256(f"{run_id}:{prompt_index}".encode("utf-8")).hexdigest()[:16]
+    artifacts = []
+    for output_index, path in enumerate(paths, start=1):
+        artifacts.append(
+            {
+                "path": path,
+                "role": "variant",
+                "group": group,
+                "group_index": output_index,
+                "duration": None,
+                "variant_meta": {
+                    "prompt": prompt,
+                    "prompt_index": prompt_index,
+                    "output_index": output_index,
+                    "model": payload.get("model"),
+                    "size": payload.get("size"),
+                    "quality": payload.get("quality"),
+                    "output_format": payload.get("output_format"),
+                    "created": response.get("created"),
+                },
+            }
+        )
+    return artifacts
 
 
 def build_parser() -> argparse.ArgumentParser:

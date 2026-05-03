@@ -68,6 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--check-binaries", action="store_true", help="Also require declared external binaries to be on PATH.")
     run_parser.add_argument("--python-exec", help="Python executable for {python_exec} placeholders.")
     run_parser.add_argument("--verbose", action="store_true", help="Stream subprocess output for built-in pipeline steps.")
+    run_parser.add_argument("--thread", help="Thread id, @new, or @none for this run.")
+    run_parser.add_argument("--variants", type=int, help="Request a sibling variant count for variant-aware producers.")
+    run_parser.add_argument("--from", dest="from_ref", help="Consume a specific prior run or variant, e.g. <run-id>:<n>.")
     run_parser.add_argument("--video-url", "--video", dest="video_url", help="Reachable http(s) video URL.")
     run_parser.add_argument("--title", help="YouTube video title.")
     run_parser.add_argument("--description", help="YouTube video description.")
@@ -124,6 +127,7 @@ def _cmd_inspect(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
         print(f"cache_sentinels: {', '.join(executor.cache.sentinels)}")
     if executor.isolation.binaries:
         print(f"binaries: {', '.join(executor.isolation.binaries)}")
+    _print_active_thread_footer()
     return 0
 
 
@@ -182,6 +186,9 @@ def _cmd_run(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
         check_binaries=bool(args.check_binaries),
         python_exec=args.python_exec,
         verbose=bool(args.verbose),
+        thread=args.thread,
+        variants=args.variants,
+        from_ref=args.from_ref,
     )
     result = run_executor(request, registry)
     if result.missing_binaries:
@@ -255,6 +262,27 @@ def _print_outputs(executor: ExecutorDefinition) -> None:
     for output in executor.outputs:
         placeholder = f", placeholder={output.placeholder}" if output.placeholder else ""
         print(f"  - {output.name} ({output.type}, {output.mode}{placeholder})")
+
+
+def _print_active_thread_footer() -> None:
+    try:
+        import os
+
+        from artagents._paths import REPO_ROOT
+        from artagents.threads.index import ThreadIndexStore
+
+        index = ThreadIndexStore(Path(os.environ.get("ARTAGENTS_REPO_ROOT", REPO_ROOT))).read()
+    except Exception:
+        print("active_thread: unavailable")
+        print("thread_details: python3 -m artagents thread show @active")
+        return
+    active = index.get("active_thread_id")
+    thread = index.get("threads", {}).get(active) if isinstance(active, str) else None
+    if isinstance(thread, dict):
+        print(f"active_thread: {thread.get('label') or 'unlabeled'} ({active})")
+    else:
+        print("active_thread: none")
+    print("thread_details: python3 -m artagents thread show @active")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,50 @@
+{
+  "id": "builtin.iteration_video",
+  "name": "Iteration Video",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Prepare an iteration graph, assemble render adapter files, render through builtin.render, and finalize iteration video outputs.",
+  "runtime": {
+    "kind": "python",
+    "module": "artagents.orchestrators.iteration_video.run",
+    "function": "run_orchestrator"
+  },
+  "inputs": [
+    {
+      "name": "thread",
+      "type": "string",
+      "required": false,
+      "description": "Thread id or @active. Defaults to the active thread."
+    },
+    {
+      "name": "target_run_id",
+      "type": "string",
+      "required": false,
+      "description": "Optional target run id. Defaults to the newest run in the thread."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "iteration.mp4",
+      "type": "video",
+      "mode": "create_or_replace",
+      "path_template": "{out}/iteration.mp4"
+    }
+  ],
+  "child_executors": [
+    "iteration.prepare",
+    "iteration.assemble",
+    "builtin.render"
+  ],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "metadata": {
+    "runtime_module": "artagents.orchestrators.iteration_video.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "run_orchestrator",
+    "inspect_entrypoint": "main inspect"
+  }
+}
+

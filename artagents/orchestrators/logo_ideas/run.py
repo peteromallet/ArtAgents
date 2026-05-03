@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
+import os
 import re
 import time
 from pathlib import Path
@@ -14,6 +16,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from artagents.executors.generate_image.run import _candidate_env_files, _read_env_value
+from artagents.threads.variants import write_sidecar as write_variant_sidecar
 
 
 FIREWORKS_CHAT_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
@@ -496,11 +499,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         "candidates": results,
     }
     write_json(layout["root"] / "logo-manifest.json", manifest)
+    write_variant_sidecar(layout["root"], _variant_artifacts_for_logo_ideas(results, run_id=os.environ.get("ARTAGENTS_RUN_ID", "").strip()))
 
     print(f"wrote_logo_manifest={layout['root'] / 'logo-manifest.json'}")
     if grid.get("path"):
         print(f"wrote_grid={grid['path']}")
     return 0
+
+
+def _variant_artifacts_for_logo_ideas(results: list[dict[str, Any]], *, run_id: str) -> list[dict[str, Any]]:
+    group = hashlib.sha256(f"{run_id}:logo_ideas".encode("utf-8")).hexdigest()[:16]
+    artifacts = []
+    for index, item in enumerate(results, start=1):
+        generated = item.get("generated") or {}
+        path = generated.get("path")
+        if not path:
+            continue
+        artifacts.append(
+            {
+                "path": path,
+                "role": "variant",
+                "group": group,
+                "group_index": index,
+                "duration": None,
+                "variant_meta": {
+                    "candidate_id": item.get("candidate_id"),
+                    "name": item.get("name"),
+                    "rationale": item.get("rationale"),
+                    "prompt": item.get("prompt"),
+                    "generated": generated,
+                },
+            }
+        )
+    return artifacts
 
 
 if __name__ == "__main__":

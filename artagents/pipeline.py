@@ -92,6 +92,14 @@ def main(argv: list[str] | None = None) -> int:
         from .elements import cli as elements_cli
 
         return elements_cli.main(raw[1:])
+    if raw and raw[0] == "thread":
+        from .threads import cli as thread_cli
+
+        return thread_cli.main(raw[1:])
+    if raw and raw[0] == "modalities":
+        from . import modalities
+
+        return modalities.main(raw[1:])
     if raw and raw[0] == "doctor":
         from . import doctor
 
@@ -122,6 +130,8 @@ Usage:
   python3 -m artagents orchestrators {list,inspect,validate,run} ...
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,sync,fork,install,update} ...
+  python3 -m artagents thread {new,list,show,archive,reopen,backfill,keep,dismiss,group} ...
+  python3 -m artagents modalities {list,inspect} ...
   python3 -m artagents reigh-data --project-id PROJECT_ID [--out PATH]
   python3 -m artagents audit --run RUN_DIR
   python3 -m artagents --video SRC --brief BRIEF --out runs/name [--render]
@@ -131,11 +141,14 @@ Start here:
   python3 -m artagents orchestrators list
   python3 -m artagents executors list
   python3 -m artagents elements list
+  python3 -m artagents thread list
+  python3 -m artagents modalities list
 
 Inspect before running:
   python3 -m artagents orchestrators inspect builtin.hype --json
   python3 -m artagents executors inspect builtin.render --json
   python3 -m artagents elements inspect effects text-card --json
+  python3 -m artagents modalities inspect generic_card --json
 
 Run any tool through this gateway:
   python3 -m artagents orchestrators run ORCHESTRATOR_ID ...

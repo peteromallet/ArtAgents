@@ -1,0 +1,1 @@
+"""Iteration assembly executor."""

@@ -1045,6 +1045,9 @@ def validate_timeline(config: Any, *, strict: bool = True) -> None:
     """
     if not isinstance(config, dict):
         raise ValueError("Timeline must be a JSON object")
+    theme = config.get("theme")
+    if theme is not None and (not isinstance(theme, str) or not theme):
+        raise ValueError("Timeline.theme must be a non-empty slug")
     # Shape-check against the shared JSON Schema first; then run the
     # Banodoco-only semantic checks (effect-id registry, transition durations).
     normalized_for_shared = _known_timeline_payload(config)
@@ -1054,9 +1057,6 @@ def validate_timeline(config: Any, *, strict: bool = True) -> None:
             for c in normalized_for_shared["clips"]
         ]
     _shared_validate_timeline(normalized_for_shared, strict=strict)
-    theme = config.get("theme")
-    if theme is not None and (not isinstance(theme, str) or not theme):
-        raise ValueError("Timeline.theme must be a non-empty slug")
     fps = _timeline_fps(config)
     tracks = config.get("tracks")
     if tracks is not None:

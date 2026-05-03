@@ -32,7 +32,9 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "domains",
     "elements",
     "executors",
+    "modalities",
     "orchestrators",
+    "threads",
     "utilities",
 }
 

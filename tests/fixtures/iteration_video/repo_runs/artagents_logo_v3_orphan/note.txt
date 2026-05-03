@@ -1,0 +1,2 @@
+Synthetic orphan note for backfill coverage. This is tracked fixture text, not generated media.
+

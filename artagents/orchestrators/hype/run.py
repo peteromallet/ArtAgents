@@ -24,6 +24,7 @@ from ...audit import AuditContext, PARENT_IDS_ENV
 from ...executors.asset_cache import run as asset_cache
 from ... import timeline
 from ..._paths import WORKSPACE_ROOT, executor_argv
+from ...threads.wrapper import subprocess_env as thread_subprocess_env
 
 
 STEP_ORDER = (
@@ -1060,6 +1061,7 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
                 env[PARENT_IDS_ENV] = ",".join(parent_ids)
         if getattr(args, "no_audit", False):
             env["ARTAGENTS_AUDIT_DISABLED"] = "1"
+        env.update(thread_subprocess_env())
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

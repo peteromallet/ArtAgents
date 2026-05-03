@@ -13,6 +13,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from artagents.threads import wrapper as thread_wrapper
+
 from .install import executor_python_path
 from .registry import ExecutorRegistry, load_default_registry
 from .schema import ConditionSpec, ExecutorDefinition, ExecutorOutput, ExecutorValidationError
@@ -51,6 +53,9 @@ class ExecutorRunRequest:
     check_binaries: bool = False
     python_exec: str | None = None
     verbose: bool = False
+    thread: str | None = None
+    variants: int | None = None
+    from_ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +80,17 @@ class ExecutorRunResult:
 def run_executor(request: ExecutorRunRequest, registry: ExecutorRegistry | None = None) -> ExecutorRunResult:
     active_registry = registry or load_default_registry()
     executor = active_registry.get(request.executor_id)
+    context = thread_wrapper.begin_executor_run(request, executor)
+    try:
+        result = _run_executor_inner(request, executor)
+    except Exception as exc:
+        thread_wrapper.finalize_exception(context, exc)
+        raise
+    thread_wrapper.finalize_result(context, result)
+    return result
+
+
+def _run_executor_inner(request: ExecutorRunRequest, executor: ExecutorDefinition) -> ExecutorRunResult:
     if executor.id == "upload.youtube":
         return _run_upload_youtube(request)
     values = _request_values(request)
@@ -255,7 +271,7 @@ def _run_external_executor(executor: ExecutorDefinition, request: ExecutorRunReq
     completed = subprocess.run(
         list(command),
         cwd=cwd,
-        env={**os.environ, **env},
+        env={**os.environ, **env, **thread_wrapper.subprocess_env()},
         check=False,
     )
     return ExecutorRunResult(

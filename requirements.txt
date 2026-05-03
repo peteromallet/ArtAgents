@@ -7,4 +7,5 @@ filelock>=3.13
 jsonschema>=4.0
 pillow>=10.0
 fal-client>=0.7.0
+xxhash>=3.4
 # pyannote.audio==3.3.2
