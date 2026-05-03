@@ -43,15 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args, forwarded = build_parser().parse_known_args(argv)
-    return _resolve_alias(args.mode)(forwarded)
-
-
-def _resolve_alias(mode: str) -> Callable[[list[str]], int]:
-    target = ALIASES[mode]
+    target = ALIASES[args.mode]
     if callable(target):
-        return target
+        return target(forwarded)
     module_name, function_name = target.split(":", 1)
-    return getattr(import_module(module_name), function_name)
+    return getattr(import_module(module_name), function_name)(forwarded)
 
 
 if __name__ == "__main__":

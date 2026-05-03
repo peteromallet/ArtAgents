@@ -97,6 +97,7 @@ def _cmd_list(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
 
 
 def _cmd_inspect(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
+    _require_qualified_id(args.orchestrator_id, "orchestrator id")
     orchestrator = registry.get(args.orchestrator_id)
     if args.json:
         print(orchestrator.to_json())
@@ -122,6 +123,8 @@ def _cmd_inspect(args: argparse.Namespace, registry: OrchestratorRegistry) -> in
 
 def _cmd_validate(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
     registry.validate_all()
+    if args.orchestrator_id:
+        _require_qualified_id(args.orchestrator_id, "orchestrator id")
     orchestrators = [registry.get(args.orchestrator_id)] if args.orchestrator_id else registry.list()
     if args.orchestrator_id:
         print(f"{args.orchestrator_id}: ok")
@@ -133,6 +136,7 @@ def _cmd_validate(args: argparse.Namespace, registry: OrchestratorRegistry) -> i
 def _cmd_run(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
     from .runner import OrchestratorRunRequest, run_orchestrator
 
+    _require_qualified_id(args.orchestrator_id, "orchestrator id")
     request = OrchestratorRunRequest(
         orchestrator_id=args.orchestrator_id,
         out=Path(args.out) if args.out else None,
@@ -162,6 +166,11 @@ def _parse_input_values(raw_values: list[str]) -> dict[str, str]:
             raise ValueError(f"invalid --input value {raw!r}; expected NAME=VALUE")
         values[key] = value
     return values
+
+
+def _require_qualified_id(value: str, label: str) -> None:
+    if "." not in value or any(not part for part in value.split(".")):
+        raise ValueError(f"{label} must be qualified as <pack>.<name>")
 
 
 def _split_run_passthrough(argv: list[str]) -> tuple[list[str], list[str]]:

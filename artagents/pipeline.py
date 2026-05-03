@@ -36,7 +36,7 @@ prepare_brief_artifacts = _hype.prepare_brief_artifacts
 parse_brief_frontmatter = _hype.parse_brief_frontmatter
 build_pool_cut_cmd = _hype.build_pool_cut_cmd
 build_pool_steps = _hype.build_pool_steps
-build_steps = _hype.build_steps
+select_steps = _hype.select_steps
 step_output_root = _hype.step_output_root
 log_dir_for_step = _hype.log_dir_for_step
 sentinel_paths = _hype.sentinel_paths
@@ -56,7 +56,7 @@ def _sync_hype_aliases() -> None:
     _hype.run_step = run_step
     _hype.print_log_tail = print_log_tail
     _hype.probe_audio_duration = probe_audio_duration
-    _hype.build_steps = build_steps
+    _hype.select_steps = select_steps
     _hype.build_pool_steps = build_pool_steps
     _hype.build_pool_cut_cmd = build_pool_cut_cmd
     _hype.prepare_brief_artifacts = prepare_brief_artifacts

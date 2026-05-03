@@ -297,7 +297,7 @@ def _parse_isolation(raw: Any, path: str) -> IsolationMetadata:
 
 
 def _validate_executor(executor: ExecutorDefinition) -> None:
-    _validate_non_empty_identifier(executor.id, "executor.id")
+    _validate_qualified_identifier(executor.id, "executor.id")
     _validate_non_empty_string(executor.name, "executor.name")
     if executor.kind not in EXECUTOR_KINDS:
         raise ExecutorValidationError(f"executor.kind must be one of {sorted(EXECUTOR_KINDS)}")
@@ -375,7 +375,10 @@ def _validate_conditions(conditions: tuple[ConditionSpec, ...], input_names: set
 def _validate_graph(graph: GraphMetadata) -> None:
     for label, values in (("depends_on", graph.depends_on), ("provides", graph.provides), ("consumes", graph.consumes)):
         for value in values:
-            _validate_non_empty_string(value, f"graph.{label}[]")
+            if label == "depends_on":
+                _validate_qualified_identifier(value, f"graph.{label}[]")
+            else:
+                _validate_non_empty_string(value, f"graph.{label}[]")
 
 
 def _validate_clip_kinds_supported(values: tuple[str, ...]) -> None:
@@ -439,6 +442,12 @@ def _validate_non_empty_identifier(value: str, path: str) -> None:
     _validate_non_empty_string(value, path)
     if not re.match(r"^[A-Za-z][A-Za-z0-9_.-]*$", value):
         raise ExecutorValidationError(f"{path} must start with a letter and contain only letters, numbers, '.', '_' or '-'")
+
+
+def _validate_qualified_identifier(value: str, path: str) -> None:
+    _validate_non_empty_identifier(value, path)
+    if "." not in value or any(not part for part in value.split(".")):
+        raise ExecutorValidationError(f"{path} must be qualified as <pack>.<name>")
 
 
 def _validate_non_empty_string(value: Any, path: str) -> None:

@@ -35,7 +35,7 @@ class PureGenerativePipelineTest(unittest.TestCase):
         brief.write_text("Make a quote card.\n", encoding="utf-8")
         args = pipeline.resolve_args(["--audio", str(audio), "--brief", str(brief), "--out", str(tmp / "out")])
 
-        step_names = [step.name for step in pipeline.build_steps(args)]
+        step_names = [step.name for step in pipeline.select_steps(args)]
         for skipped in ("scenes", "quality_zones", "shots", "triage", "scene_describe", "quote_scout", "pool_build"):
             self.assertNotIn(skipped, step_names)
         self.assertIn("pool_merge", step_names)
@@ -47,7 +47,7 @@ class PureGenerativePipelineTest(unittest.TestCase):
         self.assertIn(str(args.audio), cmd)
         self.assertNotIn("--video", cmd)
         self.assertNotIn("--scenes", cmd)
-        arrange_step = next(step for step in pipeline.build_steps(args) if step.name == "arrange")
+        arrange_step = next(step for step in pipeline.select_steps(args) if step.name == "arrange")
         arrange_cmd = arrange_step.build_cmd(args)
         self.assertIn("--target-duration", arrange_cmd)
         self.assertIn("--allow-generative-effects", arrange_cmd)
@@ -72,7 +72,7 @@ class PureGenerativePipelineTest(unittest.TestCase):
         args = pipeline.resolve_args(["--brief", str(brief), "--out", str(tmp / "out"), "--target-duration", "28"])
 
         self.assertIsNone(args.audio)
-        step_names = [step.name for step in pipeline.build_steps(args)]
+        step_names = [step.name for step in pipeline.select_steps(args)]
         for skipped in (
             "scenes",
             "quality_zones",
@@ -91,7 +91,7 @@ class PureGenerativePipelineTest(unittest.TestCase):
         self.assertIn("arrange", step_names)
         self.assertIn("cut", step_names)
 
-        arrange_step = next(step for step in pipeline.build_steps(args) if step.name == "arrange")
+        arrange_step = next(step for step in pipeline.select_steps(args) if step.name == "arrange")
         arrange_cmd = arrange_step.build_cmd(args)
         self.assertIn("--target-duration", arrange_cmd)
         self.assertEqual(arrange_cmd[arrange_cmd.index("--target-duration") + 1], "28.000000")
@@ -106,7 +106,7 @@ class PureGenerativePipelineTest(unittest.TestCase):
         video.write_bytes(b"fake mp4")
         brief.write_text("Cut source footage only.\n", encoding="utf-8")
         args = pipeline.resolve_args(["--video", str(video), "--brief", str(brief), "--out", str(tmp / "out")])
-        arrange_step = next(step for step in pipeline.build_steps(args) if step.name == "arrange")
+        arrange_step = next(step for step in pipeline.select_steps(args) if step.name == "arrange")
         arrange_cmd = arrange_step.build_cmd(args)
         self.assertNotIn("--target-duration", arrange_cmd)
         self.assertNotIn("--allow-generative-effects", arrange_cmd)

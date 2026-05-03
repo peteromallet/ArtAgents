@@ -219,7 +219,7 @@ def _parse_isolation(raw: Any, path: str) -> IsolationMetadata:
 
 
 def _validate_orchestrator(orchestrator: OrchestratorDefinition) -> None:
-    _validate_non_empty_identifier(orchestrator.id, "orchestrator.id")
+    _validate_qualified_identifier(orchestrator.id, "orchestrator.id")
     _validate_non_empty_string(orchestrator.name, "orchestrator.name")
     if orchestrator.kind not in ORCHESTRATOR_KINDS:
         raise OrchestratorValidationError(f"orchestrator.kind must be one of {sorted(ORCHESTRATOR_KINDS)}")
@@ -244,9 +244,9 @@ def _validate_orchestrator(orchestrator: OrchestratorDefinition) -> None:
         if output.path_template:
             _validate_placeholders(output.path_template, placeholders, f"output {output.name!r}.path_template")
     for index, child_executor in enumerate(orchestrator.child_executors):
-        _validate_non_empty_identifier(child_executor, f"orchestrator.child_executors[{index}]")
+        _validate_qualified_identifier(child_executor, f"orchestrator.child_executors[{index}]")
     for index, child_orchestrator in enumerate(orchestrator.child_orchestrators):
-        _validate_non_empty_identifier(child_orchestrator, f"orchestrator.child_orchestrators[{index}]")
+        _validate_qualified_identifier(child_orchestrator, f"orchestrator.child_orchestrators[{index}]")
     _validate_cache(orchestrator.cache)
     _validate_isolation(orchestrator.isolation)
     if orchestrator.runtime.command is not None:
@@ -328,6 +328,12 @@ def _validate_non_empty_identifier(value: Any, path: str) -> None:
     _validate_non_empty_string(value, path)
     if not re.match(r"^[A-Za-z][A-Za-z0-9_.-]*$", value):
         raise OrchestratorValidationError(f"{path} must start with a letter and contain only letters, numbers, '.', '_' or '-'")
+
+
+def _validate_qualified_identifier(value: Any, path: str) -> None:
+    _validate_non_empty_identifier(value, path)
+    if "." not in value or any(not part for part in value.split(".")):
+        raise OrchestratorValidationError(f"{path} must be qualified as <pack>.<name>")
 
 
 def _validate_non_empty_string(value: Any, path: str) -> None:

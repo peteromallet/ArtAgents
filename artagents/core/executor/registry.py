@@ -95,20 +95,16 @@ class ExecutorRegistry:
                     raise ExecutorRegistryError(f"executor {executor.id!r} cannot depend on itself")
 
 
-def executor_id_for_step(step_name: str) -> str:
-    return f"builtin.{step_name}"
-
-
 def load_builtin_executors() -> tuple[ExecutorDefinition, ...]:
     folder_executors: list[ExecutorDefinition] = []
-    expected_ids = {executor_id_for_step(step_name) for step_name in BUILTIN_STEP_ORDER}
+    expected_ids = {f"builtin.{step_name}" for step_name in BUILTIN_STEP_ORDER}
     for path in _builtin_folder_roots():
         folder_executors.extend(load_folder_executors(path))
     by_id = {executor.id: executor for executor in folder_executors if executor.id in expected_ids}
-    missing = [executor_id_for_step(step_name) for step_name in BUILTIN_STEP_ORDER if executor_id_for_step(step_name) not in by_id]
+    missing = [f"builtin.{step_name}" for step_name in BUILTIN_STEP_ORDER if f"builtin.{step_name}" not in by_id]
     if missing:
         raise ExecutorRegistryError(f"missing built-in executor folder metadata: {', '.join(missing)}")
-    return tuple(by_id[executor_id_for_step(step_name)] for step_name in BUILTIN_STEP_ORDER)
+    return tuple(by_id[f"builtin.{step_name}"] for step_name in BUILTIN_STEP_ORDER)
 
 
 def load_curated_executors() -> tuple[ExecutorDefinition, ...]:
@@ -247,7 +243,6 @@ __all__ = [
     "ExecutorRegistry",
     "ExecutorRegistryError",
     "BanodocoCatalogConfig",
-    "executor_id_for_step",
     "load_builtin_executors",
     "load_bundled_executors",
     "load_curated_executors",

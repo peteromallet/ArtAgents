@@ -10,7 +10,6 @@ import json
 import os
 import subprocess
 import sys
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -103,7 +102,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--video", help="Source video file.", default=argparse.SUPPRESS)
     parser.add_argument("--brief", help="Brief text file for arrangement composition.", default=argparse.SUPPRESS)
-    parser.add_argument("--plan", help="Deprecated alias for --brief.", default=argparse.SUPPRESS)
     parser.add_argument("--out", help="Per-source output directory.", default=argparse.SUPPRESS)
     parser.add_argument("--audio", help="Audio source for transcription. Defaults to --video.", default=argparse.SUPPRESS)
     parser.add_argument(
@@ -299,13 +297,8 @@ def resolve_args(argv: list[str] | None = None) -> argparse.Namespace:
         missing.append("--out")
         usage_error(f"artagents: missing required inputs: {', '.join(missing)}")
 
-    if not merged.get("brief") and not merged.get("plan"):
+    if not merged.get("brief"):
         usage_error("artagents: missing required inputs: --brief")
-    if merged.get("brief") and merged.get("plan"):
-        usage_error("artagents: pass only one of --brief or --plan")
-    if merged.get("plan"):
-        warnings.warn("--plan is deprecated; use --brief", DeprecationWarning)
-        merged["brief"] = merged["plan"]
 
     theme_explicit = "theme" in merged
     args = argparse.Namespace(**merged)
@@ -917,11 +910,6 @@ def select_steps(args: argparse.Namespace) -> list[Step]:
     return selected
 
 
-def build_steps(args: argparse.Namespace) -> list[Step]:
-    """Backwards-compatible alias for select_steps()."""
-    return select_steps(args)
-
-
 def _redact_command(cmd: list[str]) -> list[str]:
     """Strip env-file values from logged argv (paths can contain secrets)."""
     out: list[str] = []
@@ -1330,7 +1318,7 @@ def pool_main(args: argparse.Namespace) -> int:
         return _write_dry_run_plan(args)
 
     _prefetch_url_inputs(args)
-    steps = [step for step in build_steps(args) if step.name not in set(args.skip)]
+    steps = [step for step in select_steps(args) if step.name not in set(args.skip)]
     editor_steps = [step for step in steps if step.name != "validate"]
     validate_steps = [step for step in steps if step.name == "validate"]
     args.editor_iteration = 1

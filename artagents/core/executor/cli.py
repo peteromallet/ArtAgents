@@ -108,6 +108,7 @@ def _cmd_list(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 
 
 def _cmd_inspect(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
+    _require_qualified_id(args.executor_id, "executor id")
     executor = registry.get(args.executor_id)
     if args.json:
         print(executor.to_json())
@@ -133,6 +134,8 @@ def _cmd_inspect(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 
 def _cmd_validate(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
     registry.validate_all()
+    if args.executor_id:
+        _require_qualified_id(args.executor_id, "executor id")
     executors = [registry.get(args.executor_id)] if args.executor_id else registry.list()
     missing_by_executor: dict[str, tuple[str, ...]] = {}
     if args.check_binaries:
@@ -156,6 +159,7 @@ def _cmd_validate(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 def _cmd_install(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
     from .install import install_executor
 
+    _require_qualified_id(args.executor_id, "executor id")
     executor = registry.get(args.executor_id)
     result = install_executor(executor, dry_run=bool(args.dry_run))
     plan = result.plan
@@ -174,6 +178,7 @@ def _cmd_install(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 def _cmd_run(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
     from .runner import ExecutorRunRequest, run_executor
 
+    _require_qualified_id(args.executor_id, "executor id")
     executor = registry.get(args.executor_id)
     if not args.out and _executor_needs_out(executor):
         raise ValueError("--out is required for this executor")
@@ -244,6 +249,11 @@ def _parse_input_values(raw_values: list[str]) -> dict[str, str]:
             raise ValueError(f"invalid --input value {raw!r}; expected NAME=VALUE")
         values[key] = value
     return values
+
+
+def _require_qualified_id(value: str, label: str) -> None:
+    if "." not in value or any(not part for part in value.split(".")):
+        raise ValueError(f"{label} must be qualified as <pack>.<name>")
 
 
 def _print_ports(label: str, ports: tuple[Any, ...]) -> None:
