@@ -33,6 +33,7 @@ add_extra_args = _hype.add_extra_args
 asset_args = _hype.asset_args
 probe_audio_duration = _hype.probe_audio_duration
 prepare_brief_artifacts = _hype.prepare_brief_artifacts
+parse_brief_frontmatter = _hype.parse_brief_frontmatter
 build_pool_cut_cmd = _hype.build_pool_cut_cmd
 build_pool_steps = _hype.build_pool_steps
 build_steps = _hype.build_steps

@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 import warnings
@@ -452,15 +452,105 @@ def _clear_per_brief_sentinels(brief_out: Path) -> None:
         (brief_out / name).unlink(missing_ok=True)
 
 
+# Phase 3 SD-003: brief frontmatter keys we recognize. Unknown keys are parsed
+# (best-effort) but ignored, so future briefs can declare additional metadata
+# without breaking older ArtAgents builds.
+_BRIEF_FRONTMATTER_BOOL_KEYS = ("allow_generative_visuals",)
+
+
+def _coerce_frontmatter_value(raw: str) -> object:
+    """Coerce a YAML-like scalar string into a Python value.
+
+    Recognizes: ``true``/``false`` (case-insensitive) -> bool; bare integers and
+    floats -> numeric; strings wrapped in matching single or double quotes ->
+    unquoted str; everything else -> raw str (whitespace-trimmed).
+    """
+    text = raw.strip()
+    if not text:
+        return ""
+    lowered = text.lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    if (text.startswith("\"") and text.endswith("\"") and len(text) >= 2) or (
+        text.startswith("'") and text.endswith("'") and len(text) >= 2
+    ):
+        return text[1:-1]
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    return text
+
+
+def parse_brief_frontmatter(text: str) -> tuple[dict[str, object], str]:
+    """Split an optional YAML-like ``---``-fenced frontmatter block off a brief.
+
+    The frontmatter must begin on line 1 with a line containing only ``---``,
+    end with another line containing only ``---``, and contain
+    ``key: value`` pairs (one per line). Blank lines and ``#`` comment lines
+    inside the block are tolerated. When no frontmatter is present, returns
+    ``({}, text)`` unchanged.
+    """
+    if not text.startswith("---"):
+        return {}, text
+    lines = text.split("\n")
+    if lines[0].strip() != "---":
+        return {}, text
+    metadata: dict[str, object] = {}
+    closing_index: int | None = None
+    for index in range(1, len(lines)):
+        line = lines[index]
+        stripped = line.strip()
+        if stripped == "---":
+            closing_index = index
+            break
+        if not stripped or stripped.startswith("#"):
+            continue
+        if ":" not in stripped:
+            # Malformed line inside frontmatter; treat the file as having no
+            # frontmatter to avoid silently corrupting a brief that happens to
+            # start with three dashes (e.g. an em-dash separator).
+            return {}, text
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        if not key:
+            return {}, text
+        metadata[key] = _coerce_frontmatter_value(value)
+    if closing_index is None:
+        return {}, text
+    body = "\n".join(lines[closing_index + 1 :])
+    return metadata, body
+
+
+def _brief_allow_generative_visuals(metadata: dict[str, object]) -> bool:
+    """Return the truth value of the ``allow_generative_visuals`` frontmatter key.
+
+    Treats missing keys, non-bool values, and the literal ``False`` as
+    ``False`` so a malformed brief never silently enables generative effects.
+    """
+    return metadata.get("allow_generative_visuals") is True
+
+
 def prepare_brief_artifacts(args: argparse.Namespace) -> None:
     args.brief_out.mkdir(parents=True, exist_ok=True)
-    current_hash = _sha256_for_path(args.brief)
+    source_text = args.brief.read_text(encoding="utf-8")
+    metadata, body = parse_brief_frontmatter(source_text)
+    args.brief_frontmatter = metadata
+    args.brief_allow_generative_visuals = _brief_allow_generative_visuals(metadata)
+    body_bytes = body.encode("utf-8")
+    body_hash = hashlib.sha256(body_bytes).hexdigest()
     existing_hash = _sha256_for_path(args.brief_copy) if args.brief_copy.is_file() else None
-    if existing_hash == current_hash:
+    if existing_hash == body_hash:
         return
     if existing_hash is not None:
         _clear_per_brief_sentinels(args.brief_out)
-    shutil.copyfile(args.brief, args.brief_copy)
+    args.brief_copy.write_bytes(body_bytes)
 
 
 def build_pool_cut_cmd(args: argparse.Namespace) -> list[str]:
@@ -668,7 +758,7 @@ def build_pool_steps() -> list[Step]:
                         if (target_duration := _arrange_target_duration(args)) is not None
                         else []
                     ),
-                    *(["--allow-generative-effects"] if (args.video is None or getattr(args, "allow_generative_effects", False)) else []),
+                    *(["--allow-generative-effects"] if (args.video is None or getattr(args, "allow_generative_effects", False) or getattr(args, "brief_allow_generative_visuals", False)) else []),
                     *(["--no-audio"] if args.video is None and args.audio is None else []),
                     *(["--env-file", str(args.env_file)] if args.env_file else []),
                 ],
@@ -784,7 +874,11 @@ def _initial_facts(args: argparse.Namespace) -> set[str]:
         facts.update({"source_audio", "audio", "source_media"})
     if getattr(args, "target_duration", None) is not None:
         facts.add("target_duration")
-    if getattr(args, "allow_generative_effects", False):
+    # Phase 3 SD-003 precedence: explicit CLI --allow-generative-effects wins,
+    # else the brief's allow_generative_visuals frontmatter, else False.
+    if getattr(args, "allow_generative_effects", False) or getattr(
+        args, "brief_allow_generative_visuals", False
+    ):
         facts.add("generative_visuals_enabled")
     return facts
 
@@ -880,6 +974,9 @@ def _write_dry_run_plan(args: argparse.Namespace) -> int:
             "video": args.video is not None,
             "audio": args.audio is not None,
             "allow_generative_effects": args.allow_generative_effects,
+            "brief_allow_generative_visuals": getattr(
+                args, "brief_allow_generative_visuals", False
+            ),
             "target_duration": getattr(args, "target_duration", None),
         },
         "selected_steps": selected_step_payload,
