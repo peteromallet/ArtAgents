@@ -230,9 +230,8 @@ def _validate_project_dir(project_dir: Path) -> None:
         raise FileNotFoundError("Run `npm install` in tools/remotion/ first")
 
 
-def _serialize_timeline(timeline_path: Path) -> dict:
-    loaded = timeline.load_timeline(timeline_path)
-    return {**loaded, "clips": [_swap_from_dump(clip) for clip in loaded["clips"]]}
+def _serialize_timeline(timeline_path: Path, *, default_theme: str = "banodoco-default") -> dict:
+    return timeline.Timeline.load(timeline_path).for_render(default_theme=default_theme).to_json_data()
 
 
 def _resolve_theme_path(theme_path: Path) -> Path:
@@ -262,6 +261,13 @@ def _theme_for_props(theme_path: Path) -> dict:
     return {"id": theme["id"], "visual": theme["visual"]}
 
 
+def _theme_slug_for_render_default(theme_path: Path) -> str:
+    resolved = _resolve_theme_path(theme_path)
+    if resolved.name == "theme.json":
+        return resolved.parent.name
+    return resolved.stem or "banodoco-default"
+
+
 def _resolved_theme_for_render(timeline_path: Path, fallback_theme_path: Path) -> dict:
     """Resolve the timeline's theme + theme_overrides into the props-shaped dict.
 
@@ -269,10 +275,13 @@ def _resolved_theme_for_render(timeline_path: Path, fallback_theme_path: Path) -
     timeline.theme_overrides. We merge them and trim to {id, visual} for Remotion
     props.
     """
-    raw_timeline = json.loads(timeline_path.read_text(encoding="utf-8"))
+    loaded = timeline.Timeline.load(timeline_path)
+    render_view = loaded.for_render(default_theme=_theme_slug_for_render_default(fallback_theme_path))
+    timeline_config = loaded.to_config()
+    timeline_config.setdefault("theme", render_view.theme)
     themes_root = WORKSPACE_ROOT / "themes"
     try:
-        merged = timeline.resolve_timeline_theme(raw_timeline, themes_root)
+        merged = timeline.resolve_timeline_theme(timeline_config, themes_root)
     except (FileNotFoundError, ValueError):
         merged = None
     if not isinstance(merged, dict) or "visual" not in merged:
@@ -349,7 +358,10 @@ def render(
         # The timeline references a theme by slug + optional theme_overrides;
         # theme.visual.canvas is the source of truth for Remotion calculateMetadata.
         merged_props = {
-            "timeline": _serialize_timeline(timeline_path),
+            "timeline": _serialize_timeline(
+                timeline_path,
+                default_theme=str(theme_for_props.get("id") or "banodoco-default"),
+            ),
             "assets": resolved_registry,
             "theme": theme_for_props,
         }

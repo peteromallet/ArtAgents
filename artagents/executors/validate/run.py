@@ -21,6 +21,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ...timeline import load_timeline
+
 from ...audit import register_outputs
 
 from artagents.domains.hype.text_match import TOKEN_RE, segments_in_range, token_set_similarity, tokenize
@@ -92,7 +94,7 @@ def main() -> int:
         if not required.is_file():
             raise SystemExit(f"validate: required file not found: {required}")
 
-    timeline = json.loads(timeline_path.read_text(encoding="utf-8"))
+    timeline = load_timeline(timeline_path)
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if not any(clip.get("track") == "a1" for clip in timeline.get("clips", [])):
         out_path.parent.mkdir(parents=True, exist_ok=True)

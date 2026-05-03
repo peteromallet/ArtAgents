@@ -7,6 +7,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from ...timeline import Timeline
+
 
 DEFAULT_REIGH_APP = Path("/Users/peteromalley/Documents/reigh-workspace/reigh-app")
 PROBE_DIRS = ("public/timelines", "public/demos", "timelines", "demos")
@@ -95,12 +97,16 @@ def load_json_blob(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def load_timeline_blob(path):
+    return Timeline.load(path).to_json_data()
+
+
 def sql_json_literal(obj):
     return json.dumps(obj, ensure_ascii=False).replace("'", "''")
 
 
 def print_sql(args, timeline_path, assets_path):
-    timeline_blob = sql_json_literal(load_json_blob(timeline_path))
+    timeline_blob = sql_json_literal(load_timeline_blob(timeline_path))
     assets_blob = sql_json_literal(load_json_blob(assets_path))
     safe_name = args.name.replace("'", "''")
     print("SQL template only: fill <PROJECT_ID> and <USER_ID> yourself. This bridge does NOT open a Supabase connection.")

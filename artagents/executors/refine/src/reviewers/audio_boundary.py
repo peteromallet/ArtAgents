@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from artagents.executors.asset_cache import run as asset_cache
 from artagents.domains.hype import enriched_arrangement
+from artagents.timeline import load_registry
 from artagents.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS, TOTAL_DURATION_BOUNDS, TRIM_BOUND_EXTENSION_SEC
 from artagents.executors.refine.src.reviewers import Reviewer
 from artagents.domains.hype.text_match import segments_in_range, token_set_similarity, tokenize
@@ -126,8 +127,7 @@ class AudioBoundaryReviewer(Reviewer):
 
 
 def _load_registry(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return data if isinstance(data, dict) else {}
+    return dict(load_registry(path))
 
 
 def _resolve_asset_path(run_dir: Path, registry: dict[str, Any], asset_key: str) -> Path | str:

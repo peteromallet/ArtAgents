@@ -1,15 +1,11 @@
 """Round-trip fixture test pinning timeline JSON byte-equivalence.
 
-Phase 2 prerequisite: this is the regression gate that the upcoming
-`Timeline` domain class refactor must keep green. Three assertions:
+The regression gate for the `Timeline` domain class. Three assertions:
 
 1. `examples/hype.timeline.full.json` round-trips load -> dump
    byte-for-byte (covers tracks, theme_overrides, generation_defaults,
    per-clip animation/transition/effects, mixed clipTypes).
-2. Unknown top-level fields are preserved across load/dump.
-   xfail today: the loader currently rejects unknown keys via
-   `_raise_unknown_keys`. Phase 2 will introduce a passthrough bag and
-   flip this to passing.
+2. Unknown top-level fields survive load/dump via the passthrough bag.
 3. ArtAgents' Python allowlists (`_TIMELINE_TOP_ALLOWED`,
    `_CLIP_ALLOWED`, `_TRACK_ALLOWED`) match the field set declared in
    the canonical `@banodoco/timeline-schema` JSON Schema. The shared
@@ -120,16 +116,9 @@ class TimelineRoundTripFixtureTest(unittest.TestCase):
             )
 
     # ------------------------------------------------------------------
-    # 2. Unknown top-level field preservation (xfail today)
+    # 2. Unknown top-level field preservation
     # ------------------------------------------------------------------
     def test_unknown_top_level_field_is_preserved(self) -> None:
-        """Phase 2 will introduce a passthrough bag for unknown keys.
-
-        Today's loader calls `_raise_unknown_keys("Timeline", ...)` which
-        rejects anything outside `_TIMELINE_TOP_ALLOWED`. We expect this
-        test to fail until Phase 2 lands; when it does, the xfail wrapper
-        will report XPASS and force us to flip the marker.
-        """
         sentinel_key = "_phase2_canary"
         sentinel_value = "preserve me"
 
@@ -140,16 +129,7 @@ class TimelineRoundTripFixtureTest(unittest.TestCase):
             in_path = Path(tmp) / "with_canary.json"
             in_path.write_text(json.dumps(injected, indent=2), encoding="utf-8")
 
-            try:
-                config = load_timeline(in_path)
-            except ValueError as exc:
-                # Today's behaviour: rejected by _raise_unknown_keys.
-                # Use the standard xfail mechanism via SkipTest under
-                # unittest, but for pytest-aware xfail we raise the
-                # documented marker.
-                raise _XFailExpected(
-                    f"loader rejects unknown top-level keys today: {exc}"
-                )
+            config = load_timeline(in_path)
 
             out_path = Path(tmp) / "after_roundtrip.json"
             save_timeline(config, out_path)
@@ -158,7 +138,7 @@ class TimelineRoundTripFixtureTest(unittest.TestCase):
         self.assertEqual(
             after.get(sentinel_key),
             sentinel_value,
-            "Phase 2 expected: unknown top-level field survives load/dump.",
+            "unknown top-level field must survive load/dump (passthrough bag).",
         )
 
     # ------------------------------------------------------------------
@@ -216,33 +196,6 @@ class TimelineRoundTripFixtureTest(unittest.TestCase):
             f"only-in-artagents={set(_TRACK_ALLOWED) - shared_track}, "
             f"only-in-schema={shared_track - set(_TRACK_ALLOWED)}",
         )
-
-
-class _XFailExpected(Exception):
-    """Internal sentinel translated to pytest.xfail at the boundary."""
-
-
-# Wire #2 to pytest's xfail using the no-extra-imports approach: a
-# pytest collection hook only fires under pytest, so we fall back to a
-# unittest skip when run under plain unittest. The decorator below uses
-# pytest.mark.xfail when available, else unittest.expectedFailure.
-try:
-    import pytest  # type: ignore[import-not-found]
-
-    TimelineRoundTripFixtureTest.test_unknown_top_level_field_is_preserved = pytest.mark.xfail(
-        reason=(
-            "Phase 2 work: loader currently rejects unknown top-level keys "
-            "via _raise_unknown_keys. Flip when the passthrough bag lands."
-        ),
-        strict=True,
-        raises=(_XFailExpected, AssertionError),
-    )(TimelineRoundTripFixtureTest.test_unknown_top_level_field_is_preserved)
-except ImportError:  # pragma: no cover - pytest is the project's runner
-    TimelineRoundTripFixtureTest.test_unknown_top_level_field_is_preserved = (
-        unittest.expectedFailure(
-            TimelineRoundTripFixtureTest.test_unknown_top_level_field_is_preserved
-        )
-    )
 
 
 if __name__ == "__main__":  # pragma: no cover

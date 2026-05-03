@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
+from artagents.timeline import save_timeline
+
 
 ADOS_SUNDAY_SPEAKERS = [
     {"speaker": "Enigmatic E", "title": "Creative Intent in an Automated World"},
@@ -215,9 +217,9 @@ def _render_manifest_remotion_wrapper(talks: list[Talk], args: argparse.Namespac
         intro_assets_path = card_dir / "intro.assets.json"
         outro_timeline_path = card_dir / "outro.timeline.json"
         outro_assets_path = card_dir / "outro.assets.json"
-        intro_timeline_path.write_text(json.dumps(intro_timeline, indent=2) + "\n", encoding="utf-8")
+        save_timeline(intro_timeline, intro_timeline_path)
         intro_assets_path.write_text(json.dumps(intro_assets, indent=2) + "\n", encoding="utf-8")
-        outro_timeline_path.write_text(json.dumps(outro_timeline, indent=2) + "\n", encoding="utf-8")
+        save_timeline(outro_timeline, outro_timeline_path)
         outro_assets_path.write_text(json.dumps(outro_assets, indent=2) + "\n", encoding="utf-8")
         intro_mp4 = card_dir / "intro.mp4"
         outro_mp4 = card_dir / "outro.mp4"
@@ -486,7 +488,7 @@ def _render_manifest_remotion(talks: list[Talk], args: argparse.Namespace) -> in
             packaged_source=packaged_source,
             output=output,
         )
-        timeline_path.write_text(json.dumps(timeline_payload, indent=2) + "\n", encoding="utf-8")
+        save_timeline(timeline_payload, timeline_path)
         assets_path.write_text(json.dumps(asset_payload, indent=2) + "\n", encoding="utf-8")
         metadata_path.write_text(json.dumps(metadata_payload, indent=2) + "\n", encoding="utf-8")
         if args.dry_run:

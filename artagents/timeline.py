@@ -10,10 +10,14 @@ types, transition validation, effect-id registry checks) is Banodoco-only.
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 import sys
 import uuid
+from collections.abc import Mapping
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, List, Literal, TypedDict, Union
 
@@ -231,6 +235,14 @@ AssetRegistryEntry = AssetEntry
 class AssetRegistry(TypedDict):
     assets: dict[str, AssetRegistryEntry]
 
+class ClipClassifiedKind(str, Enum):
+    VIDEO = "video"
+    IMAGE = "image"
+    AUDIO = "audio"
+    TEXT = "text"
+    EFFECT = "effect"
+    OPAQUE = "opaque"
+
 PoolKind = Literal["source", "generative"]
 PoolCategory = Literal["dialogue", "visual", "reaction", "applause", "music"]
 PipelinePoolKind = Literal["dialogue", "visual", "reaction", "applause", "music", "text"]
@@ -441,6 +453,9 @@ def _normalize_clip_for_validation(clip: dict[str, Any]) -> dict[str, Any]:
         normalized["from"] = normalized.pop("from_")
     return normalized
 
+def _known_timeline_payload(config: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in config.items() if key in _TIMELINE_TOP_ALLOWED}
+
 def _effect_ids(theme: str | None = None) -> set[str]:
     try:
         from artagents.elements import catalog as effects_catalog
@@ -650,6 +665,199 @@ def _round_at_for_dump(clip: dict[str, Any]) -> dict[str, Any]:
         clip["at"] = round(float(clip["at"]), 3)
     return clip
 
+
+def _asset_entry_for_clip(
+    clip: Mapping[str, Any],
+    registry: AssetRegistry | Mapping[str, Any] | None,
+) -> Mapping[str, Any] | None:
+    asset_key = clip.get("asset")
+    if not isinstance(asset_key, str) or not isinstance(registry, Mapping):
+        return None
+    assets = registry.get("assets")
+    if not isinstance(assets, Mapping):
+        return None
+    entry = assets.get(asset_key)
+    return entry if isinstance(entry, Mapping) else None
+
+
+def _asset_kind_from_entry(entry: Mapping[str, Any] | None) -> ClipClassifiedKind | None:
+    if not isinstance(entry, Mapping):
+        return None
+    raw_type = entry.get("type")
+    if isinstance(raw_type, str):
+        normalized = raw_type.lower()
+        if normalized in {"video", "image", "audio"}:
+            return ClipClassifiedKind(normalized)
+        if normalized.startswith("video/"):
+            return ClipClassifiedKind.VIDEO
+        if normalized.startswith("image/"):
+            return ClipClassifiedKind.IMAGE
+        if normalized.startswith("audio/"):
+            return ClipClassifiedKind.AUDIO
+    for key in ("mime", "mimeType", "contentType"):
+        mime = entry.get(key)
+        if not isinstance(mime, str):
+            continue
+        normalized = mime.lower()
+        if normalized.startswith("video/"):
+            return ClipClassifiedKind.VIDEO
+        if normalized.startswith("image/"):
+            return ClipClassifiedKind.IMAGE
+        if normalized.startswith("audio/"):
+            return ClipClassifiedKind.AUDIO
+    return None
+
+
+def _classify_clip(
+    clip: Mapping[str, Any],
+    registry: AssetRegistry | Mapping[str, Any] | None = None,
+    *,
+    theme: str | None = None,
+) -> ClipClassifiedKind:
+    clip_type = clip.get("clipType", "media")
+    if clip_type == "text":
+        return ClipClassifiedKind.TEXT
+    if clip_type == "media":
+        return _asset_kind_from_entry(_asset_entry_for_clip(clip, registry)) or ClipClassifiedKind.OPAQUE
+    if clip_type in {"hold"}:
+        return _asset_kind_from_entry(_asset_entry_for_clip(clip, registry)) or ClipClassifiedKind.VIDEO
+    if clip_type == "effect-layer":
+        return ClipClassifiedKind.EFFECT
+    if isinstance(clip_type, str) and clip_type in _effect_ids(theme):
+        return ClipClassifiedKind.EFFECT
+    return ClipClassifiedKind.OPAQUE
+
+
+@dataclass(frozen=True)
+class TimelineClipView:
+    data: Mapping[str, Any]
+    registry: AssetRegistry | Mapping[str, Any] | None = None
+    theme: str | None = None
+
+    @property
+    def classified_kind(self) -> ClipClassifiedKind:
+        return _classify_clip(self.data, self.registry, theme=self.theme)
+
+
+class TimelineRenderView:
+    def __init__(self, timeline: "Timeline", *, default_theme: str) -> None:
+        self._timeline = timeline
+        self._default_theme = default_theme
+
+    @property
+    def theme(self) -> str:
+        return self._timeline.theme or self._default_theme
+
+    @property
+    def clips(self) -> list[TimelineClip]:
+        return self._timeline.clips
+
+    @property
+    def tracks(self) -> list[TrackDefinition]:
+        return self._timeline.tracks
+
+    def to_json_data(self) -> dict[str, Any]:
+        payload = self._timeline.to_json_data()
+        payload.setdefault("theme", self._default_theme)
+        return payload
+
+
+class Timeline:
+    """Persisted timeline JSON with top-level passthrough fields preserved."""
+
+    def __init__(self, config: Mapping[str, Any], *, validate: bool = True) -> None:
+        data = copy.deepcopy(dict(config))
+        if validate:
+            validate_timeline(data)
+        self._data = data
+
+    @classmethod
+    def from_json_data(cls, payload: Mapping[str, Any], *, validate: bool = True) -> "Timeline":
+        data = copy.deepcopy(dict(payload))
+        clips = data.get("clips")
+        if isinstance(clips, list):
+            data["clips"] = [
+                _swap_from_load(dict(clip)) if isinstance(clip, dict) else clip
+                for clip in clips
+            ]
+        return cls(data, validate=validate)
+
+    @classmethod
+    def load(cls, path: Path, *, validate: bool = True) -> "Timeline":
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Timeline must be a JSON object")
+        return cls.from_json_data(data, validate=validate)
+
+    @classmethod
+    def from_config(cls, config: Mapping[str, Any], *, validate: bool = True) -> "Timeline":
+        return cls(config, validate=validate)
+
+    @property
+    def theme(self) -> str | None:
+        theme = self._data.get("theme")
+        return theme if isinstance(theme, str) else None
+
+    @property
+    def clips(self) -> list[TimelineClip]:
+        return self._data.setdefault("clips", [])  # type: ignore[return-value]
+
+    @property
+    def tracks(self) -> list[TrackDefinition]:
+        return self._data.setdefault("tracks", [])  # type: ignore[return-value]
+
+    @property
+    def theme_overrides(self) -> ThemeOverrides | None:
+        value = self._data.get("theme_overrides")
+        return value if isinstance(value, dict) else None  # type: ignore[return-value]
+
+    @property
+    def generation_defaults(self) -> dict[str, Any] | None:
+        value = self._data.get("generation_defaults")
+        return value if isinstance(value, dict) else None
+
+    @property
+    def pinnedShotGroups(self) -> list[dict[str, Any]] | None:
+        value = self._data.get("pinnedShotGroups")
+        return value if isinstance(value, list) else None
+
+    @property
+    def output(self) -> TimelineOutput | None:
+        value = self._data.get("output")
+        return value if isinstance(value, dict) else None  # type: ignore[return-value]
+
+    def classified_clips(
+        self,
+        registry: AssetRegistry | Mapping[str, Any] | None = None,
+    ) -> list[TimelineClipView]:
+        return [
+            TimelineClipView(clip, registry=registry, theme=self.theme)
+            for clip in self.clips
+            if isinstance(clip, Mapping)
+        ]
+
+    def for_render(self, default_theme: str = "banodoco-default") -> TimelineRenderView:
+        if not isinstance(default_theme, str) or not default_theme:
+            raise ValueError("default_theme must be a non-empty slug")
+        return TimelineRenderView(self, default_theme=default_theme)
+
+    def to_config(self) -> TimelineConfig:
+        return copy.deepcopy(self._data)  # type: ignore[return-value]
+
+    def to_json_data(self) -> dict[str, Any]:
+        payload = copy.deepcopy(self._data)
+        clips = payload.get("clips")
+        if isinstance(clips, list):
+            payload["clips"] = [
+                _round_at_for_dump(_swap_from_dump(dict(clip))) if isinstance(clip, dict) else clip
+                for clip in clips
+            ]
+        validate_timeline(payload)
+        return payload
+
+    def dump(self, path: Path) -> None:
+        _write_json(path, self.to_json_data())
+
 def merge_generation(
     theme_generation: dict[str, Any] | None,
     per_clip: dict[str, Any] | None,
@@ -721,16 +929,10 @@ def resolve_timeline_theme(timeline: "TimelineConfig", themes_root: Path) -> dic
     return base
 
 def load_timeline(path: Path) -> TimelineConfig:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    validate_timeline(data)
-    data["clips"] = [_swap_from_load(dict(clip)) for clip in data["clips"]]
-    return data  # type: ignore[return-value]
+    return Timeline.load(path).to_config()
 
 def save_timeline(config: TimelineConfig, path: Path) -> None:
-    payload: dict[str, Any] = dict(config)
-    payload["clips"] = [_round_at_for_dump(_swap_from_dump(dict(clip))) for clip in payload["clips"]]
-    validate_timeline(payload)
-    _write_json(path, payload)
+    Timeline.from_config(config).dump(path)
 
 def load_registry(path: Path) -> AssetRegistry:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -833,13 +1035,9 @@ def validate_registry(registry: Any) -> None:
 def validate_timeline(config: Any, *, strict: bool = True) -> None:
     """Validate a Banodoco timeline.
 
-    Sprint 5 (SD-015): `strict` defaults to True. The strict path requires
-    every clip's `clipType` to be in the registered effect set (workspace
-    effects + active-theme effects discovered via
-    artagents/elements/catalog.py:139-155). This catches authoring of unknown
-    clipTypes at validate-time; the loud-placeholder Sprint-3 fallback in
-    Reigh's TimelineRenderer is the runtime safety net for the
-    "installed but unrenderable" case.
+    `clipType` is an open string for Reigh compatibility. Built-in media/text
+    clips and registered effects get semantic checks where ArtAgents knows how;
+    unknown clip types stay valid and classify as opaque at runtime.
 
     Callers that need to accept legacy/under-construction timelines (e.g.
     in-flight pipeline outputs that reference theme content not yet on
@@ -849,16 +1047,15 @@ def validate_timeline(config: Any, *, strict: bool = True) -> None:
         raise ValueError("Timeline must be a JSON object")
     # Shape-check against the shared JSON Schema first; then run the
     # Banodoco-only semantic checks (effect-id registry, transition durations).
-    normalized_for_shared = dict(config)
+    normalized_for_shared = _known_timeline_payload(config)
     if isinstance(normalized_for_shared.get("clips"), list):
         normalized_for_shared["clips"] = [
             _normalize_clip_for_validation(c) if isinstance(c, dict) else c
             for c in normalized_for_shared["clips"]
         ]
     _shared_validate_timeline(normalized_for_shared, strict=strict)
-    _raise_unknown_keys("Timeline", config, _TIMELINE_TOP_ALLOWED)
     theme = config.get("theme")
-    if not isinstance(theme, str) or not theme:
+    if theme is not None and (not isinstance(theme, str) or not theme):
         raise ValueError("Timeline.theme must be a non-empty slug")
     fps = _timeline_fps(config)
     tracks = config.get("tracks")
@@ -894,15 +1091,11 @@ def validate_timeline(config: Any, *, strict: bool = True) -> None:
         clip_type = clip.get("clipType", "media")
         if not isinstance(clip_type, str):
             raise ValueError(f"clips[{index}].clipType must be a string")
-        # Sprint 5 strict mode: active theme slug from the timeline so the
-        # effect-id scan picks up theme-scoped clipTypes (e.g. 2rp's
-        # section-hook). When strict=False, an unknown clipType still
-        # raises this same error (the registry scan is mandatory) — the
-        # `strict` flag controls the upstream JSON-Schema check.
+        # Active theme slug from the timeline lets effect-id scans pick up
+        # theme-scoped clipTypes (e.g. 2rp's section-hook). Open-string
+        # clipTypes that are not registered effects remain opaque.
         active_theme = theme if isinstance(theme, str) else None
         effect_ids = _effect_ids(active_theme)
-        if clip_type not in set(BUILTIN_CLIP_TYPES) | effect_ids:
-            raise ValueError(f"clips[{index}].clipType {clip_type!r} is not a built-in clip type or effect id")
         if clip_type in effect_ids:
             _validate_effect_params(clip_type, clip.get("params"), f"clips[{index}].params", theme=active_theme)
         if "pool_id" in clip and not isinstance(clip["pool_id"], str):

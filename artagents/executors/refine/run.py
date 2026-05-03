@@ -37,6 +37,7 @@ from ...timeline import (
     load_metadata,
     load_pool,
     load_registry,
+    load_timeline,
     save_arrangement,
     save_metadata,
     save_timeline,
@@ -555,7 +556,7 @@ def write_outputs(enriched: enriched_arrangement.EnrichedArrangement, registry: 
     _narrow_clip_transcript_texts(metadata, enriched.arrangement, pool_entries, transcript_segments)
     # Preserve the existing timeline's theme reference across the rebuild — refine
     # doesn't change brand, only contents.
-    prior_timeline = json.loads(args.timeline.read_text(encoding="utf-8")) if args.timeline.exists() else {}
+    prior_timeline = load_timeline(args.timeline) if args.timeline.exists() else {}
     prior_theme_slug = prior_timeline.get("theme") if isinstance(prior_timeline, dict) else None
     rebuilt = build_multitrack_timeline(
         enriched.arrangement,

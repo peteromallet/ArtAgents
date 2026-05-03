@@ -139,9 +139,16 @@ class SchemaContractTest(unittest.TestCase):
 
         timeline.validate_timeline(config, strict=False)
 
-    def test_validate_timeline_rejects_missing_theme_after_shared_shape_check(self) -> None:
+    def test_validate_timeline_accepts_missing_theme(self) -> None:
+        # Persisted timelines may omit `theme`; renderable default is injected
+        # at render time via Timeline.for_render(), never written back.
+        timeline.validate_timeline({"clips": []}, strict=False)
+
+    def test_validate_timeline_rejects_empty_or_non_string_theme(self) -> None:
         with self.assertRaisesRegex(ValueError, "Timeline.theme must be a non-empty slug"):
-            timeline.validate_timeline({"clips": []}, strict=False)
+            timeline.validate_timeline({"theme": "", "clips": []}, strict=False)
+        with self.assertRaisesRegex(ValueError, "Timeline.theme must be a non-empty slug"):
+            timeline.validate_timeline({"theme": 42, "clips": []}, strict=False)
 
     def test_effect_params_accept_animation_reference_arrays(self) -> None:
         config = {
