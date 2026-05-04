@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "durationFrames": 8
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  },
+  "id": "fade",
+  "kind": "transition",
+  "metadata": {
+    "label": "Fade"
+  },
+  "pack_id": "builtin",
+  "schema": {
+    "properties": {
+      "durationFrames": {
+        "minimum": 1,
+        "type": "number"
+      }
+    },
+    "type": "object"
+  }
+}

@@ -6,7 +6,6 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass
-from importlib import resources
 from pathlib import Path
 from types import MappingProxyType
 from typing import Iterable
@@ -132,7 +131,6 @@ def default_sources(*, active_theme: str | Path | None = None, project_root: str
         [
             ElementSource("overrides", root / ".artagents" / "elements" / "overrides", 10, True),
             ElementSource("managed", root / ".artagents" / "elements" / "managed", 20, False),
-            ElementSource("bundled", _bundled_root(), 30, False),
         ]
     )
     return tuple(sources)
@@ -155,25 +153,30 @@ def load_pack_elements() -> tuple[ElementDefinition, ...]:
 
 
 def load_source_elements(source: ElementSource) -> tuple[ElementDefinition, ...]:
+    from .schema import ELEMENT_MANIFEST_NAMES
+
     elements: list[ElementDefinition] = []
     for kind in ELEMENT_KINDS:
         kind_root = source.root / kind
         if not kind_root.is_dir():
             continue
         for child in sorted(kind_root.iterdir(), key=lambda path: path.name):
-            if child.is_dir():
-                try:
-                    elements.append(
-                        load_element_definition(
-                            child,
-                            kind=kind,
-                            source=source.name,
-                            editable=source.editable,
-                            priority=source.priority,
-                        )
+            if not child.is_dir():
+                continue
+            if not any((child / name).is_file() for name in ELEMENT_MANIFEST_NAMES):
+                continue
+            try:
+                elements.append(
+                    load_element_definition(
+                        child,
+                        kind=kind,
+                        source=source.name,
+                        editable=source.editable,
+                        priority=source.priority,
                     )
-                except ElementValidationError as exc:
-                    print(f"WARN skipping {child}: {exc}", file=sys.stderr)
+                )
+            except ElementValidationError as exc:
+                print(f"WARN skipping {child}: {exc}", file=sys.stderr)
     return tuple(elements)
 
 
@@ -187,10 +190,3 @@ def _resolve_theme_dir(theme: str | Path | None) -> Path | None:
     if candidate.exists():
         return (candidate if candidate.is_dir() else candidate.parent).resolve()
     return (REPO_ROOT.parent / "themes" / str(raw)).resolve()
-
-
-def _bundled_root() -> Path:
-    try:
-        return Path(str(resources.files("artagents.elements.bundled")))
-    except (ModuleNotFoundError, TypeError):
-        return Path(__file__).with_name("bundled")

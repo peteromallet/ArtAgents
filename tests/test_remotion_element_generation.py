@@ -21,7 +21,7 @@ class RemotionElementGenerationTest(unittest.TestCase):
             generated = gen_effect_registry.generate_element_registry(kind)
             self.assertIn("./effects-types", generated)
             self.assertNotIn("./effects.types", generated)
-            self.assertRegex(generated, r"@(bundled|managed)-elements-")
+            self.assertRegex(generated, r"@(pack-builtin|managed)-elements-")
             self.assertNotIn("@workspace-", generated)
             self.assertNotIn("primitive-root", generated)
 

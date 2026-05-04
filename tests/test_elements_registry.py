@@ -6,17 +6,21 @@ from pathlib import Path
 from artagents.core.element import ElementRegistryError, load_default_registry
 
 
+_KIND_SINGULAR = {"effects": "effect", "animations": "animation", "transitions": "transition"}
+
+
 def write_element(root: Path, kind: str, element_id: str, *, label: str, js_packages: list[str] | None = None) -> Path:
     element_root = root / kind / element_id
     element_root.mkdir(parents=True)
     (element_root / "component.tsx").write_text("export default function Element() { return null; }\n", encoding="utf-8")
-    (element_root / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-    (element_root / "defaults.json").write_text('{"enabled":true}\n', encoding="utf-8")
-    (element_root / "meta.json").write_text(
+    (element_root / "element.yaml").write_text(
         json.dumps(
             {
                 "id": element_id,
-                "label": label,
+                "kind": _KIND_SINGULAR[kind],
+                "metadata": {"label": label},
+                "schema": {"type": "object"},
+                "defaults": {"enabled": True},
                 "dependencies": {
                     "js_packages": list(js_packages or []),
                     "python_requirements": [],
@@ -30,7 +34,7 @@ def write_element(root: Path, kind: str, element_id: str, *, label: str, js_pack
 
 
 class ElementRegistryTest(unittest.TestCase):
-    def test_bundled_defaults_are_discovered_with_source_metadata(self) -> None:
+    def test_builtin_pack_defaults_are_discovered_with_pack_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
             registry = load_default_registry(project_root=project)
@@ -41,12 +45,13 @@ class ElementRegistryTest(unittest.TestCase):
             self.assertIn(("animations", "fade"), by_key)
             self.assertIn(("transitions", "cross-fade"), by_key)
             text_card = registry.get("effects", "text-card")
-            self.assertEqual(text_card.source, "bundled")
+            self.assertEqual(text_card.source, "pack:builtin")
             self.assertFalse(text_card.editable)
             self.assertEqual(text_card.metadata["label"], "Text Card")
+            self.assertEqual(text_card.metadata["pack_id"], "builtin")
             self.assertEqual(text_card.fork_target, Path(".artagents/elements/overrides/effects/text-card"))
 
-    def test_precedence_is_active_theme_over_overrides_managed_and_bundled(self) -> None:
+    def test_active_theme_overrides_builtin_pack(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
             theme = Path(tmp) / "theme"
@@ -61,9 +66,12 @@ class ElementRegistryTest(unittest.TestCase):
         self.assertTrue(winner.editable)
         self.assertEqual(winner.metadata["label"], "Theme")
         conflicts = registry.conflicts()
-        self.assertEqual(len([item for item in conflicts if item.kind == "effects" and item.id == "text-card"]), 1)
-        conflict = [item for item in conflicts if item.kind == "effects" and item.id == "text-card"][0]
-        self.assertEqual([item.source for item in conflict.shadowed], ["overrides", "managed", "bundled"])
+        text_card_conflicts = [item for item in conflicts if item.kind == "effects" and item.id == "text-card"]
+        self.assertEqual(len(text_card_conflicts), 1)
+        self.assertEqual(
+            [item.source for item in text_card_conflicts[0].shadowed],
+            ["overrides", "managed", "pack:builtin"],
+        )
 
     def test_override_wins_without_active_theme_and_fork_target_uses_project_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

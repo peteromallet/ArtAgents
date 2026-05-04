@@ -53,7 +53,6 @@ ACTIVE_THEME_POINTER = TOOLS_DIR / "remotion" / "_active_theme.txt"
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 ElementKind = Literal["effects", "animations", "transitions"]
-REQUIRED_PLUGIN_FILES = ("component.tsx", "schema.json", "defaults.json", "meta.json")
 
 
 @dataclass(frozen=True)
@@ -63,6 +62,7 @@ class PluginRecord:
     scope: str
     root: Path
     meta: dict[str, Any]
+    defaults: dict[str, Any]
     import_scope: str | None = None
 
 
@@ -118,53 +118,6 @@ def _workspace_root(kind: ElementKind) -> Path:
     return WORKSPACE_ROOT / kind
 
 
-def _missing_required_files(root: Path) -> list[str]:
-    return [filename for filename in REQUIRED_PLUGIN_FILES if not (root / filename).is_file()]
-
-
-def _load_json(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError(f"{path} must contain a JSON object")
-    return data
-
-
-def _load_plugin(
-    root: Path,
-    plugin_id: str,
-    *,
-    kind: ElementKind,
-    scope: str,
-) -> PluginRecord | None:
-    missing = _missing_required_files(root)
-    if missing:
-        missing_text = ", ".join(missing)
-        print(f"WARN skipping {root}: missing {missing_text}", file=sys.stderr)
-        return None
-    meta_path = root / "meta.json"
-    meta = _load_json(meta_path)
-    if meta.get("id") not in (None, plugin_id):
-        raise ValueError(f"{meta_path} must contain matching id {plugin_id!r}")
-    return PluginRecord(plugin_id=plugin_id, kind=kind, scope=scope, root=root, meta=meta)
-
-
-def _scan_plugins(root: Path, *, kind: ElementKind, scope: str) -> dict[str, PluginRecord]:
-    if not root.is_dir():
-        return {}
-    plugins: dict[str, PluginRecord] = {}
-    singular = _singular(kind)
-    for child in sorted(root.iterdir(), key=lambda path: path.name):
-        if not child.is_dir():
-            continue
-        if not ID_RE.fullmatch(child.name):
-            print(f"WARN skipping {child}: invalid {singular} id", file=sys.stderr)
-            continue
-        plugin = _load_plugin(child, child.name, kind=kind, scope=scope)
-        if plugin is not None:
-            plugins[child.name] = plugin
-    return plugins
-
-
 def discover_plugins(kind: ElementKind, theme_dir: Path | None = None) -> dict[str, PluginRecord]:
     _validate_kind(kind)
     registry = _element_registry(theme_dir)
@@ -209,6 +162,7 @@ def _plugin_from_element(element: ElementDefinition, *, theme_dir: Path | None) 
         scope=element.source,
         root=element.root,
         meta=element.metadata,
+        defaults=element.defaults,
         import_scope=_import_scope_for_element(element, theme_dir=theme_dir),
     )
 
@@ -224,8 +178,8 @@ def _import_scope_for_element(element: ElementDefinition, *, theme_dir: Path | N
         return "override-elements"
     if element.source == "managed":
         return "managed-elements"
-    if element.source == "bundled":
-        return "bundled-elements"
+    if element.source.startswith("pack:"):
+        return f"pack-{element.source.split(':', 1)[1]}-elements"
     return "managed-elements"
 
 
@@ -349,7 +303,7 @@ def generate_element_registry(kind: ElementKind, *, theme_dir: Path | None = Non
         for plugin_id in plugin_ids
     ]
     defaults_entries = [
-        f"  '{plugin_id}': {_ts_json(_load_json(plugins[plugin_id].root / 'defaults.json'))},"
+        f"  '{plugin_id}': {_ts_json(plugins[plugin_id].defaults)},"
         for plugin_id in plugin_ids
     ]
     meta_entries = [

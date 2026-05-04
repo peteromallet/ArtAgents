@@ -74,10 +74,20 @@ def write_element(root: Path, kind: str, element_id: str, *, pack_id: str) -> Pa
     element_root = root / "elements" / kind / element_id
     element_root.mkdir(parents=True)
     (element_root / "component.tsx").write_text("export default function Element() { return null; }\n", encoding="utf-8")
-    (element_root / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-    (element_root / "defaults.json").write_text("{}\n", encoding="utf-8")
-    (element_root / "meta.json").write_text(
-        json.dumps({"id": element_id, "label": element_id, "pack_id": pack_id}) + "\n",
+    singular = {"effects": "effect", "animations": "animation", "transitions": "transition"}[kind]
+    (element_root / "element.yaml").write_text(
+        json.dumps(
+            {
+                "id": element_id,
+                "kind": singular,
+                "pack_id": pack_id,
+                "metadata": {"label": element_id},
+                "schema": {"type": "object"},
+                "defaults": {},
+                "dependencies": {"js_packages": [], "python_requirements": []},
+            }
+        )
+        + "\n",
         encoding="utf-8",
     )
     return element_root

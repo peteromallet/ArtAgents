@@ -148,13 +148,9 @@ def _cmd_install(args: argparse.Namespace, registry: Any) -> int:
 
 def _sync_managed_defaults(*, dry_run: bool, overwrite: bool, project_root: Path | None = None) -> list[str]:
     project_root = project_root or REPO_ROOT
-    bundled_root = None
-    for source in default_sources(project_root=project_root):
-        if source.name == "bundled":
-            bundled_root = source.root
-            break
-    if bundled_root is None:
-        raise ElementRegistryError("bundled element root is not configured")
+    bundled_root = Path(__file__).resolve().parents[2] / "packs" / "builtin" / "elements"
+    if not bundled_root.is_dir():
+        return ["no managed sync source available"]
     managed_root = project_root / ".artagents" / "elements" / "managed"
     override_root = project_root / ".artagents" / "elements" / "overrides"
     actions: list[str] = []

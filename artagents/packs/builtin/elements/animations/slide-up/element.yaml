@@ -1,0 +1,27 @@
+{
+  "defaults": {
+    "durationFrames": 12
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  },
+  "id": "slide-up",
+  "kind": "animation",
+  "metadata": {
+    "defaultDurationFrames": 12,
+    "kind": "wrapper",
+    "name": "Slide Up",
+    "phase": "exit"
+  },
+  "pack_id": "builtin",
+  "schema": {
+    "properties": {
+      "durationFrames": {
+        "minimum": 1,
+        "type": "number"
+      }
+    },
+    "type": "object"
+  }
+}

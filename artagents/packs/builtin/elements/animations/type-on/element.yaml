@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "durationFraction": 0.55,
+    "durationFrames": 120,
+    "showCaret": true,
+    "startFrame": 18
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  },
+  "id": "type-on",
+  "kind": "animation",
+  "metadata": {
+    "defaultDurationFrames": 120,
+    "kind": "hook",
+    "name": "Type On",
+    "phase": "entrance"
+  },
+  "pack_id": "builtin",
+  "schema": {
+    "properties": {
+      "durationFrames": {
+        "minimum": 1,
+        "type": "number"
+      }
+    },
+    "type": "object"
+  }
+}

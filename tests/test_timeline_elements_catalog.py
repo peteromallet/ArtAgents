@@ -38,14 +38,26 @@ class TimelineElementsCatalogTest(unittest.TestCase):
             timeline.validate_timeline(config)
 
     def test_set_active_theme_preserves_theme_override_behavior(self) -> None:
+        import json
         with tempfile.TemporaryDirectory() as tmp:
             theme = Path(tmp) / "theme"
             root = theme / "effects" / "theme-only"
             root.mkdir(parents=True)
             (root / "component.tsx").write_text("export default function ThemeOnly() { return null; }\n", encoding="utf-8")
-            (root / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-            (root / "defaults.json").write_text("{}\n", encoding="utf-8")
-            (root / "meta.json").write_text('{"id":"theme-only","clipTypeAliases":["theme"]}\n', encoding="utf-8")
+            (root / "element.yaml").write_text(
+                json.dumps(
+                    {
+                        "id": "theme-only",
+                        "kind": "effect",
+                        "metadata": {"clipTypeAliases": ["theme"]},
+                        "schema": {"type": "object"},
+                        "defaults": {},
+                        "dependencies": {"js_packages": [], "python_requirements": []},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             effects_catalog.set_active_theme(theme)
 

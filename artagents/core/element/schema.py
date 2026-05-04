@@ -10,7 +10,9 @@ from typing import Any, Literal
 
 ELEMENT_KINDS = ("effects", "animations", "transitions")
 ElementKind = Literal["effects", "animations", "transitions"]
-REQUIRED_ELEMENT_FILES = ("component.tsx", "schema.json", "defaults.json", "meta.json")
+REQUIRED_ELEMENT_FILES = ("component.tsx", "element.yaml")
+ELEMENT_MANIFEST_NAMES = ("element.yaml", "element.yml", "element.json")
+_KIND_SINGULAR_TO_PLURAL = {"effect": "effects", "animation": "animations", "transition": "transitions"}
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
@@ -62,25 +64,48 @@ def load_element_definition(
     priority: int,
 ) -> ElementDefinition:
     element_root = Path(root)
-    element_id = element_root.name
-    try:
-        schema = _read_object(element_root / "schema.json")
-        defaults = _read_object(element_root / "defaults.json")
-        metadata = _read_object(element_root / "meta.json")
-    except FileNotFoundError as exc:
-        raise ElementValidationError(f"missing required element file: {exc.filename}") from exc
-    dependencies = _parse_dependencies(metadata.get("dependencies", {}), path=f"{element_root}/meta.json.dependencies")
+    folder_kind = _normalize_kind(kind)
+    manifest_path = _element_manifest_path(element_root)
+    if manifest_path is None:
+        raise ElementValidationError(f"missing element manifest in {element_root}")
+    payload = _read_manifest(manifest_path)
+    element_id = str(payload.get("id") or element_root.name)
+    declared_kind = payload.get("kind")
+    if declared_kind is not None:
+        normalized = _normalize_kind(str(declared_kind))
+        if normalized != folder_kind:
+            raise ElementValidationError(
+                f"element {element_id!r} declared kind {declared_kind!r} does not match folder kind {folder_kind!r}"
+            )
+    metadata_section = payload.get("metadata", {})
+    if not isinstance(metadata_section, dict):
+        raise ElementValidationError(f"{manifest_path}: metadata must be an object")
+    metadata = dict(metadata_section)
+    metadata.setdefault("id", element_id)
+    pack_id = payload.get("pack_id")
+    if pack_id is not None:
+        metadata["pack_id"] = pack_id
+    schema_section = payload.get("schema", {})
+    defaults_section = payload.get("defaults", {})
+    if not isinstance(schema_section, dict):
+        raise ElementValidationError(f"{manifest_path}: schema must be an object")
+    if not isinstance(defaults_section, dict):
+        raise ElementValidationError(f"{manifest_path}: defaults must be an object")
+    dependencies = _parse_dependencies(payload.get("dependencies", {}), path=f"{manifest_path}.dependencies")
+    component = (element_root / "component.tsx").resolve()
+    if not component.is_file():
+        raise ElementValidationError(f"element {element_id!r} missing component.tsx")
     definition = ElementDefinition(
-        id=str(metadata.get("id") or element_id),
-        kind=_validate_kind(kind),
+        id=element_id,
+        kind=folder_kind,
         root=element_root.resolve(),
         source=source,
         editable=editable,
         priority=priority,
-        component=(element_root / "component.tsx").resolve(),
-        schema=schema,
-        defaults=defaults,
-        metadata=dict(metadata),
+        component=component,
+        schema=dict(schema_section),
+        defaults=dict(defaults_section),
+        metadata=metadata,
         dependencies=dependencies,
     )
     return validate_element_definition(definition)
@@ -95,11 +120,12 @@ def validate_element_definition(raw: ElementDefinition | dict[str, Any]) -> Elem
     _validate_kind(definition.kind)
     if not definition.root.is_dir():
         raise ElementValidationError(f"element root is not a directory: {definition.root}")
-    for filename in REQUIRED_ELEMENT_FILES:
-        if not (definition.root / filename).is_file():
-            raise ElementValidationError(f"element {definition.id!r} missing {filename}")
+    if not (definition.root / "component.tsx").is_file():
+        raise ElementValidationError(f"element {definition.id!r} missing component.tsx")
+    if _element_manifest_path(definition.root) is None:
+        raise ElementValidationError(f"element {definition.id!r} missing element.yaml")
     if definition.metadata.get("id") not in (None, definition.id):
-        raise ElementValidationError(f"element {definition.id!r} meta.json id does not match")
+        raise ElementValidationError(f"element {definition.id!r} metadata.id does not match")
     if not isinstance(definition.schema, dict):
         raise ElementValidationError("element.schema must be an object")
     if not isinstance(definition.defaults, dict):
@@ -112,7 +138,7 @@ def validate_element_definition(raw: ElementDefinition | dict[str, Any]) -> Elem
 def _parse_definition(raw: dict[str, Any]) -> ElementDefinition:
     return ElementDefinition(
         id=str(raw["id"]),
-        kind=_validate_kind(str(raw["kind"])),
+        kind=_validate_kind(_normalize_kind(str(raw["kind"]))),
         root=Path(raw["root"]),
         source=str(raw["source"]),
         editable=bool(raw["editable"]),
@@ -125,10 +151,22 @@ def _parse_definition(raw: dict[str, Any]) -> ElementDefinition:
     )
 
 
-def _read_object(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def _element_manifest_path(root: Path) -> Path | None:
+    for name in ELEMENT_MANIFEST_NAMES:
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _read_manifest(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ElementValidationError(f"{path}: invalid manifest JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
-        raise ElementValidationError(f"{path} must contain a JSON object")
+        raise ElementValidationError(f"{path} must contain an object")
     return data
 
 
@@ -149,6 +187,15 @@ def _string_list(raw: Any, *, path: str) -> list[str]:
     if not isinstance(raw, list) or not all(isinstance(item, str) and item.strip() for item in raw):
         raise ElementValidationError(f"{path} must be a list of non-empty strings")
     return list(raw)
+
+
+def _normalize_kind(kind: str) -> ElementKind:
+    if kind in ELEMENT_KINDS:
+        return kind  # type: ignore[return-value]
+    plural = _KIND_SINGULAR_TO_PLURAL.get(kind)
+    if plural is not None:
+        return plural  # type: ignore[return-value]
+    raise ElementValidationError(f"element.kind must be one of {list(ELEMENT_KINDS)} (or singular variants)")
 
 
 def _validate_kind(kind: str) -> ElementKind:

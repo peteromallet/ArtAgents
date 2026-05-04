@@ -1,8 +1,0 @@
-{
-  "id": "fade",
-  "label": "Fade",
-  "dependencies": {
-    "js_packages": [],
-    "python_requirements": []
-  }
-}

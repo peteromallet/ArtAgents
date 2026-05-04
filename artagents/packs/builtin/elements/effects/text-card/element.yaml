@@ -1,0 +1,37 @@
+{
+  "defaults": {
+    "align": "center",
+    "content": ""
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  },
+  "id": "text-card",
+  "kind": "effect",
+  "metadata": {
+    "description": "Default text card effect.",
+    "label": "Text Card",
+    "whenToUse": "Use for simple rendered text cards and captions."
+  },
+  "pack_id": "builtin",
+  "schema": {
+    "properties": {
+      "align": {
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "type": "string"
+      },
+      "content": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "content"
+    ],
+    "type": "object"
+  }
+}

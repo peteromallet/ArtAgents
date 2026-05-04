@@ -159,6 +159,8 @@ class EffectsCatalogTest(unittest.TestCase):
             workspace = Path(tmp) / "workspace"
             theme = workspace / "themes" / "brand"
 
+            singular_kind = {"effects": "effect", "animations": "animation", "transitions": "transition"}
+
             def write_plugin(kind: str, plugin_id: str, *, root: Path = workspace) -> None:
                 plugin_root = root / kind / plugin_id
                 plugin_root.mkdir(parents=True)
@@ -166,10 +168,18 @@ class EffectsCatalogTest(unittest.TestCase):
                     f"export default function {plugin_id.replace('-', '_')}() {{ return null; }}\n",
                     encoding="utf-8",
                 )
-                (plugin_root / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-                (plugin_root / "defaults.json").write_text('{"enabled":true}\n', encoding="utf-8")
-                (plugin_root / "meta.json").write_text(
-                    json.dumps({"id": plugin_id, "label": plugin_id}) + "\n",
+                (plugin_root / "element.yaml").write_text(
+                    json.dumps(
+                        {
+                            "id": plugin_id,
+                            "kind": singular_kind[kind],
+                            "metadata": {"label": plugin_id},
+                            "schema": {"type": "object"},
+                            "defaults": {"enabled": True},
+                            "dependencies": {"js_packages": [], "python_requirements": []},
+                        }
+                    )
+                    + "\n",
                     encoding="utf-8",
                 )
 
@@ -180,8 +190,6 @@ class EffectsCatalogTest(unittest.TestCase):
             invalid = workspace / "transitions" / "missing-defaults"
             invalid.mkdir(parents=True)
             (invalid / "component.tsx").write_text("export default function Missing() {}\n", encoding="utf-8")
-            (invalid / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-            (invalid / "meta.json").write_text('{"id":"missing-defaults"}\n', encoding="utf-8")
 
             old_workspace_root = effects_catalog.WORKSPACE_ROOT
             old_themes_root = effects_catalog.THEMES_ROOT
@@ -241,29 +249,41 @@ class EffectsCatalogTest(unittest.TestCase):
             workspace = Path(tmp) / "workspace"
             theme = workspace / "themes" / "brand"
 
+            singular_kind = {"effects": "effect", "animations": "animation", "transitions": "transition"}
+
             def write_plugin(kind: str, plugin_id: str, *, root: Path = workspace) -> None:
                 plugin_root = root / kind / plugin_id
                 plugin_root.mkdir(parents=True)
-                defaults = {"enabled": True}
-                meta: dict[str, object] = {"id": plugin_id, "clipTypeAliases": ["stamp-alias"]}
+                defaults: dict[str, object] = {"enabled": True}
+                meta: dict[str, object] = {"clipTypeAliases": ["stamp-alias"]}
                 if kind == "animations":
                     defaults = {"durationFrames": 12}
                     meta = {
-                        "id": plugin_id,
                         "kind": "hook" if plugin_id == "type-on" else "wrapper",
                         "phase": "entrance",
                         "defaultDurationFrames": 12,
                     }
                 elif kind == "transitions":
                     defaults = {"durationFrames": 9}
-                    meta = {"id": plugin_id, "label": "Crossfade"}
+                    meta = {"label": "Crossfade"}
                 (plugin_root / "component.tsx").write_text(
                     f"export default function {plugin_id.replace('-', '_')}() {{ return null; }}\n",
                     encoding="utf-8",
                 )
-                (plugin_root / "schema.json").write_text('{"type":"object"}\n', encoding="utf-8")
-                (plugin_root / "defaults.json").write_text(json.dumps(defaults) + "\n", encoding="utf-8")
-                (plugin_root / "meta.json").write_text(json.dumps(meta) + "\n", encoding="utf-8")
+                (plugin_root / "element.yaml").write_text(
+                    json.dumps(
+                        {
+                            "id": plugin_id,
+                            "kind": singular_kind[kind],
+                            "metadata": meta,
+                            "schema": {"type": "object"},
+                            "defaults": defaults,
+                            "dependencies": {"js_packages": [], "python_requirements": []},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
 
             project = workspace / "project"
             managed = project / ".artagents" / "elements" / "managed"

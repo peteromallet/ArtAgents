@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "durationFrames": 12
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  },
+  "id": "fade",
+  "kind": "animation",
+  "metadata": {
+    "defaultDurationFrames": 12,
+    "kind": "wrapper",
+    "name": "Fade",
+    "phase": [
+      "entrance",
+      "exit"
+    ]
+  },
+  "pack_id": "builtin",
+  "schema": {
+    "properties": {
+      "durationFrames": {
+        "minimum": 1,
+        "type": "number"
+      }
+    },
+    "type": "object"
+  }
+}
