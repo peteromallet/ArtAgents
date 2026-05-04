@@ -17,6 +17,29 @@ def main(argv: list[str] | None = None) -> int:
     if raw and raw[0] in {"-h", "--help"}:
         _print_entrypoint_help()
         return 0
+    project_slug = _extract_project_slug(raw)
+    if project_slug is None:
+        return _dispatch(raw)
+
+    from .core.task import gate as task_gate
+
+    try:
+        decision = task_gate.gate_command(project_slug, task_gate.command_for_argv(raw), raw)
+    except task_gate.TaskRunGateError as exc:
+        print(f"task-mode gate rejected: {exc.reason}\nrecovery: {exc.recovery}", file=sys.stderr)
+        return 1
+    if not decision.active:
+        return _dispatch(raw)
+
+    returncode = -1
+    try:
+        returncode = _dispatch(raw)
+        return returncode
+    finally:
+        task_gate.record_dispatch_complete(decision, returncode)
+
+
+def _dispatch(raw: list[str]) -> int:
     if raw and raw[0] == "publish":
         from .packs.builtin.publish import run as publish
 
@@ -69,7 +92,21 @@ def main(argv: list[str] | None = None) -> int:
         from .packs.builtin.reigh_data import run as reigh_data
 
         return reigh_data.main(raw[1:])
+    if raw and raw[0] == "worker":
+        from .core.worker import banodoco_worker
+
+        return banodoco_worker.main(raw[1:])
     return _run_default_brief_orchestrator(raw)
+
+
+def _extract_project_slug(raw: list[str]) -> str | None:
+    for index, token in enumerate(raw):
+        if token == "--project":
+            return raw[index + 1] if index + 1 < len(raw) else None
+        if token.startswith("--project="):
+            value = token.split("=", 1)[1]
+            return value or None
+    return None
 
 
 def _run_default_brief_orchestrator(argv: list[str]) -> int:
@@ -102,6 +139,7 @@ Usage:
   python3 -m artagents thread {new,list,show,archive,reopen,backfill,keep,dismiss,group} ...
   python3 -m artagents modalities {list,inspect} ...
   python3 -m artagents reigh-data --project-id PROJECT_ID [--out PATH]
+  python3 -m artagents worker --pool banodoco [--worker-id ID] [--max-iterations N]
   python3 -m artagents audit --run RUN_DIR
   python3 -m artagents --video SRC --brief BRIEF --out runs/name [--render]
   python3 -m artagents --brief BRIEF --out runs/name --target-duration SECONDS [--render]

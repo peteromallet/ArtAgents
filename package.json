@@ -1,5 +1,14 @@
 {
   "name": "artagents-workspace",
   "private": true,
-  "description": "Workspace marker for the ArtAgents repository. Not a real npm package."
+  "description": "Workspace marker for the ArtAgents repository. Not a real npm package.",
+  "type": "module",
+  "scripts": {
+    "ops": "node scripts/node/ops_helper.mjs",
+    "fixtures": "node scripts/node/export_fixtures.mjs"
+  },
+  "dependencies": {
+    "@banodoco/timeline-ops": "file:/Users/peteromalley/Documents/banodoco-workspace/packages/timeline-ops",
+    "@banodoco/timeline-schema": "file:/Users/peteromalley/Documents/banodoco-workspace/packages/timeline-schema"
+  }
 }

@@ -5,104 +5,24 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
-
-DEFAULT_FUNCTION_NAME = "reigh-data-fetch"
-
-
-def _read_env_value(env_path: Path, key: str) -> str:
-    if not env_path.is_file():
-        return ""
-    for raw in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        if line.startswith("export "):
-            line = line[len("export ") :].strip()
-        env_key, env_value = line.split("=", 1)
-        if env_key.strip() == key:
-            return env_value.strip().strip('"').strip("'")
-    return ""
-
-
-def _candidate_env_files(env_file: Path | None) -> list[Path]:
-    candidates: list[Path] = []
-    if env_file is not None:
-        candidates.append(env_file)
-    repo_root = Path(__file__).resolve().parents[3]
-    workspace = repo_root.parent
-    candidates.extend(
-        [
-            Path.cwd() / "this.env",
-            Path.cwd() / ".env",
-            repo_root / "this.env",
-            repo_root / ".env",
-            workspace / "this.env",
-            workspace / ".env",
-            workspace / "reigh-app" / "this.env",
-            workspace / "reigh-app" / ".env",
-            Path.home() / "this.env",
-            Path.home() / ".env",
-            Path.home() / ".codex" / "this.env",
-            Path.home() / ".codex" / ".env",
-        ]
-    )
-    seen: set[Path] = set()
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.expanduser().resolve()
-        if resolved in seen:
-            continue
-        seen.add(resolved)
-        unique.append(resolved)
-    return unique
-
-
-def _env_first(keys: tuple[str, ...], env_file: Path | None) -> str:
-    for key in keys:
-        value = os.environ.get(key, "").strip()
-        if value:
-            return value
-    for candidate in _candidate_env_files(env_file):
-        for key in keys:
-            value = _read_env_value(candidate, key)
-            if value:
-                return value
-    return ""
-
-
-def resolve_api_url(api_url: str | None = None, env_file: Path | None = None) -> str:
-    explicit = (api_url or "").strip()
-    if explicit:
-        return explicit.rstrip("/")
-
-    direct = _env_first(("REIGH_DATA_FETCH_URL",), env_file)
-    if direct:
-        return direct.rstrip("/")
-
-    base = _env_first(("REIGH_API_URL", "SUPABASE_URL"), env_file)
-    if base:
-        return f"{base.rstrip('/')}/functions/v1/{DEFAULT_FUNCTION_NAME}"
-
-    raise RuntimeError(
-        "Reigh API URL not found. Set REIGH_DATA_FETCH_URL, REIGH_API_URL, or SUPABASE_URL."
-    )
-
-
-def resolve_pat(pat: str | None = None, env_file: Path | None = None) -> str:
-    explicit = (pat or "").strip()
-    if explicit:
-        return explicit
-    token = _env_first(("REIGH_PAT", "REIGH_PERSONAL_ACCESS_TOKEN"), env_file)
-    if token:
-        return token
-    raise RuntimeError("Reigh PAT not found. Set REIGH_PAT or REIGH_PERSONAL_ACCESS_TOKEN.")
+from artagents.core.reigh.env import (
+    DEFAULT_FUNCTION_NAME,
+    _candidate_env_files,
+    _env_first,
+    resolve_api_url,
+    resolve_claim_url,
+    resolve_jwks_url,
+    resolve_pat,
+    resolve_service_role_key,
+    resolve_supabase_url,
+    resolve_task_status_update_url,
+)
 
 
 def fetch_reigh_data(

@@ -1,19 +1,24 @@
-"""Project file schemas and validators."""
+"""Project file schemas and validators (project / source / run only).
+
+The parallel placement schema (build_project_timeline / build_placement /
+validate_project_timeline / validate_placement / validate_reference / REF_KINDS
+/ source_ref / run_ref / TIMELINE_SCHEMA_VERSION) was removed when AA collapsed
+onto reigh-app's canonical ``timelines`` rows. Timeline reads/writes now go
+through ``artagents.core.reigh.SupabaseDataProvider``; the local provenance
+cache (sources/, runs/, project.json) is what survives.
+"""
 
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .paths import validate_placement_id, validate_project_slug, validate_run_id, validate_source_id
+from .paths import validate_project_slug, validate_run_id, validate_source_id
 
 PROJECT_SCHEMA_VERSION = 1
-TIMELINE_SCHEMA_VERSION = 1
 SOURCE_SCHEMA_VERSION = 1
 RUN_SCHEMA_VERSION = 1
-REF_KINDS = {"source", "run"}
 SOURCE_KINDS = {"audio", "image", "other", "video"}
 RUN_STATUSES = {"prepared", "success", "failed", "skipped", "error"}
 
@@ -26,28 +31,25 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def build_project(slug: str, *, name: str | None = None, created_at: str | None = None) -> dict[str, Any]:
+def build_project(
+    slug: str,
+    *,
+    name: str | None = None,
+    project_id: str | None = None,
+    created_at: str | None = None,
+) -> dict[str, Any]:
     now = created_at or utc_now_iso()
     slug = validate_project_slug(slug)
-    return {
+    payload: dict[str, Any] = {
         "created_at": now,
         "name": name or slug,
         "schema_version": PROJECT_SCHEMA_VERSION,
         "slug": slug,
         "updated_at": now,
     }
-
-
-def build_project_timeline(slug: str, *, created_at: str | None = None) -> dict[str, Any]:
-    now = created_at or utc_now_iso()
-    return {
-        "created_at": now,
-        "placements": [],
-        "project_slug": validate_project_slug(slug),
-        "schema_version": TIMELINE_SCHEMA_VERSION,
-        "tracks": [],
-        "updated_at": now,
-    }
+    if project_id is not None:
+        payload["project_id"] = _require_string(project_id, "project.project_id")
+    return payload
 
 
 def build_source(
@@ -108,55 +110,6 @@ def build_run_record(
     return validate_run_record(payload)
 
 
-def build_placement(
-    placement_id: str,
-    *,
-    track: str,
-    at: int | float,
-    source: dict[str, Any],
-    from_: int | float | None = None,
-    to: int | float | None = None,
-    entrance: Any = None,
-    exit: Any = None,
-    transition: Any = None,
-    effects: list[Any] | None = None,
-    params: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "at": _require_number(at, "placement.at"),
-        "id": validate_placement_id(placement_id),
-        "source": validate_reference(source),
-        "track": _require_string(track, "placement.track"),
-    }
-    if from_ is not None:
-        payload["from"] = _require_number(from_, "placement.from")
-    if to is not None:
-        payload["to"] = _require_number(to, "placement.to")
-    if entrance is not None:
-        payload["entrance"] = deepcopy(entrance)
-    if exit is not None:
-        payload["exit"] = deepcopy(exit)
-    if transition is not None:
-        payload["transition"] = deepcopy(transition)
-    if effects is not None:
-        if not isinstance(effects, list):
-            raise ProjectValidationError("placement.effects must be a list")
-        payload["effects"] = deepcopy(effects)
-    if params is not None:
-        if not isinstance(params, dict):
-            raise ProjectValidationError("placement.params must be an object")
-        payload["params"] = deepcopy(params)
-    return validate_placement(payload)
-
-
-def source_ref(source_id: str) -> dict[str, str]:
-    return {"id": validate_source_id(source_id), "kind": "source"}
-
-
-def run_ref(run_id: str, clip_id: str) -> dict[str, str]:
-    return {"clip_id": _require_string(clip_id, "source.clip_id"), "kind": "run", "run_id": validate_run_id(run_id)}
-
-
 def validate_project(raw: Any) -> dict[str, Any]:
     data = _require_mapping(raw, "project")
     _require_version(data, PROJECT_SCHEMA_VERSION, "project")
@@ -166,38 +119,11 @@ def validate_project(raw: Any) -> dict[str, Any]:
     updated_at = _require_string(data.get("updated_at"), "project.updated_at")
     payload = dict(data)
     payload.update({"created_at": created_at, "name": name, "slug": slug, "updated_at": updated_at})
-    return payload
-
-
-def validate_project_timeline(raw: Any) -> dict[str, Any]:
-    data = _require_mapping(raw, "timeline")
-    _require_version(data, TIMELINE_SCHEMA_VERSION, "timeline")
-    project_slug = validate_project_slug(_require_string(data.get("project_slug"), "timeline.project_slug"))
-    placements = data.get("placements")
-    if not isinstance(placements, list):
-        raise ProjectValidationError("timeline.placements must be a list")
-    seen: set[str] = set()
-    normalized_placements = []
-    for index, placement in enumerate(placements):
-        normalized = validate_placement(placement, path=f"timeline.placements[{index}]")
-        if normalized["id"] in seen:
-            raise ProjectValidationError(f"duplicate placement id: {normalized['id']}")
-        seen.add(normalized["id"])
-        normalized_placements.append(normalized)
-    tracks = data.get("tracks", [])
-    if not isinstance(tracks, list):
-        raise ProjectValidationError("timeline.tracks must be a list")
-    payload = dict(data)
-    payload.update(
-        {
-            "placements": normalized_placements,
-            "project_slug": project_slug,
-            "schema_version": TIMELINE_SCHEMA_VERSION,
-            "tracks": deepcopy(tracks),
-        }
-    )
-    payload.setdefault("created_at", utc_now_iso())
-    payload.setdefault("updated_at", payload["created_at"])
+    if "project_id" in payload:
+        if payload["project_id"] is None:
+            payload.pop("project_id")
+        else:
+            payload["project_id"] = _require_string(payload["project_id"], "project.project_id")
     return payload
 
 
@@ -244,42 +170,6 @@ def validate_run_record(raw: Any) -> dict[str, Any]:
     payload.setdefault("created_at", utc_now_iso())
     payload.setdefault("updated_at", payload["created_at"])
     return payload
-
-
-def validate_placement(raw: Any, *, path: str = "placement") -> dict[str, Any]:
-    data = _require_mapping(raw, path)
-    payload = dict(data)
-    payload["id"] = validate_placement_id(_require_string(data.get("id"), f"{path}.id"))
-    payload["track"] = _require_string(data.get("track"), f"{path}.track")
-    payload["at"] = _require_number(data.get("at"), f"{path}.at")
-    if payload["at"] < 0:
-        raise ProjectValidationError(f"{path}.at must be greater than or equal to 0")
-    payload["source"] = validate_reference(data.get("source"), path=f"{path}.source")
-    if "from" in payload:
-        payload["from"] = _require_number(payload["from"], f"{path}.from")
-        if payload["from"] < 0:
-            raise ProjectValidationError(f"{path}.from must be greater than or equal to 0")
-    if "to" in payload:
-        payload["to"] = _require_number(payload["to"], f"{path}.to")
-        trim_from = payload.get("from", 0)
-        if payload["to"] <= trim_from:
-            raise ProjectValidationError(f"{path}.to must be greater than {path}.from")
-    if "effects" in payload and not isinstance(payload["effects"], list):
-        raise ProjectValidationError(f"{path}.effects must be a list")
-    if "params" in payload and not isinstance(payload["params"], dict):
-        raise ProjectValidationError(f"{path}.params must be an object")
-    return payload
-
-
-def validate_reference(raw: Any, *, path: str = "source") -> dict[str, Any]:
-    data = _require_mapping(raw, path)
-    kind = _require_string(data.get("kind"), f"{path}.kind")
-    if kind not in REF_KINDS:
-        raise ProjectValidationError(f"{path}.kind must be one of {sorted(REF_KINDS)}")
-    if kind == "source":
-        return {"id": validate_source_id(_require_string(data.get("id"), f"{path}.id")), "kind": "source"}
-    ref = {"clip_id": _require_string(data.get("clip_id"), f"{path}.clip_id"), "kind": "run", "run_id": validate_run_id(data.get("run_id"))}
-    return ref
 
 
 def validate_source_kind(raw: Any, *, path: str = "source.kind") -> str:

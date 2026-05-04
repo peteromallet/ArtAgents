@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from artagents.core.task import env as task_env
+from artagents.core.task.plan import step_dir_for
 from artagents.threads.ids import generate_run_id
 
 from . import paths
@@ -68,6 +69,44 @@ def prepare_project_run(
 ) -> ProjectRunContext:
     require_project(project_slug, root=root)
     projects_root = paths.resolve_projects_root(root)
+    parent_run_id = task_env.task_run_id_env()
+    if parent_run_id:
+        task_project = task_env.task_project_env()
+        if task_project != project_slug:
+            raise ProjectRunError(f"task run is bound to project {task_project!r}, refusing to prepare run for {project_slug!r}")
+        step_id = task_env.task_step_id_env()
+        if not step_id:
+            raise ProjectRunError("ARTAGENTS_TASK_STEP_ID must be set when ARTAGENTS_TASK_RUN_ID is set")
+        run_root = step_dir_for(project_slug, parent_run_id, step_id, root=projects_root)
+        run_root.mkdir(parents=True, exist_ok=True)
+        now = utc_now_iso()
+        run_metadata = dict(metadata or {})
+        run_metadata.update({"attached_to_task_run": True, "task_step_id": step_id})
+        record: dict[str, Any] = {
+            "artifacts": {},
+            "created_at": now,
+            "metadata": run_metadata,
+            "out": str(run_root),
+            "project_slug": project_slug,
+            "run_id": parent_run_id,
+            "schema_version": 1,
+            "status": "attached",
+            "updated_at": now,
+        }
+        if tool_id is not None:
+            record["tool_id"] = tool_id
+        if kind is not None:
+            record["kind"] = kind
+        if argv is not None:
+            record["argv"] = redact_cli_args(list(argv))
+        return ProjectRunContext(
+            project_slug=project_slug,
+            run_id=parent_run_id,
+            run_root=run_root,
+            run_json_path=run_root / "run.json",
+            record=record,
+            root=projects_root,
+        )
     effective_run_id = paths.validate_run_id(run_id or generate_run_id())
     run_root = paths.run_dir(project_slug, effective_run_id, root=projects_root)
     if run_root.exists() and any(run_root.iterdir()):
@@ -114,13 +153,18 @@ def finalize_project_run(
     if error is not None:
         merged_metadata["error"] = str(error)
     record["metadata"] = merged_metadata
+    attached_to_task_run = bool(merged_metadata.get("attached_to_task_run"))
     record["status"] = _normalize_status(status, returncode=returncode)
     record["updated_at"] = utc_now_iso()
     artifacts = dict(record.get("artifacts", {}))
-    artifacts.update(mirror_hype_artifacts(context.run_root, brief_slug=brief_slug, artifact_roots=artifact_roots))
+    mirror_dest = context.run_root / "produces" if attached_to_task_run else None
+    artifacts.update(
+        mirror_hype_artifacts(context.run_root, brief_slug=brief_slug, artifact_roots=artifact_roots, dest_root=mirror_dest)
+    )
     record["artifacts"] = artifacts
     normalized = validate_run_record(record)
-    write_json_atomic(context.run_json_path, normalized)
+    if not attached_to_task_run:
+        write_json_atomic(context.run_json_path, normalized)
     context.record.clear()
     context.record.update(normalized)
     return normalized
@@ -194,15 +238,18 @@ def mirror_hype_artifacts(
     *,
     brief_slug: str | None = None,
     artifact_roots: Iterable[str | Path] = (),
+    dest_root: str | Path | None = None,
 ) -> dict[str, Any]:
     run_path = Path(run_root).expanduser().resolve()
     source = discover_hype_artifact_root(run_path, brief_slug=brief_slug, artifact_roots=artifact_roots)
     if source is None:
         return {}
+    dest_path_root = Path(dest_root).expanduser().resolve() if dest_root is not None else run_path
+    dest_path_root.mkdir(parents=True, exist_ok=True)
     mirrored: dict[str, Any] = {}
     for key, (source_name, dest_name) in HYPE_ARTIFACTS.items():
         source_path = source / source_name
-        dest_path = run_path / dest_name
+        dest_path = dest_path_root / dest_name
         shutil.copy2(source_path, dest_path)
         mirrored[key] = {"path": str(dest_path), "source_path": str(source_path)}
     return mirrored

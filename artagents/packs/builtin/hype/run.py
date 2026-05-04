@@ -30,6 +30,8 @@ from ....core.project.run import (
     project_thread_env,
     reject_project_with_out,
 )
+from ....core.task import env as task_env
+from ....core.task import gate as task_gate
 from ....threads.wrapper import subprocess_env as thread_subprocess_env
 
 
@@ -1449,6 +1451,18 @@ def main(argv: list[str] | None = None) -> int:
     project_env: dict[str, str | None] = {}
     effective_argv = list(sys.argv[1:] if argv is None else argv)
     try:
+        project_slug = _project_slug_for_gate(effective_argv)
+        if project_slug and task_env.is_in_task_run(project_slug):
+            try:
+                task_gate.gate_command(
+                    project_slug,
+                    task_gate.command_for_argv(["python3", "-m", "artagents", "hype", *effective_argv]),
+                    effective_argv,
+                    reentry=True,
+                )
+            except task_gate.TaskRunGateError as exc:
+                print(exc.recovery, file=sys.stderr)
+                return 1
         try:
             project_context, effective_argv = _prepare_project_main(effective_argv)
         except ProjectRunError as exc:
@@ -1508,6 +1522,13 @@ def main(argv: list[str] | None = None) -> int:
         return returncode
     finally:
         _restore_project_env(project_env)
+
+
+def _project_slug_for_gate(argv: list[str]) -> str | None:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--project")
+    parsed, _unknown = parser.parse_known_args(argv)
+    return parsed.project
 
 
 def _prepare_project_main(argv: list[str]) -> tuple[Any | None, list[str]]:

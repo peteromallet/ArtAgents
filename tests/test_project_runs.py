@@ -132,6 +132,46 @@ def test_project_run_rejects_project_plus_out(tmp_path: Path, monkeypatch: pytes
     assert list((tmp_path / "projects" / "demo" / "runs").glob("*")) == []
 
 
+def test_run_record_baseline_snapshot_is_sha256_hex_at_canonical_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SD-008: baseline_snapshot is a sha256 hex string at exactly
+    runs/<run_id>.json#metadata.baseline_snapshot."""
+
+    import hashlib
+
+    from artagents.core.project.run import write_run_record
+
+    projects_root = tmp_path / "projects"
+    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(projects_root))
+    create_project("demo")
+
+    snapshot_payload = {"theme": "banodoco-default", "clips": []}
+    canonical = json.dumps(snapshot_payload, sort_keys=True, separators=(",", ":"))
+    expected_digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    record = write_run_record(
+        "demo",
+        "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        tool_id="artagents.core.worker.banodoco_worker",
+        kind="banodoco_timeline_generate",
+        metadata={"baseline_snapshot": expected_digest},
+    )
+
+    digest = record["metadata"]["baseline_snapshot"]
+    assert isinstance(digest, str)
+    assert len(digest) == 64
+    assert all(ch in "0123456789abcdef" for ch in digest)
+    assert digest == expected_digest
+
+    run_json_path = (
+        projects_root / "demo" / "runs" / "01ARZ3NDEKTSV4RRFFQ69G5FAV" / "run.json"
+    )
+    assert run_json_path.is_file()
+    on_disk = json.loads(run_json_path.read_text(encoding="utf-8"))
+    assert on_disk["metadata"]["baseline_snapshot"] == expected_digest
+
+
 def _writer_executor(executor_id: str) -> ExecutorDefinition:
     script = (
         "import os, sys\n"

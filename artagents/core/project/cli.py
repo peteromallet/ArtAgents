@@ -1,19 +1,38 @@
-"""Command-line interface for ArtAgents projects."""
+"""Command-line interface for ArtAgents projects.
+
+T10 collapsed the parallel placement schema. T11 reinstates ``edit
+<project_id>`` (sub-verbs ``add-clip``/``move-clip``/``set-theme``) and
+``list <project_id>`` that operate on reigh-app UUIDs through
+``artagents.core.reigh.SupabaseDataProvider``. Edit verbs shell out to
+``scripts/node/ops_helper.mjs`` to apply timeline-ops primitives, then call
+``SupabaseDataProvider.save_timeline`` with the required
+``expected_version`` (read from reigh-data-fetch's ``config_version``).
+
+Auth scope (FLAG-012, SD-009): the CLI is an ownership-bound client, so the
+write path uses a user PAT (``REIGH_PAT``) by default rather than the
+worker-only service-role key. ``--service-role`` is provided as a documented
+escape hatch for operators who know the row is theirs to edit; the worker
+itself uses a separate code path (``artagents.core.worker.banodoco_worker``).
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 from . import paths
-from .materialize import require_run_clip, write_materialized_project_timeline
 from .project import ProjectError, create_project, require_project, show_project
-from .schema import SOURCE_KINDS, run_ref, source_ref
-from .source import add_source, require_source
-from .timeline import add_placement, load_timeline, remove_placement
+from .schema import SOURCE_KINDS
+from .source import add_source
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+OPS_HELPER = REPO_ROOT / "scripts" / "node" / "ops_helper.mjs"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     create_parser = subparsers.add_parser("create", help="Create a project.")
     create_parser.add_argument("slug")
     create_parser.add_argument("--name")
+    create_parser.add_argument(
+        "--project-id",
+        dest="project_id",
+        help="Optional reigh-app project UUID (stored opaque in project.json).",
+    )
     create_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     create_parser.set_defaults(handler=_cmd_create)
 
@@ -58,60 +82,42 @@ def build_parser() -> argparse.ArgumentParser:
     source_add.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     source_add.set_defaults(handler=_cmd_source_add)
 
-    timeline_parser = subparsers.add_parser("timeline", help="Inspect and edit a project timeline.")
-    timeline_subparsers = timeline_parser.add_subparsers(dest="timeline_command", required=True)
-    timeline_show = timeline_subparsers.add_parser("show", help="Show ProjectTimeline placements.")
-    _add_project_arg(timeline_show)
-    timeline_show.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    timeline_show.set_defaults(handler=_cmd_timeline_show)
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List timelines on a reigh-app project (project_id UUID).",
+    )
+    list_parser.add_argument("project_id", help="reigh-app project UUID.")
+    list_parser.add_argument("--json", action="store_true")
+    list_parser.set_defaults(handler=_cmd_list)
 
-    place_source = timeline_subparsers.add_parser("place-source", help="Place a source clip on the project timeline.")
-    _add_project_arg(place_source)
-    place_source.add_argument("placement_id")
-    place_source.add_argument("--source", required=True, help="Source id to place.")
-    place_source.add_argument("--track", required=True, help="Timeline track id.")
-    place_source.add_argument("--at", required=True, type=float, help="Placement start time in seconds.")
-    place_source.add_argument("--from", dest="from_", type=float, help="Source trim start in seconds.")
-    place_source.add_argument("--to", type=float, help="Source trim end in seconds.")
-    place_source.add_argument("--entrance-json", help="JSON object/list for entrance animation.")
-    place_source.add_argument("--exit-json", help="JSON object/list for exit animation.")
-    place_source.add_argument("--transition-json", help="JSON object for transition.")
-    place_source.add_argument("--effects-json", help="JSON list for effects.")
-    place_source.add_argument("--params-json", help="JSON object for clip params.")
-    place_source.add_argument("--replace", action="store_true", help="Replace an existing placement with the same id.")
-    place_source.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    place_source.set_defaults(handler=_cmd_timeline_place_source)
+    edit_parser = subparsers.add_parser(
+        "edit",
+        help="Edit a reigh-app timeline via timeline-ops primitives + SupabaseDataProvider.",
+    )
+    edit_parser.add_argument("project_id", help="reigh-app project UUID.")
+    edit_parser.add_argument("--timeline-id", required=True, help="reigh-app timeline UUID.")
+    edit_parser.add_argument(
+        "--service-role",
+        action="store_true",
+        help="Worker-only escape hatch: authenticate via REIGH_SUPABASE_SERVICE_ROLE_KEY.",
+    )
+    edit_parser.add_argument("--json", action="store_true")
+    edit_subparsers = edit_parser.add_subparsers(dest="edit_op", required=True)
 
-    place_run = timeline_subparsers.add_parser("place-run", help="Place a clip from a project run on the timeline.")
-    _add_project_arg(place_run)
-    place_run.add_argument("placement_id")
-    place_run.add_argument("--run", dest="run_id", required=True, help="Project run id.")
-    place_run.add_argument("--clip", required=True, help="Clip id inside the run timeline.")
-    place_run.add_argument("--track", required=True, help="Timeline track id.")
-    place_run.add_argument("--at", required=True, type=float, help="Placement start time in seconds.")
-    place_run.add_argument("--from", dest="from_", type=float, help="Override clip trim start in seconds.")
-    place_run.add_argument("--to", type=float, help="Override clip trim end in seconds.")
-    place_run.add_argument("--entrance-json", help="JSON object/list for entrance animation.")
-    place_run.add_argument("--exit-json", help="JSON object/list for exit animation.")
-    place_run.add_argument("--transition-json", help="JSON object for transition.")
-    place_run.add_argument("--effects-json", help="JSON list for effects.")
-    place_run.add_argument("--params-json", help="JSON object for clip params.")
-    place_run.add_argument("--replace", action="store_true", help="Replace an existing placement with the same id.")
-    place_run.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    place_run.set_defaults(handler=_cmd_timeline_place_run)
+    add_clip = edit_subparsers.add_parser("add-clip", help="Insert a clip via timeline-ops.addClip.")
+    add_clip.add_argument("--clip-json", required=True, help="JSON object describing the clip.")
+    add_clip.add_argument("--position", type=int, help="Insertion index (default: append).")
+    add_clip.set_defaults(handler=_cmd_edit, edit_op_name="add-clip")
 
-    timeline_remove = timeline_subparsers.add_parser("remove", help="Remove a placement from the project timeline.")
-    _add_project_arg(timeline_remove)
-    timeline_remove.add_argument("placement_id")
-    timeline_remove.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    timeline_remove.set_defaults(handler=_cmd_timeline_remove)
+    move_clip = edit_subparsers.add_parser("move-clip", help="Reposition a clip via timeline-ops.moveClip.")
+    move_clip.add_argument("--clip-id", required=True)
+    move_clip.add_argument("--new-position", required=True, type=float, help="New start time in seconds.")
+    move_clip.set_defaults(handler=_cmd_edit, edit_op_name="move-clip")
 
-    materialize_parser = subparsers.add_parser("materialize", help="Write renderable hype.timeline.json and hype.assets.json.")
-    _add_project_arg(materialize_parser)
-    materialize_parser.add_argument("--out", required=True, help="Output directory for materialized files.")
-    materialize_parser.add_argument("--theme", default="banodoco-default", help="Timeline theme slug.")
-    materialize_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    materialize_parser.set_defaults(handler=_cmd_materialize)
+    set_theme = edit_subparsers.add_parser("set-theme", help="Set the active theme via timeline-ops.setTimelineTheme.")
+    set_theme.add_argument("--theme-id", required=True)
+    set_theme.set_defaults(handler=_cmd_edit, edit_op_name="set-theme")
+
     return parser
 
 
@@ -120,12 +126,14 @@ def _add_project_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def _cmd_create(args: argparse.Namespace) -> int:
-    project = create_project(args.slug, name=args.name)
+    project = create_project(args.slug, name=args.name, project_id=getattr(args, "project_id", None))
     if args.json:
         _print_json({"project": project, "root": str(paths.project_dir(project["slug"]))})
         return 0
     _print_project_header(project["slug"])
     print(f"created: {project['name']}")
+    if project.get("project_id"):
+        print(f"project_id: {project['project_id']}")
     print(f"next: python3 -m artagents projects show --project {project['slug']}")
     return 0
 
@@ -158,120 +166,148 @@ def _cmd_source_add(args: argparse.Namespace) -> int:
         return 0
     _print_project_header(args.project)
     print(f"source: {source['source_id']}")
-    print(f"next: python3 -m artagents projects timeline show --project {args.project}")
     return 0
 
 
-def _cmd_timeline_show(args: argparse.Namespace) -> int:
-    project = require_project(args.project)
-    timeline = load_timeline(args.project)
+def _cmd_list(args: argparse.Namespace) -> int:
+    """List timelines for a reigh-app project via reigh-data-fetch."""
+
+    from artagents.core.reigh import env as reigh_env
+    from artagents.core.reigh.supabase_client import post_json
+
+    auth = ("pat", reigh_env.resolve_pat())
+    payload = post_json(
+        reigh_env.resolve_api_url(),
+        {"project_id": args.project_id},
+        auth=auth,
+    )
+    timelines = []
+    if isinstance(payload, dict):
+        raw = payload.get("timelines")
+        if isinstance(raw, list):
+            for entry in raw:
+                if not isinstance(entry, dict):
+                    continue
+                timelines.append(
+                    {
+                        "id": entry.get("id"),
+                        "name": entry.get("name"),
+                        "config_version": entry.get("config_version"),
+                        "updated_at": entry.get("updated_at"),
+                    }
+                )
     if args.json:
-        _print_json({"timeline": timeline})
+        _print_json({"project_id": args.project_id, "timelines": timelines})
         return 0
-    _print_project_header(project["slug"])
-    placements = timeline.get("placements", [])
-    if not placements:
-        print("timeline:")
-        print("  placements: none")
+    print(f"project_id: {args.project_id}")
+    if not timelines:
+        print("timelines: none")
         return 0
-    print("timeline:")
-    for placement in placements:
-        ref = placement.get("source", {})
-        print(
-            f"  - {placement.get('id')} track={placement.get('track')} at={placement.get('at')} "
-            f"source={ref.get('kind')}:{ref.get('id') or ref.get('run_id')}"
+    print("timelines:")
+    for entry in timelines:
+        print(f"  - {entry['id']} v={entry.get('config_version')} name={entry.get('name')}")
+    return 0
+
+
+def _cmd_edit(args: argparse.Namespace) -> int:
+    """Edit a reigh-app timeline via timeline-ops + SupabaseDataProvider."""
+
+    from artagents.core.reigh import env as reigh_env
+    from artagents.core.reigh.data_provider import SupabaseDataProvider
+
+    op = args.edit_op_name
+    op_args = _build_op_args(args, op)
+
+    if not OPS_HELPER.is_file():
+        raise ProjectError(f"ops helper missing: {OPS_HELPER}")
+    if shutil.which("node") is None:
+        raise ProjectError("node executable not found on PATH; install Node 20+ to run edit verbs")
+
+    provider = SupabaseDataProvider.from_env()
+    if args.service_role:
+        write_auth = ("service_role", reigh_env.resolve_service_role_key())
+    else:
+        write_auth = ("pat", reigh_env.resolve_pat())
+
+    # First load to know expected_version (the mutator path will re-fetch on
+    # conflict, but we need a starting version to satisfy the
+    # save_timeline contract).
+    _, current_version = provider.load_timeline(args.project_id, args.timeline_id)
+
+    def mutator(config: dict[str, Any], version: int) -> dict[str, Any]:
+        return _run_ops_helper(config, version, op, op_args)
+
+    result = provider.save_timeline(
+        args.timeline_id,
+        mutator,
+        project_id=args.project_id,
+        auth=write_auth,
+        expected_version=current_version,
+        retries=3,
+        force=False,
+    )
+    if args.json:
+        _print_json(
+            {
+                "timeline_id": args.timeline_id,
+                "project_id": args.project_id,
+                "op": op,
+                "new_version": result.new_version,
+                "attempts": result.attempts,
+            }
         )
-    return 0
-
-
-def _cmd_timeline_place_source(args: argparse.Namespace) -> int:
-    require_project(args.project)
-    require_source(args.project, args.source)
-    timeline = add_placement(
-        args.project,
-        args.placement_id,
-        track=args.track,
-        at=args.at,
-        source=source_ref(args.source),
-        from_=args.from_,
-        to=args.to,
-        entrance=_json_option(args.entrance_json, "--entrance-json"),
-        exit=_json_option(args.exit_json, "--exit-json"),
-        transition=_json_option(args.transition_json, "--transition-json"),
-        effects=_json_option(args.effects_json, "--effects-json"),
-        params=_json_option(args.params_json, "--params-json"),
-        replace=bool(args.replace),
+        return 0
+    print(
+        f"edited timeline {args.timeline_id} project_id={args.project_id} "
+        f"op={op} new_version={result.new_version} attempts={result.attempts}"
     )
-    placement = next(item for item in timeline["placements"] if item["id"] == args.placement_id)
-    if args.json:
-        _print_json({"placement": placement, "timeline": timeline})
-        return 0
-    _print_project_header(args.project)
-    print(f"placement: {placement['id']}")
-    print(f"source: source:{args.source}")
-    print(f"next: python3 -m artagents projects materialize --project {args.project} --out <dir>")
     return 0
 
 
-def _cmd_timeline_place_run(args: argparse.Namespace) -> int:
-    require_project(args.project)
-    require_run_clip(args.project, args.run_id, args.clip)
-    timeline = add_placement(
-        args.project,
-        args.placement_id,
-        track=args.track,
-        at=args.at,
-        source=run_ref(args.run_id, args.clip),
-        from_=args.from_,
-        to=args.to,
-        entrance=_json_option(args.entrance_json, "--entrance-json"),
-        exit=_json_option(args.exit_json, "--exit-json"),
-        transition=_json_option(args.transition_json, "--transition-json"),
-        effects=_json_option(args.effects_json, "--effects-json"),
-        params=_json_option(args.params_json, "--params-json"),
-        replace=bool(args.replace),
+def _build_op_args(args: argparse.Namespace, op: str) -> dict[str, Any]:
+    if op == "add-clip":
+        try:
+            clip = json.loads(args.clip_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"--clip-json must be valid JSON: {exc.msg}") from exc
+        if not isinstance(clip, dict):
+            raise ValueError("--clip-json must decode to a JSON object")
+        body: dict[str, Any] = {"clip": clip}
+        if args.position is not None:
+            body["position"] = args.position
+        return body
+    if op == "move-clip":
+        return {"clipId": args.clip_id, "newPosition": args.new_position}
+    if op == "set-theme":
+        return {"themeId": args.theme_id}
+    raise ValueError(f"unsupported edit op: {op}")
+
+
+def _run_ops_helper(
+    timeline: dict[str, Any],
+    version: int,
+    op: str,
+    op_args: dict[str, Any],
+) -> dict[str, Any]:
+    request = json.dumps({"timeline": timeline, "version": version, "op": op, "args": op_args})
+    completed = subprocess.run(
+        ["node", str(OPS_HELPER)],
+        input=request,
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    placement = next(item for item in timeline["placements"] if item["id"] == args.placement_id)
-    if args.json:
-        _print_json({"placement": placement, "timeline": timeline})
-        return 0
-    _print_project_header(args.project)
-    print(f"placement: {placement['id']}")
-    print(f"source: run:{args.run_id}:{args.clip}")
-    print(f"next: python3 -m artagents projects materialize --project {args.project} --out <dir>")
-    return 0
-
-
-def _cmd_timeline_remove(args: argparse.Namespace) -> int:
-    timeline = remove_placement(args.project, args.placement_id)
-    if args.json:
-        _print_json({"removed": args.placement_id, "timeline": timeline})
-        return 0
-    _print_project_header(args.project)
-    print(f"removed: {args.placement_id}")
-    print(f"next: python3 -m artagents projects timeline show --project {args.project}")
-    return 0
-
-
-def _cmd_materialize(args: argparse.Namespace) -> int:
-    require_project(args.project)
-    timeline_path, assets_path = write_materialized_project_timeline(args.project, args.out, theme=args.theme)
-    if args.json:
-        _print_json({"assets": str(assets_path), "timeline": str(timeline_path)})
-        return 0
-    _print_project_header(args.project)
-    print(f"timeline: {timeline_path}")
-    print(f"assets: {assets_path}")
-    return 0
-
-
-def _json_option(raw: str | None, flag: str) -> Any:
-    if raw in (None, ""):
-        return None
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip() or "ops_helper exited non-zero"
+        raise ProjectError(f"ops_helper failed: {stderr}")
     try:
-        return json.loads(raw)
+        response = json.loads(completed.stdout)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"{flag} must be valid JSON: {exc.msg}") from exc
+        raise ProjectError(f"ops_helper produced non-JSON stdout: {exc.msg}") from exc
+    timeline_out = response.get("timeline")
+    if not isinstance(timeline_out, dict):
+        raise ProjectError("ops_helper response missing .timeline object")
+    return timeline_out
 
 
 def _print_project_header(slug: str) -> None:
@@ -283,7 +319,6 @@ def _print_project_tree(payload: dict[str, Any]) -> None:
     project = payload["project"]
     print(f"{project['slug']}/")
     print("  project.json")
-    print("  timeline.json")
     print("  sources/")
     for source_id in payload.get("sources", []):
         print(f"    {source_id}/")
@@ -296,7 +331,8 @@ def _print_project_tree(payload: dict[str, Any]) -> None:
         print("      timeline.json")
         print("      assets.json")
         print("      metadata.json")
-    print(f"placements: {payload['timeline']['placements']}")
+    if payload.get("project_id"):
+        print(f"reigh project_id: {payload['project_id']}")
 
 
 def _print_json(payload: dict[str, Any]) -> None:

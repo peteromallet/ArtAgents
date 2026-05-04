@@ -13,6 +13,8 @@ from typing import Any, Mapping
 
 from artagents.contracts.schema import Output
 from artagents.core.executor.runner import _has_value, _stringify_value
+from artagents.core.task import env as task_env
+from artagents.core.task import gate as task_gate
 from artagents.core.project.run import (
     ProjectRunContext,
     finalize_project_run,
@@ -130,6 +132,16 @@ class OrchestratorRunResult:
 
 
 def run_orchestrator(request: OrchestratorRunRequest, registry: OrchestratorRegistry | None = None) -> OrchestratorRunResult:
+    if request.project and task_env.is_in_task_run(request.project):
+        try:
+            task_gate.gate_command(
+                request.project,
+                task_gate.command_for_argv(_request_argv_for_gate(request)),
+                [],
+                reentry=True,
+            )
+        except task_gate.TaskRunGateError as exc:
+            raise OrchestratorRunnerError(exc.recovery) from exc
     active_registry = registry or load_default_registry()
     orchestrator = active_registry.get(request.orchestrator_id)
     project_context, effective_request = _prepare_project_request(request, orchestrator)
@@ -150,6 +162,13 @@ def run_orchestrator(request: OrchestratorRunRequest, registry: OrchestratorRegi
             returncode=result.returncode,
         )
     return result
+
+
+def _request_argv_for_gate(request: OrchestratorRunRequest) -> tuple[str, ...]:
+    argv = ["orchestrators", "run", request.orchestrator_id, *request.orchestrator_args]
+    if request.project:
+        argv.extend(["--project", request.project])
+    return tuple(argv)
 
 
 def _run_orchestrator_inner(request: OrchestratorRunRequest, orchestrator: OrchestratorDefinition) -> OrchestratorRunResult:

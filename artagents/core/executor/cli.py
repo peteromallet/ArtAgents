@@ -64,7 +64,25 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run or dry-run one executor.")
     run_parser.add_argument("executor_id")
     run_parser.add_argument("--out", help="Output directory for runtime placeholders.")
-    run_parser.add_argument("--project", help="Project slug for a persistent project run.")
+    run_parser.add_argument(
+        "--project",
+        help=(
+            "Project identifier. A project slug runs in cache-only/offline mode "
+            "(local sources/ + runs/ provenance). A reigh-app project UUID "
+            "(8-4-4-4-12 hex) routes the post-run timeline through "
+            "SupabaseDataProvider; pair with --timeline-id."
+        ),
+    )
+    run_parser.add_argument(
+        "--timeline-id",
+        dest="timeline_id",
+        help="reigh-app timeline UUID; required when --project is a reigh-app UUID.",
+    )
+    run_parser.add_argument(
+        "--service-role",
+        action="store_true",
+        help="Worker-only escape hatch when pushing back via SupabaseDataProvider.",
+    )
     run_parser.add_argument("--input", action="append", default=[], metavar="NAME=VALUE", help="Executor input value; may be repeated.")
     run_parser.add_argument("--brief", help="Brief path for built-in pipeline context synthesis.")
     run_parser.add_argument("--dry-run", action="store_true", help="Build and print the command without executing it.")
@@ -183,14 +201,25 @@ def _cmd_run(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 
     _require_qualified_id(args.executor_id, "executor id")
     executor = registry.get(args.executor_id)
-    if args.project and args.out:
-        raise ValueError("--project cannot be combined with --out; project runs own their output directory")
-    if not args.out and not args.project and _executor_needs_out(executor):
+    project_uuid = _project_uuid_or_none(args.project)
+    if project_uuid is not None:
+        # UUID mode: --project is a reigh-app UUID, runs need an --out for
+        # local placeholders + a --timeline-id to address the row.
+        if not getattr(args, "timeline_id", None):
+            raise ValueError("--timeline-id is required when --project is a reigh-app UUID")
+        if not args.out:
+            raise ValueError("--out is required when --project is a reigh-app UUID")
+        local_project: str | None = None
+    else:
+        local_project = args.project
+        if local_project and args.out:
+            raise ValueError("--project cannot be combined with --out; project runs own their output directory")
+    if not args.out and local_project is None and project_uuid is None and _executor_needs_out(executor):
         raise ValueError("--out is required for this executor")
     request = ExecutorRunRequest(
         executor_id=args.executor_id,
         out=Path(args.out) if args.out else "",
-        project=args.project,
+        project=local_project,
         inputs=_run_inputs(args),
         brief=Path(args.brief) if args.brief else None,
         dry_run=bool(args.dry_run),
@@ -212,7 +241,74 @@ def _cmd_run(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
         print(shlex.join(result.command))
     if result.payload:
         print(json.dumps(dict(result.payload), separators=(",", ":"), sort_keys=True))
-    return int(result.returncode or 0)
+    rc = int(result.returncode or 0)
+    if rc == 0 and project_uuid is not None and not args.dry_run:
+        rc = _push_run_to_supabase(
+            project_id=project_uuid,
+            timeline_id=args.timeline_id,
+            out_dir=Path(args.out),
+            service_role=bool(getattr(args, "service_role", False)),
+        )
+    return rc
+
+
+_UUID_RE = __import__("re").compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def _project_uuid_or_none(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value if _UUID_RE.match(value) else None
+
+
+def _push_run_to_supabase(
+    *,
+    project_id: str,
+    timeline_id: str,
+    out_dir: Path,
+    service_role: bool,
+) -> int:
+    """Push the run's hype.timeline.json (if produced) via SupabaseDataProvider."""
+
+    timeline_path = out_dir / "hype.timeline.json"
+    if not timeline_path.is_file():
+        print(
+            f"executors: --project {project_id} requested but {timeline_path} not produced by run; skipping push",
+            file=sys.stderr,
+        )
+        return 0
+
+    from artagents.core.reigh import env as reigh_env
+    from artagents.core.reigh.data_provider import SupabaseDataProvider
+    from artagents.timeline import Timeline
+
+    timeline_blob = Timeline.load(timeline_path).to_json_data()
+    provider = SupabaseDataProvider.from_env()
+    if service_role:
+        auth = ("service_role", reigh_env.resolve_service_role_key())
+    else:
+        auth = ("pat", reigh_env.resolve_pat())
+    _, current_version = provider.load_timeline(project_id, timeline_id)
+
+    def _mutator(_config, _version):
+        return timeline_blob
+
+    result = provider.save_timeline(
+        timeline_id,
+        _mutator,
+        project_id=project_id,
+        auth=auth,
+        expected_version=current_version,
+        retries=3,
+        force=False,
+    )
+    print(
+        f"pushed timeline {timeline_id} project_id={project_id} "
+        f"new_version={result.new_version} attempts={result.attempts}"
+    )
+    return 0
 
 
 def _executor_needs_out(executor: ExecutorDefinition) -> bool:

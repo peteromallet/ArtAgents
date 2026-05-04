@@ -13,6 +13,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from artagents.core.task import env as task_env
+from artagents.core.task import gate as task_gate
 from artagents.core.project.run import (
     ProjectRunContext,
     finalize_project_run,
@@ -86,6 +88,16 @@ class ExecutorRunResult:
 
 
 def run_executor(request: ExecutorRunRequest, registry: ExecutorRegistry | None = None) -> ExecutorRunResult:
+    if request.project and task_env.is_in_task_run(request.project):
+        try:
+            task_gate.gate_command(
+                request.project,
+                task_gate.command_for_argv(_request_argv_for_gate(request)),
+                [],
+                reentry=True,
+            )
+        except task_gate.TaskRunGateError as exc:
+            raise ExecutorRunnerError(exc.recovery) from exc
     active_registry = registry or load_default_registry()
     executor = active_registry.get(request.executor_id)
     project_context, effective_request = _prepare_project_request(request, executor)
@@ -106,6 +118,13 @@ def run_executor(request: ExecutorRunRequest, registry: ExecutorRegistry | None 
             returncode=result.returncode,
         )
     return result
+
+
+def _request_argv_for_gate(request: ExecutorRunRequest) -> tuple[str, ...]:
+    argv = ["executors", "run", request.executor_id]
+    if request.project:
+        argv.extend(["--project", request.project])
+    return tuple(argv)
 
 
 def _run_executor_inner(request: ExecutorRunRequest, executor: ExecutorDefinition) -> ExecutorRunResult:

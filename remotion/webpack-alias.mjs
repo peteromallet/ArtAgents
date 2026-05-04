@@ -27,6 +27,9 @@ const primitiveAliases = {
   '@theme-transitions': path.resolve(ACTIVE_THEME_DIR, 'transitions'),
   '@pack-local-elements-transitions': path.resolve(LOCAL_PACK_ELEMENTS_DIR, 'transitions'),
   '@pack-builtin-elements-transitions': path.resolve(BUILTIN_PACK_ELEMENTS_DIR, 'transitions'),
+  '@workspace-animations': path.resolve(BUILTIN_PACK_ELEMENTS_DIR, 'animations'),
+  '@workspace-effects': path.resolve(BUILTIN_PACK_ELEMENTS_DIR, 'effects'),
+  '@workspace-transitions': path.resolve(BUILTIN_PACK_ELEMENTS_DIR, 'transitions'),
 };
 
 export const applyRemotionPrimitiveAliases = (currentConfiguration) => ({

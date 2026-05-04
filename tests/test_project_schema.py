@@ -1,3 +1,11 @@
+"""Project / source / run schema tests (T10 collapsed the placement schema).
+
+The pre-T10 file also covered build_placement / source_ref / run_ref /
+validate_project_timeline / add_placement / remove_placement. Those symbols
+are gone with the parallel placement schema; T13 tests the canonical timeline
+contract end-to-end through SupabaseDataProvider.save_timeline.
+"""
+
 from __future__ import annotations
 
 import json
@@ -7,9 +15,20 @@ import pytest
 
 from artagents.core.project import paths
 from artagents.core.project.project import create_project, show_project
-from artagents.core.project.schema import ProjectValidationError, build_placement, run_ref, source_ref, validate_project_timeline
+from artagents.core.project.schema import (
+    PROJECT_SCHEMA_VERSION,
+    ProjectValidationError,
+    SOURCE_KINDS,
+    SOURCE_SCHEMA_VERSION,
+    RUN_SCHEMA_VERSION,
+    build_project,
+    build_run_record,
+    build_source,
+    validate_project,
+    validate_run_record,
+    validate_source,
+)
 from artagents.core.project.source import add_source, require_source
-from artagents.core.project.timeline import add_placement, remove_placement
 
 
 def test_project_helpers_resolve_env_root_and_write_deterministic_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -26,18 +45,47 @@ def test_project_helpers_resolve_env_root_and_write_deterministic_json(tmp_path:
     assert project["slug"] == "demo"
     assert json.loads(project_json.read_text(encoding="utf-8"))["name"] == "Demo"
     assert project_json.read_text(encoding="utf-8").endswith("\n")
-    assert list(json.loads(source_json.read_text(encoding="utf-8")).keys()) == sorted(json.loads(source_json.read_text(encoding="utf-8")))
     assert source["asset"]["file"] == str(media.resolve())
     assert source["kind"] == "video"
     assert show_project("demo")["sources"] == ["intro"]
 
 
-def test_project_source_and_placement_validation_rejects_bad_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_project_does_not_write_timeline_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """T10 invariant: timeline.json is no longer written; sources/ + runs/ still are."""
+
+    projects_root = tmp_path / "projects"
+    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(projects_root))
+    create_project("demo")
+    project_dir = projects_root / "demo"
+    assert (project_dir / "project.json").is_file()
+    assert (project_dir / "sources").is_dir()
+    assert (project_dir / "runs").is_dir()
+    assert not (project_dir / "timeline.json").exists()
+
+
+def test_project_id_field_is_optional_opaque_in_project_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    projects_root = tmp_path / "projects"
+    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(projects_root))
+
+    plain = create_project("demo")
+    assert "project_id" not in plain
+
+    with_id = create_project("demo2", project_id="00000000-1111-2222-3333-444455556666")
+    assert with_id["project_id"] == "00000000-1111-2222-3333-444455556666"
+
+    # Empty / non-string project_id -> validation error.
+    with pytest.raises(ProjectValidationError, match="project_id"):
+        validate_project({**with_id, "project_id": ""})
+
+
+def test_source_validation_rejects_bad_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
     create_project("demo")
 
-    with pytest.raises(ValueError):
-        create_project("../bad")
     with pytest.raises(ProjectValidationError, match="exactly one"):
         add_source("demo", "bad", asset={"file": str(tmp_path / "a.mp4"), "url": "https://example.com/a.mp4"})
     with pytest.raises(ValueError):
@@ -47,46 +95,43 @@ def test_project_source_and_placement_validation_rejects_bad_state(tmp_path: Pat
 
     source = add_source("demo", "intro", asset={"url": "https://example.com/a.mp4"}, kind="video")
     assert source["kind"] == "video"
-    timeline = add_placement("demo", "p1", track="main", at=0, source=source_ref("intro"))
-    assert timeline["placements"][0]["source"] == {"kind": "source", "id": "intro"}
-    with pytest.raises(FileExistsError):
-        add_placement("demo", "p1", track="main", at=1, source=source_ref("intro"))
-    with pytest.raises(ProjectValidationError, match="placement.at"):
-        build_placement("bad-at", track="main", at=-1, source=source_ref("intro"))
-    with pytest.raises(ProjectValidationError, match="placement.from"):
-        build_placement("bad-from", track="main", at=0, source=source_ref("intro"), from_=-1)
-    with pytest.raises(ProjectValidationError, match="placement.to"):
-        build_placement("bad-to", track="main", at=0, source=source_ref("intro"), from_=5, to=2)
-    with pytest.raises(ProjectValidationError, match="effects"):
-        build_placement("bad-effects", track="main", at=0, source=source_ref("intro"), effects={"not": "a-list"})  # type: ignore[arg-type]
-    with pytest.raises(ProjectValidationError, match="params"):
-        build_placement("bad-params", track="main", at=0, source=source_ref("intro"), params=[])  # type: ignore[arg-type]
-
-    removed = remove_placement("demo", "p1")
-    assert removed["placements"] == []
+    assert require_source("demo", "intro")["asset"]["url"] == "https://example.com/a.mp4"
 
 
-def test_project_references_validate_source_and_run_forms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
-    create_project("demo")
-    add_source("demo", "intro", asset={"url": "https://example.com/a.mp4"})
+def test_build_and_validate_run_record_round_trip() -> None:
+    record = build_run_record(
+        "demo",
+        "01HXYZ",
+        tool_id="my-tool",
+        kind="custom",
+        status="prepared",
+        argv=["--flag", "value"],
+        metadata={"baseline_snapshot": "abc"},
+    )
+    normalized = validate_run_record(record)
+    assert normalized["status"] == "prepared"
+    assert normalized["argv"] == ["--flag", "value"]
+    assert normalized["metadata"]["baseline_snapshot"] == "abc"
+    assert normalized["schema_version"] == RUN_SCHEMA_VERSION
 
-    source = require_source("demo", "intro")
-    assert source["asset"]["url"] == "https://example.com/a.mp4"
-    timeline = {
-        "schema_version": 1,
-        "project_slug": "demo",
-        "created_at": "2026-01-01T00:00:00Z",
-        "updated_at": "2026-01-01T00:00:00Z",
-        "tracks": [],
-        "placements": [
-            {"id": "source-p", "track": "main", "at": 0, "source": source_ref("intro")},
-            {"id": "run-p", "track": "main", "at": 1, "source": run_ref("01ARZ3NDEKTSV4RRFFQ69G5FAV", "clip-a")},
-        ],
-    }
-    normalized = validate_project_timeline(timeline)
-    assert normalized["placements"][1]["source"]["clip_id"] == "clip-a"
 
-    timeline["placements"].append({"id": "run-p", "track": "main", "at": 2, "source": source_ref("intro")})
-    with pytest.raises(ProjectValidationError, match="duplicate placement"):
-        validate_project_timeline(timeline)
+def test_run_record_status_must_be_known() -> None:
+    record = build_run_record("demo", "01HXYZ", status="prepared")
+    record["status"] = "garbage"
+    with pytest.raises(ProjectValidationError, match="run.status"):
+        validate_run_record(record)
+
+
+def test_schema_constants_are_versioned() -> None:
+    assert isinstance(PROJECT_SCHEMA_VERSION, int)
+    assert isinstance(SOURCE_SCHEMA_VERSION, int)
+    assert isinstance(RUN_SCHEMA_VERSION, int)
+    assert {"audio", "image", "other", "video"} == SOURCE_KINDS
+
+
+def test_build_project_emits_required_keys() -> None:
+    payload = build_project("demo", name="Demo")
+    expected = {"created_at", "name", "schema_version", "slug", "updated_at"}
+    assert expected.issubset(payload.keys())
+    validated = validate_project(payload)
+    assert validated["slug"] == "demo"
