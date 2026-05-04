@@ -151,8 +151,8 @@ def load_pack_orchestrators() -> tuple[OrchestratorDefinition, ...]:
 
 def _attach_pack_metadata(orchestrator: OrchestratorDefinition, pack_id: str) -> OrchestratorDefinition:
     metadata = dict(orchestrator.metadata)
-    metadata.setdefault("pack_id", pack_id)
     metadata["source"] = "pack"
+    metadata["source_pack"] = pack_id
     return validate_orchestrator_definition(replace(orchestrator, metadata=metadata))
 
 

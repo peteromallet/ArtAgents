@@ -113,10 +113,10 @@ class PackDiscoveryTest(unittest.TestCase):
                 elements = load_pack_elements()
 
         self.assertEqual([executor.id for executor in executors], ["builtin.sample_executor"])
-        self.assertEqual(executors[0].metadata["pack_id"], "builtin")
+        self.assertEqual(executors[0].metadata["source_pack"], "builtin")
         self.assertEqual(executors[0].metadata["source"], "pack")
         self.assertEqual([orchestrator.id for orchestrator in orchestrators], ["builtin.sample_orchestrator"])
-        self.assertEqual(orchestrators[0].metadata["pack_id"], "builtin")
+        self.assertEqual(orchestrators[0].metadata["source_pack"], "builtin")
         self.assertEqual([(element.kind, element.id, element.source) for element in elements], [("effects", "stamp", "pack:builtin")])
 
     def test_default_registries_remain_populated_from_legacy_scans(self) -> None:

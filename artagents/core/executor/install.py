@@ -53,7 +53,7 @@ class ExecutorInstallResult:
 def executor_environment_path(executor: ExecutorDefinition) -> Path:
     """Return the deterministic repo-local virtualenv path for a executor."""
 
-    return REPO_ROOT / ".artagents" / "executors" / _safe_executor_id(_executor_install_id(executor)) / "venv"
+    return REPO_ROOT / ".artagents" / "venvs" / _safe_executor_id(_executor_install_id(executor)) / "venv"
 
 
 def executor_python_path(executor: ExecutorDefinition) -> Path:

@@ -87,8 +87,8 @@ class ElementInstallTest(unittest.TestCase):
 
         self.assertEqual(executor_environment_path(vibe_run), executor_environment_path(vibe_validate))
         self.assertEqual(executor_python_path(vibe_run), executor_python_path(vibe_validate))
-        self.assertTrue(str(executor_environment_path(vibe_run)).endswith(".artagents/executors/vibecomfy/venv"))
-        self.assertTrue(str(executor_environment_path(moirae)).endswith(".artagents/executors/external/venv"))
+        self.assertTrue(str(executor_environment_path(vibe_run)).endswith(".artagents/venvs/vibecomfy/venv"))
+        self.assertTrue(str(executor_environment_path(moirae)).endswith(".artagents/venvs/external.moirae/venv"))
 
         vibe_plan = build_executor_install_plan(vibe_run)
         moirae_plan = build_executor_install_plan(moirae)

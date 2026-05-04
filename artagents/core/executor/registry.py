@@ -114,8 +114,8 @@ def load_pack_executors() -> tuple[ExecutorDefinition, ...]:
 
 def _attach_pack_metadata(executor: ExecutorDefinition, pack_id: str) -> ExecutorDefinition:
     metadata = dict(executor.metadata)
-    metadata.setdefault("pack_id", pack_id)
     metadata["source"] = "pack"
+    metadata["source_pack"] = pack_id
     return validate_executor_definition(replace(executor, metadata=metadata))
 
 

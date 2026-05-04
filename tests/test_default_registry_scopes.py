@@ -19,7 +19,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
 
         youtube = canonical.get("upload.youtube")
         self.assertEqual(youtube.metadata["source"], "pack")
-        self.assertEqual(youtube.metadata["pack_id"], "upload")
+        self.assertEqual(youtube.metadata["source_pack"], "upload")
+        self.assertNotIn("pack_id", youtube.metadata)
         self.assertTrue(youtube.metadata["executor_root"].endswith("artagents/packs/upload/youtube"))
         self.assertTrue(youtube.metadata["manifest_file"].endswith("artagents/packs/upload/youtube/executor.yaml"))
 
@@ -31,13 +32,15 @@ class DefaultRegistryScopeTest(unittest.TestCase):
             with self.subTest(executor_id=executor_id):
                 action = canonical.get(executor_id)
                 self.assertEqual(action.metadata["source"], "pack")
-                self.assertEqual(action.metadata["pack_id"], "builtin")
+                self.assertEqual(action.metadata["source_pack"], "builtin")
+                self.assertNotIn("pack_id", action.metadata)
                 self.assertTrue(action.metadata["executor_root"].endswith(f"artagents/packs/builtin/{folder}"))
                 self.assertTrue(action.metadata["manifest_file"].endswith(f"artagents/packs/builtin/{folder}/executor.yaml"))
 
         vibecomfy = canonical.get("external.vibecomfy.run")
         self.assertEqual(vibecomfy.kind, "external")
         self.assertEqual(vibecomfy.metadata["pack_id"], "vibecomfy")
+        self.assertEqual(vibecomfy.metadata["source_pack"], "external")
         self.assertEqual(vibecomfy.metadata["source"], "pack")
         self.assertTrue(vibecomfy.metadata["executor_root"].endswith("artagents/packs/external/vibecomfy"))
 

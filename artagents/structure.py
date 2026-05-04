@@ -55,6 +55,7 @@ def validate_repo_structure(root: str | Path = REPO_ROOT) -> StructureReport:
     errors.extend(_validate_top_level_artagents(repo_root / "artagents"))
     errors.extend(_validate_pack_executor_folders(repo_root / "artagents" / "packs"))
     errors.extend(_validate_pack_orchestrator_folders(repo_root / "artagents" / "packs"))
+    errors.extend(_validate_pack_element_folders(repo_root / "artagents" / "packs"))
     return StructureReport(errors=tuple(errors))
 
 
@@ -148,6 +149,30 @@ def _validate_pack_orchestrator_folders(packs_root: Path) -> list[str]:
                     errors.append(
                         f"orchestrator {definition.id!r} must live in pack {pack_segment!r} but was found in pack {pack_dir.name!r}"
                     )
+    return errors
+
+
+_ELEMENT_KINDS = ("effects", "animations", "transitions")
+
+
+def _validate_pack_element_folders(packs_root: Path) -> list[str]:
+    if not packs_root.is_dir():
+        return []
+
+    errors: list[str] = []
+    repo_root = packs_root.parents[1]
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+        elements_root = pack_dir / "elements"
+        if not elements_root.is_dir():
+            continue
+        for kind_dir in _public_child_dirs(elements_root, INTERNAL_PACK_DIRS):
+            if kind_dir.name not in _ELEMENT_KINDS:
+                errors.append(
+                    f"unexpected element kind folder {kind_dir.relative_to(repo_root)}: must be one of {list(_ELEMENT_KINDS)}"
+                )
+                continue
+            for element_dir in _public_child_dirs(kind_dir, INTERNAL_PACK_DIRS):
+                errors.extend(_require_files(element_dir, ("component.tsx", "element.yaml"), root=repo_root))
     return errors
 
 
