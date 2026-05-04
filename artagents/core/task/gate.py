@@ -16,7 +16,7 @@ import json
 import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 from artagents.core.project.paths import project_dir
 from artagents.core.task.active_run import read_active_run
@@ -349,6 +349,163 @@ def _path_str_from_event(event: dict[str, Any]) -> str:
     return pid if isinstance(pid, str) else ""
 
 
+def _auto_traverse_to_leaf(
+    *,
+    slug: str,
+    cursor: CursorPath,
+    events_view: list[dict[str, Any]],
+    incoming_command: str,
+    project_root: Path,
+    run_id: str,
+    append_fn: Callable[[dict[str, Any]], Any],
+    raise_on_exhausted: bool,
+) -> tuple[Any, tuple[str, ...]] | None:
+    """Walk the cursor through nested entries and repeat-host expansions until we
+    land on a CodeStep / AttestedStep leaf. Mutates ``cursor.frames`` and pushes
+    auto-traversal events through ``append_fn``. ``events_view`` must be the list
+    that ``append_fn`` extends (or that mirrors the on-disk log) so the helpers
+    that scan prior events (``_count_iteration_failed``, the ``for_each_expanded``
+    lookup) see the latest state.
+
+    With ``raise_on_exhausted=True`` (gate dispatch) the helper raises
+    ``TaskRunGateError`` when the plan is exhausted; with ``False`` (peek) it
+    returns ``None`` so the caller can report exhaustion to the operator.
+    """
+    while True:
+        if cursor.at_root_done:
+            if raise_on_exhausted:
+                _reject(slug, "plan is exhausted", abort=True)
+            return None
+        if cursor.top_exhausted:
+            top = cursor.frames[-1]
+            if top.repeat_step_id is not None:
+                # Defensive: _finalize_cursor should have popped these already.
+                cursor.frames.pop()
+                cursor.frames[-1].child_index += 1
+                continue
+            exit_path_str = STEP_PATH_SEP.join(top.path_prefix)
+            append_fn(make_nested_exited_event(exit_path_str, 0))
+            cursor.frames.pop()
+            cursor.frames[-1].child_index += 1
+            continue
+        top = cursor.frames[-1]
+        current_step = top.plan.steps[top.child_index]
+        current_path = top.path_prefix + (current_step.id,)
+        path_str = STEP_PATH_SEP.join(current_path)
+        repeat = getattr(current_step, "repeat", None)
+        in_repeat_frame = top.repeat_step_id is not None
+        if repeat is not None and not in_repeat_frame:
+            if isinstance(repeat, RepeatUntil):
+                _enter_repeat_until(
+                    slug=slug,
+                    cursor=cursor,
+                    host=current_step,
+                    repeat=repeat,
+                    path_str=path_str,
+                    parent_prefix=top.path_prefix,
+                    events=events_view,
+                    append_fn=append_fn,
+                )
+                continue
+            if isinstance(repeat, RepeatForEach):
+                _enter_repeat_for_each(
+                    slug=slug,
+                    cursor=cursor,
+                    host=current_step,
+                    repeat=repeat,
+                    path_str=path_str,
+                    parent_prefix=top.path_prefix,
+                    events=events_view,
+                    append_fn=append_fn,
+                    project_root=project_root,
+                    run_id=run_id,
+                    incoming_command=incoming_command,
+                )
+                continue
+        if isinstance(current_step, NestedStep):
+            child_hash = _compute_inline_plan_hash(current_step.plan)
+            append_fn(make_nested_entered_event(path_str, child_hash))
+            cursor.frames.append(
+                _Frame(plan=current_step.plan, path_prefix=current_path, child_index=0)
+            )
+            continue
+        return current_step, current_path
+
+
+@dataclass(frozen=True)
+class PeekResult:
+    """Read-only view of the next dispatchable step under the current cursor.
+
+    Returned by ``peek_current_step`` for ``cmd_next`` / ``cmd_status`` /
+    ``cmd_ack`` to inspect what the gate would dispatch on next without
+    actually mutating ``events.jsonl``. ``exhausted=True`` covers both
+    ``at_root_done`` (plan complete) and ``pinned_failure``
+    (repeat.until on_exhaust=fail).
+    """
+
+    step: Any
+    path_tuple: tuple[str, ...]
+    iteration: int | None
+    item_id: str | None
+    exhausted: bool
+
+
+def peek_current_step(
+    plan: TaskPlan,
+    events: Sequence[dict[str, Any]],
+    slug: str,
+    *,
+    project_root: Path,
+    run_id: str,
+) -> PeekResult:
+    """Walk the cursor exactly the way the gate would, but with a list-capturing
+    ``append_fn`` so ``events.jsonl`` is never mutated.
+
+    Shares ``_auto_traverse_to_leaf`` with ``gate_command`` so peek and dispatch
+    cannot drift on iteration / for_each / nested transitions (FLAG-P5-003).
+    The captured events are kept in ``events_view`` so prior-event scans inside
+    the auto-traverse helpers (``_count_iteration_failed``, the
+    ``for_each_expanded`` lookup) see them; after every append we let the helper
+    proceed and re-evaluate the cursor — which is equivalent to recomputing
+    ``derive_cursor(plan, events + captured, slug=slug)`` because the helper
+    performs the same frame mutations that ``derive_cursor`` would on replay.
+    """
+    cursor = derive_cursor(plan, events, slug=slug)
+    if cursor.pinned_failure is not None or cursor.at_root_done:
+        return PeekResult(step=None, path_tuple=(), iteration=None, item_id=None, exhausted=True)
+
+    events_view = list(events)
+    captured: list[dict[str, Any]] = []
+
+    def _peek_append(ev: dict[str, Any]) -> None:
+        captured.append(ev)
+        events_view.append(ev)
+
+    leaf = _auto_traverse_to_leaf(
+        slug=slug,
+        cursor=cursor,
+        events_view=events_view,
+        incoming_command="",
+        project_root=project_root,
+        run_id=run_id,
+        append_fn=_peek_append,
+        raise_on_exhausted=False,
+    )
+    if leaf is None:
+        return PeekResult(step=None, path_tuple=(), iteration=None, item_id=None, exhausted=True)
+    step, path_tuple = leaf
+    top = cursor.frames[-1]
+    iteration = top.iteration if top.repeat_step_id is not None else None
+    item_id = top.item_id if top.repeat_step_id is not None else None
+    return PeekResult(
+        step=step,
+        path_tuple=path_tuple,
+        iteration=iteration,
+        item_id=item_id,
+        exhausted=False,
+    )
+
+
 def gate_command(
     slug: str,
     command: str,
@@ -386,74 +543,28 @@ def gate_command(
     # Auto-traverse: nested_entered/exited for nested plans; iteration_started/
     # for_each_expanded/item_started for repeat hosts. We loop until we land on a
     # dispatchable leaf (CodeStep or AttestedStep) inside the appropriate frame.
-    while True:
-        if cursor.at_root_done:
-            _reject(slug, "plan is exhausted", abort=True)
-        if cursor.top_exhausted:
-            top = cursor.frames[-1]
-            if top.repeat_step_id is not None:
-                # Defensive: _finalize_cursor should have popped these already.
-                cursor.frames.pop()
-                cursor.frames[-1].child_index += 1
-                continue
-            exit_path_str = STEP_PATH_SEP.join(top.path_prefix)
-            append_event(events_path, make_nested_exited_event(exit_path_str, 0))
-            cursor.frames.pop()
-            cursor.frames[-1].child_index += 1
-            continue
-        top = cursor.frames[-1]
-        current_step = top.plan.steps[top.child_index]
-        current_path = top.path_prefix + (current_step.id,)
-        path_str = STEP_PATH_SEP.join(current_path)
-        repeat = getattr(current_step, "repeat", None)
-        in_repeat_frame = top.repeat_step_id is not None
-        if repeat is not None and not in_repeat_frame:
-            if isinstance(repeat, RepeatUntil):
-                _enter_repeat_until(
-                    slug=slug,
-                    cursor=cursor,
-                    host=current_step,
-                    repeat=repeat,
-                    path_str=path_str,
-                    parent_prefix=top.path_prefix,
-                    events=events,
-                    events_path=events_path,
-                )
-                # Refresh local references.
-                events = read_events(events_path)
-                top = cursor.frames[-1]
-                current_step = top.plan.steps[top.child_index]
-                current_path = top.path_prefix + (current_step.id,)
-                path_str = STEP_PATH_SEP.join(current_path)
-                continue
-            if isinstance(repeat, RepeatForEach):
-                next_item_id = _enter_repeat_for_each(
-                    slug=slug,
-                    cursor=cursor,
-                    host=current_step,
-                    repeat=repeat,
-                    path_str=path_str,
-                    parent_prefix=top.path_prefix,
-                    events=events,
-                    events_path=events_path,
-                    project_root=project_root,
-                    run_id=run_id,
-                    incoming_command=command,
-                )
-                events = read_events(events_path)
-                top = cursor.frames[-1]
-                current_step = top.plan.steps[top.child_index]
-                current_path = top.path_prefix + (current_step.id,)
-                path_str = STEP_PATH_SEP.join(current_path)
-                continue
-        if isinstance(current_step, NestedStep):
-            child_hash = _compute_inline_plan_hash(current_step.plan)
-            append_event(events_path, make_nested_entered_event(path_str, child_hash))
-            cursor.frames.append(
-                _Frame(plan=current_step.plan, path_prefix=current_path, child_index=0)
-            )
-            continue
-        break
+    events_view = list(events)
+
+    def _gate_append(ev: dict[str, Any]) -> None:
+        append_event(events_path, ev)
+        events_view.append(ev)
+
+    leaf = _auto_traverse_to_leaf(
+        slug=slug,
+        cursor=cursor,
+        events_view=events_view,
+        incoming_command=command,
+        project_root=project_root,
+        run_id=run_id,
+        append_fn=_gate_append,
+        raise_on_exhausted=True,
+    )
+    if leaf is None:
+        # Defensive: raise_on_exhausted=True should always raise inside the helper.
+        _reject(slug, "plan is exhausted", abort=True)
+    current_step, current_path = leaf
+    top = cursor.frames[-1]
+    path_str = STEP_PATH_SEP.join(current_path)
 
     iteration = top.iteration if top.repeat_step_id is not None else None
     item_id = top.item_id if top.repeat_step_id is not None else None
@@ -535,7 +646,7 @@ def _enter_repeat_until(
     path_str: str,
     parent_prefix: tuple[str, ...],
     events: Sequence[dict[str, Any]],
-    events_path: Path,
+    append_fn: Callable[[dict[str, Any]], Any],
 ) -> None:
     failed = _count_iteration_failed(events, path_str)
     iteration = failed + 1
@@ -543,13 +654,12 @@ def _enter_repeat_until(
     if iteration > repeat.max_iterations:
         existing = _has_iteration_exhausted(events, path_str)
         if existing is None:
-            append_event(
-                events_path,
+            append_fn(
                 make_iteration_exhausted_event(
                     path_tuple,
                     on_exhaust=repeat.on_exhaust,
                     max_iterations=repeat.max_iterations,
-                ),
+                )
             )
         if repeat.on_exhaust == "fail":
             raise TaskRunGateError(
@@ -572,7 +682,7 @@ def _enter_repeat_until(
             )
         )
         return
-    append_event(events_path, make_iteration_started_event(path_tuple, iteration))
+    append_fn(make_iteration_started_event(path_tuple, iteration))
     cursor.frames.append(_make_iteration_frame(host, parent_prefix, iteration))
 
 
@@ -629,7 +739,7 @@ def _enter_repeat_for_each(
     path_str: str,
     parent_prefix: tuple[str, ...],
     events: Sequence[dict[str, Any]],
-    events_path: Path,
+    append_fn: Callable[[dict[str, Any]], Any],
     project_root: Path,
     run_id: str,
     incoming_command: str,
@@ -648,7 +758,7 @@ def _enter_repeat_for_each(
     if existing is None:
         items = _resolve_for_each_items(slug=slug, repeat=repeat, project_root=project_root, run_id=run_id)
         path_tuple = parent_prefix + (host.id,)
-        append_event(events_path, make_for_each_expanded_event(path_tuple, items))
+        append_fn(make_for_each_expanded_event(path_tuple, items))
         cursor.for_each_progress[path_str] = {"items": items, "completed": set()}
     else:
         items = tuple(existing.get("item_ids") or ())
@@ -671,7 +781,7 @@ def _enter_repeat_for_each(
     if target_item in completed:
         _reject(slug, f"for_each --item {target_item!r} already completed", abort=False)
     path_tuple = parent_prefix + (host.id,)
-    append_event(events_path, make_item_started_event(path_tuple, target_item))
+    append_fn(make_item_started_event(path_tuple, target_item))
     cursor.frames.append(_make_item_frame(host, parent_prefix, target_item))
     return target_item
 
@@ -808,7 +918,7 @@ def _dispatch_attested(
     if not matched:
         _reject(slug, "incoming command does not match plan[cursor]", abort=False)
 
-    attestor_kind, attestor_id = _validate_attested_identity(
+    attestor_kind, attestor_id = validate_attested_identity(
         slug=slug,
         step=step,
         args=args,
@@ -850,7 +960,7 @@ def _dispatch_attested(
     if iteration is not None:
         feedback = _extract_iterate_feedback(args.evidence)
         if feedback is not None:
-            _write_iteration_feedback(decision, feedback)
+            write_iteration_feedback(decision, feedback)
             append_event(
                 events_path,
                 make_iteration_failed_event(
@@ -869,7 +979,7 @@ def _extract_iterate_feedback(evidence: tuple[str, ...]) -> str | None:
     return None
 
 
-def _write_iteration_feedback(decision: GateDecision, feedback: str) -> None:
+def write_iteration_feedback(decision: GateDecision, feedback: str) -> None:
     if (
         decision.slug is None
         or decision.run_id is None
@@ -950,7 +1060,7 @@ def match_attested_command(incoming: str, expected_prefix: str) -> tuple[bool, A
     return matched, AttestedArgs(agent=agent, actor=actor, evidence=tuple(evidence), item=item)
 
 
-def _validate_attested_identity(
+def validate_attested_identity(
     *,
     slug: str,
     step: AttestedStep,

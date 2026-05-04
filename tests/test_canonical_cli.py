@@ -81,6 +81,61 @@ class CanonicalCliTest(unittest.TestCase):
             self.assertEqual(pipeline.main(["executors", "list"]), 62)
             main.assert_called_once_with(["list"])
 
+    def test_lifecycle_start_short_circuits_gate(self) -> None:
+        """T21: pipeline.main(['start', ...]) routes to lifecycle.cmd_start
+        without invoking the implicit task_gate. Existing orchestrators/
+        executors paths remain unchanged.
+        """
+        from artagents.core.task import gate as task_gate
+        from artagents.core.task import lifecycle as lifecycle_module
+
+        with (
+            mock.patch.object(lifecycle_module, "cmd_start", return_value=71) as cmd_start_mock,
+            mock.patch.object(task_gate, "gate_command") as gate_mock,
+        ):
+            rc = pipeline.main(["start", "demo.app", "--project", "p", "--name", "r1"])
+        self.assertEqual(rc, 71)
+        cmd_start_mock.assert_called_once_with(
+            ["demo.app", "--project", "p", "--name", "r1"]
+        )
+        # Critical: the implicit gate at the top of main() must NOT be invoked
+        # for lifecycle verbs. cmd_ack approve re-enters the gate explicitly,
+        # but for `start --project p` the project slug is the run target, not
+        # a command to dispatch through plan[cursor].
+        self.assertEqual(
+            gate_mock.call_count,
+            0,
+            "task_gate.gate_command must not be called for lifecycle verbs",
+        )
+
+        # Sanity-check the other lifecycle verbs short-circuit the same way.
+        for verb, attr, rc_marker in [
+            ("next", "cmd_next", 72),
+            ("ack", "cmd_ack", 73),
+            ("abort", "cmd_abort", 74),
+            ("status", "cmd_status", 75),
+            ("runs", "cmd_runs_ls", 76),
+        ]:
+            with (
+                mock.patch.object(lifecycle_module, attr, return_value=rc_marker),
+                mock.patch.object(task_gate, "gate_command") as gate_mock,
+            ):
+                argv = ["runs", "ls", "--project", "p"] if verb == "runs" else [verb, "--project", "p"]
+                rc = pipeline.main(argv)
+            self.assertEqual(rc, rc_marker, f"{verb} should route to lifecycle.{attr}")
+            self.assertEqual(
+                gate_mock.call_count, 0, f"gate_command called for `{verb}`"
+            )
+
+        # Confirm orchestrators list / executors list paths still work
+        # unchanged after the lifecycle short-circuit was added (no shadow).
+        with mock.patch.object(orchestrators_cli, "main", return_value=81) as main:
+            self.assertEqual(pipeline.main(["orchestrators", "list"]), 81)
+            main.assert_called_once_with(["list"])
+        with mock.patch.object(executors_cli, "main", return_value=82) as main:
+            self.assertEqual(pipeline.main(["executors", "list"]), 82)
+            main.assert_called_once_with(["list"])
+
 
 if __name__ == "__main__":
     unittest.main()

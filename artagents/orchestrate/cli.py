@@ -1,8 +1,18 @@
-"""`artagents author` CLI: compile / check / describe / new (Phase 4)."""
+"""`artagents author` CLI: compile / check / describe / new (Phase 4) +
+test / explain (Phase 5).
+
+Phase 5 ``author test`` is a SCAFFOLD: it does a simple file-vs-file unified
+diff between a pack's golden events.jsonl and a captured fixture run, ignoring
+volatile ``ts`` and ``hash`` fields. The runtime replay path that would
+actually drive a fixture through the gate / inline checks lands in Phase 9
+(see FLAG-P5-004).
+"""
 
 from __future__ import annotations
 
 import argparse
+import difflib
+import json
 import re
 import sys
 import time
@@ -274,12 +284,190 @@ def _cmd_new(qid: str, packs_root: Optional[Path]) -> int:
     return 0
 
 
+_VOLATILE_EVENT_FIELDS = ("ts", "hash")
+
+
+def _strip_volatile(line: str) -> str:
+    """Return the canonical-without-volatile form of an events.jsonl line.
+
+    Strips ``ts`` and ``hash`` so two captures of the same logical run can be
+    compared without false positives from timestamp drift or chained-hash
+    re-keying. Returns the raw line on JSON decode failure so a malformed
+    fixture surfaces in the diff rather than being silently masked.
+    """
+    raw = line.rstrip("\n")
+    if not raw:
+        return raw
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+    if not isinstance(payload, dict):
+        return raw
+    stripped = {k: v for k, v in payload.items() if k not in _VOLATILE_EVENT_FIELDS}
+    return json.dumps(stripped, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _cmd_test(
+    qid: str,
+    fixture_name: str,
+    packs_root: Optional[Path],
+) -> int:
+    """Phase 5 scaffold: file-diff a captured fixture's events.jsonl against
+    the pack's golden events.jsonl, ignoring volatile ``ts`` and ``hash`` fields.
+
+    Returns 0 on match, 1 on drift (printing the unified diff), 2 with a
+    Phase 9 message when the golden file is missing or empty (capture is
+    Phase 9 per FLAG-P5-004 — DO NOT build a runtime replay path here).
+    """
+    try:
+        pack, name = _qualified_split(qid)
+    except OrchestrateDefinitionError as exc:
+        _print_err(f"author test {qid}: {exc}")
+        return 1
+    root = _packs_root_arg(packs_root)
+    pack_root = root / pack
+    golden_path = pack_root / "golden" / f"{fixture_name}.events.jsonl"
+    fixture_dir = pack_root / "fixtures" / fixture_name
+    captured_path = fixture_dir / "events.jsonl"
+
+    if not golden_path.is_file() or golden_path.stat().st_size == 0:
+        _print_err(
+            f"author test {qid} --fixture {fixture_name}: implement Phase 9 "
+            f"to capture golden runs (run `artagents author test --capture "
+            f"{fixture_name}` once Phase 9 lands). Expected non-empty golden "
+            f"at {golden_path}."
+        )
+        return 2
+
+    if not captured_path.is_file():
+        _print_err(
+            f"author test {qid} --fixture {fixture_name}: no captured fixture "
+            f"run yet at {captured_path} — Phase 9 will produce one."
+        )
+        return 2
+
+    try:
+        golden_lines = golden_path.read_text(encoding="utf-8").splitlines()
+        captured_lines = captured_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        _print_err(f"author test {qid} --fixture {fixture_name}: read failed: {exc}")
+        return 1
+
+    norm_golden = [_strip_volatile(line) for line in golden_lines]
+    norm_captured = [_strip_volatile(line) for line in captured_lines]
+    if norm_golden == norm_captured:
+        print(f"ok {qid} --fixture {fixture_name} ({len(norm_golden)} events)")
+        return 0
+    diff = difflib.unified_diff(
+        norm_golden,
+        norm_captured,
+        fromfile=f"golden/{fixture_name}.events.jsonl",
+        tofile=f"fixtures/{fixture_name}/events.jsonl",
+        lineterm="",
+    )
+    for line in diff:
+        print(line)
+    return 1
+
+
+def _format_step_explain(
+    step,
+    indent: str,
+    *,
+    parent_repeat_chain: tuple[str, ...] = (),
+) -> list[str]:
+    lines: list[str] = []
+    kind = step.kind
+    if isinstance(step, CodeStep):
+        lines.append(
+            f"{indent}Step `{step.id}` ({kind}) runs `{step.command}`."
+        )
+    elif isinstance(step, AttestedStep):
+        ack = step.ack.kind
+        lines.append(
+            f"{indent}Step `{step.id}` ({kind}) waits for {ack} attestation; "
+            f"the runner prints: {step.instructions!r}"
+        )
+    elif isinstance(step, NestedStep):
+        lines.append(
+            f"{indent}Step `{step.id}` ({kind}) delegates to sub-orchestrator "
+            f"`{step.plan.plan_id}`. Children:"
+        )
+    if step.produces:
+        names = sorted(p.name for p in step.produces)
+        lines.append(
+            f"{indent}  Produces: {', '.join(names)}. If any inline check "
+            f"fails, the gate rewinds to `{step.id}` so it redispatches."
+        )
+    repeat = getattr(step, "repeat", None)
+    if isinstance(repeat, RepeatUntil):
+        lines.append(
+            f"{indent}  Iterates with repeat.until.condition="
+            f"{repeat.condition!r}, max_iterations={repeat.max_iterations}, "
+            f"on_exhaust={repeat.on_exhaust!r}. Each failed iteration writes "
+            "iteration_failed and the next `next` enters iteration N+1."
+        )
+    elif isinstance(repeat, RepeatForEach):
+        if repeat.items_source == "static":
+            lines.append(
+                f"{indent}  Fans out across static items {list(repeat.items)} "
+                "via repeat.for_each; each item runs the body independently."
+            )
+        else:
+            lines.append(
+                f"{indent}  Fans out across items resolved from "
+                f"`{repeat.from_ref}` via repeat.for_each."
+            )
+    if isinstance(step, NestedStep):
+        for child in step.plan.steps:
+            lines.extend(
+                _format_step_explain(
+                    child, indent + "  ",
+                    parent_repeat_chain=parent_repeat_chain + (step.id,),
+                )
+            )
+    return lines
+
+
+def _cmd_explain(qid: str, packs_root: Optional[Path]) -> int:
+    """Emit a natural-language description of the plan DAG.
+
+    Mentions step ids, kinds, repeat semantics in plain English, and the
+    rewind-on-failure behavior so an LLM can verify its compiled plan
+    matches a request without parsing the JSON manifest.
+    """
+    try:
+        plan = _resolved_plan(qid, packs_root)
+    except (OrchestrateDefinitionError, TaskPlanError) as exc:
+        _print_err(f"author explain {qid}: {exc}")
+        return 1
+    print(f"plan {plan.plan_id} (version {plan.version})")
+    print("Steps execute top-to-bottom. Each step waits for the previous one "
+          "to complete before the gate advances the cursor.")
+    for step in plan.steps:
+        print()
+        for line in _format_step_explain(step, ""):
+            print(line)
+    print()
+    print(
+        "Failure semantics: when a step's inline produces check fails, the "
+        "gate appends produces_check_failed and rewinds the cursor to that "
+        "step so it redispatches. Inside a repeat.until the iteration count "
+        "advances; outside, the same step retries."
+    )
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="artagents author", description="Phase 4 author CLI")
+    parser = argparse.ArgumentParser(prog="artagents author", description="Phase 4-5 author CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for verb in ("compile", "check", "describe", "new"):
+    for verb in ("compile", "check", "describe", "new", "explain"):
         sp = sub.add_parser(verb, help=f"author {verb} <pack>.<name>")
         sp.add_argument("qualified_id", help="qualified id of the form <pack>.<name>")
+    test_p = sub.add_parser("test", help="author test <pack>.<name> --fixture <name>")
+    test_p.add_argument("qualified_id", help="qualified id of the form <pack>.<name>")
+    test_p.add_argument("--fixture", required=True, help="fixture name (under <pack>/fixtures/)")
     return parser
 
 
@@ -300,5 +488,9 @@ def main(argv: Optional[list] = None, *, packs_root: Optional[Path] = None) -> i
         return _cmd_describe(qid, packs_root)
     if args.cmd == "new":
         return _cmd_new(qid, packs_root)
+    if args.cmd == "test":
+        return _cmd_test(qid, args.fixture, packs_root)
+    if args.cmd == "explain":
+        return _cmd_explain(qid, packs_root)
     parser.print_usage(file=sys.stderr)
     return 2

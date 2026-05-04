@@ -12,11 +12,21 @@ from __future__ import annotations
 import sys
 
 
+# Phase 5 lifecycle verbs short-circuit the implicit task-mode gate at the top
+# of main(): for these verbs the --project flag identifies the run, NOT a
+# command to dispatch through plan[cursor]. cmd_ack approve re-enters the gate
+# explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
+# bypasses the gate's command-match step.
+LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs"}
+
+
 def main(argv: list[str] | None = None) -> int:
     raw = sys.argv[1:] if argv is None else list(argv)
     if raw and raw[0] in {"-h", "--help"}:
         _print_entrypoint_help()
         return 0
+    if raw and raw[0] in LIFECYCLE_VERBS:
+        return _dispatch(raw)
     project_slug = _extract_project_slug(raw)
     if project_slug is None:
         return _dispatch(raw)
@@ -40,6 +50,28 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _dispatch(raw: list[str]) -> int:
+    if raw and raw[0] == "start":
+        from .core.task.lifecycle import cmd_start
+
+        return cmd_start(raw[1:])
+    if raw and raw[0] == "next":
+        from .core.task.lifecycle import cmd_next
+
+        return cmd_next(raw[1:])
+    if raw and raw[0] == "ack":
+        from .core.task.lifecycle import cmd_ack
+
+        return cmd_ack(raw[1:])
+    if raw and raw[0] == "abort":
+        from .core.task.lifecycle import cmd_abort
+
+        return cmd_abort(raw[1:])
+    if raw and raw[0] == "status":
+        from .core.task.lifecycle import cmd_status
+
+        return cmd_status(raw[1:])
+    if raw and raw[0] == "runs":
+        return _dispatch_runs(raw[1:])
     if raw and raw[0] == "publish":
         from .packs.builtin.publish import run as publish
 
@@ -103,6 +135,22 @@ def _dispatch(raw: list[str]) -> int:
     return _run_default_brief_orchestrator(raw)
 
 
+def _dispatch_runs(args: list[str]) -> int:
+    if not args:
+        print("usage: artagents runs ls [--project <slug>]", file=sys.stderr)
+        return 2
+    sub = args[0]
+    if sub == "ls":
+        from .core.task.lifecycle import cmd_runs_ls
+
+        return cmd_runs_ls(args[1:])
+    print(
+        f"runs: unknown sub-verb {sub!r}; only 'runs ls' is implemented in Phase 5",
+        file=sys.stderr,
+    )
+    return 2
+
+
 def _extract_project_slug(raw: list[str]) -> str | None:
     for index, token in enumerate(raw):
         if token == "--project":
@@ -137,7 +185,15 @@ Usage:
   python3 -m artagents doctor
   python3 -m artagents setup [--apply]
   python3 -m artagents orchestrators {list,inspect,validate,run} ...
-  python3 -m artagents author {new,check,describe,compile} <pack>.<name>
+  python3 -m artagents author {new,check,describe,compile,test,explain} <pack>.<name>
+  Task-mode operator verbs:
+    python3 -m artagents start <pack>.<name> --project <slug> [--name <run-id>]
+    python3 -m artagents abort --project <slug>
+    python3 -m artagents status --project <slug>
+    python3 -m artagents runs ls [--project <slug>]
+  Task-mode agent-facing verbs (mid-run):
+    python3 -m artagents next --project <slug>
+    python3 -m artagents ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,fork,install} ...
   python3 -m artagents projects {create,show,source,timeline,materialize} ...

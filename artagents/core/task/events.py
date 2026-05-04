@@ -119,6 +119,17 @@ def make_run_started_event(
     return payload
 
 
+def make_run_aborted_event(run_id: str, *, reason: str | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "kind": "run_aborted",
+        "run_id": run_id,
+        "ts": _utc_now_iso(),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    return payload
+
+
 def make_step_dispatched_event(plan_step_path: str, command: str) -> dict[str, Any]:
     return {
         "command": command,
