@@ -67,6 +67,16 @@ def write_theme_element(theme_root: Path, kind: str, element_id: str, *, label: 
 
 
 class ElementRegistryTest(unittest.TestCase):
+    def test_fade_animation_and_fade_transition_coexist_under_kind_keys(self) -> None:
+        registry = load_default_registry()
+        animation_fade = registry.get("animations", "fade")
+        transition_fade = registry.get("transitions", "fade")
+        self.assertEqual(animation_fade.kind, "animations")
+        self.assertEqual(transition_fade.kind, "transitions")
+        self.assertNotEqual(animation_fade.root, transition_fade.root)
+        self.assertTrue(str(animation_fade.root).endswith("artagents/packs/builtin/elements/animations/fade"))
+        self.assertTrue(str(transition_fade.root).endswith("artagents/packs/builtin/elements/transitions/fade"))
+
     def test_builtin_pack_defaults_are_discovered_with_pack_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
