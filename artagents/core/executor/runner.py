@@ -35,7 +35,7 @@ class ExecutorRunnerError(ExecutorValidationError):
 
 
 def _pipeline_module():
-    from artagents.orchestrators.hype import run as pipeline
+    from artagents.packs.builtin.hype import run as pipeline
 
     return pipeline
 
