@@ -1,4 +1,10 @@
-"""Stdlib schema and validation for ArtAgents orchestrators."""
+"""Stdlib schema and validation for ArtAgents orchestrators.
+
+Note: the task-mode ``code`` step kind is a strict superset of ``RUNTIME_KINDS``
+in expressive power; ``TASK_STEP_KINDS`` is re-exported from
+``artagents.core.task.plan`` (single source of truth) for convenience and is
+not wired into ``OrchestratorDefinition`` validation.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +24,7 @@ from artagents.contracts.schema import (
     Output,
     Port,
 )
+from artagents.core.task.plan import TASK_STEP_KINDS
 
 
 ORCHESTRATOR_KINDS = {"built_in", "external"}
@@ -420,6 +427,9 @@ __all__ = [
     "CACHE_MODES",
     "ISOLATION_MODES",
     "OUTPUT_MODES",
+    "ORCHESTRATOR_KINDS",
+    "RUNTIME_KINDS",
+    "TASK_STEP_KINDS",
     "CachePolicy",
     "CommandSpec",
     "OrchestratorDefinition",

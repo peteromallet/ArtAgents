@@ -119,6 +119,30 @@ def test_reentry_after_fresh_dispatch_does_not_double_append(tmp_projects_root: 
     assert [event["kind"] for event in events] == ["step_dispatched"]
 
 
+def test_phase_1_top_level_events_keep_bare_id_payload_shape(tmp_projects_root: Path) -> None:
+    """Regression: Phase 1 plans (no nested) must emit bare-id plan_step_id payloads."""
+    first, second = _write_plan(
+        tmp_projects_root,
+        [{"id": "s1", "command": "echo one"}, {"id": "s2", "command": "echo two"}],
+    )
+    _activate_plan(tmp_projects_root)
+
+    d1 = gate_command("demo", first, [], root=tmp_projects_root)
+    record_dispatch_complete(d1, 0)
+    d2 = gate_command("demo", second, [], root=tmp_projects_root)
+    record_dispatch_complete(d2, 0)
+
+    events = read_events(d2.events_path)
+    leaf_events = [e for e in events if e["kind"] in ("step_dispatched", "step_completed")]
+    for event in leaf_events:
+        # Phase 1 wire shape: top-level steps use the bare id, no slashes.
+        assert "/" not in event["plan_step_id"]
+    ids = sorted({e["plan_step_id"] for e in leaf_events})
+    assert ids == ["s1", "s2"]
+    # No nested_entered/nested_exited events for a flat Phase-1 plan.
+    assert not any(e["kind"] in ("nested_entered", "nested_exited") for e in events)
+
+
 def _write_plan(tmp_projects_root: Path, steps: list[dict[str, str]]) -> tuple[str, ...]:
     create_project("demo", root=tmp_projects_root)
     plan_path = tmp_projects_root / "demo" / "plan.json"

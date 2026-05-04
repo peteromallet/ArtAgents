@@ -102,28 +102,70 @@ def read_events(path: str | Path) -> list[dict[str, Any]]:
         raise EventLogError(f"failed to read {events_path}: {exc}") from exc
 
 
-def make_run_started_event(run_id: str, plan_hash: str) -> dict[str, Any]:
-    return {
+def make_run_started_event(
+    run_id: str,
+    plan_hash: str,
+    *,
+    actor: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "kind": "run_started",
         "plan_hash": plan_hash,
         "run_id": run_id,
         "ts": _utc_now_iso(),
     }
+    if actor is not None:
+        payload["actor"] = actor
+    return payload
 
 
-def make_step_dispatched_event(plan_step_id: str, command: str) -> dict[str, Any]:
+def make_step_dispatched_event(plan_step_path: str, command: str) -> dict[str, Any]:
     return {
         "command": command,
         "kind": "step_dispatched",
-        "plan_step_id": plan_step_id,
+        "plan_step_id": plan_step_path,
         "ts": _utc_now_iso(),
     }
 
 
-def make_step_completed_event(plan_step_id: str, returncode: int) -> dict[str, Any]:
+def make_step_completed_event(plan_step_path: str, returncode: int) -> dict[str, Any]:
     return {
         "kind": "step_completed",
-        "plan_step_id": plan_step_id,
+        "plan_step_id": plan_step_path,
+        "returncode": returncode,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_step_attested_event(
+    plan_step_path: str,
+    attestor_kind: str,
+    attestor_id: str,
+    evidence: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    return {
+        "attestor_id": attestor_id,
+        "attestor_kind": attestor_kind,
+        "evidence": list(evidence),
+        "kind": "step_attested",
+        "plan_step_id": plan_step_path,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_nested_entered_event(plan_step_path: str, child_plan_hash: str) -> dict[str, Any]:
+    return {
+        "child_plan_hash": child_plan_hash,
+        "kind": "nested_entered",
+        "plan_step_id": plan_step_path,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_nested_exited_event(plan_step_path: str, returncode: int) -> dict[str, Any]:
+    return {
+        "kind": "nested_exited",
+        "plan_step_id": plan_step_path,
         "returncode": returncode,
         "ts": _utc_now_iso(),
     }

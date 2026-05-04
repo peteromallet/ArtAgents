@@ -8,6 +8,7 @@ from collections.abc import Mapping
 TASK_RUN_ID_ENV = "ARTAGENTS_TASK_RUN_ID"
 TASK_PROJECT_ENV = "ARTAGENTS_TASK_PROJECT"
 TASK_STEP_ID_ENV = "ARTAGENTS_TASK_STEP_ID"
+ARTAGENTS_ACTOR = "ARTAGENTS_ACTOR"
 
 
 def task_project_env() -> str | None:
@@ -20,6 +21,10 @@ def task_run_id_env() -> str | None:
 
 def task_step_id_env() -> str | None:
     return os.environ.get(TASK_STEP_ID_ENV)
+
+
+def task_actor_env() -> str | None:
+    return os.environ.get(ARTAGENTS_ACTOR)
 
 
 def is_in_task_run(slug: str | None = None) -> bool:
@@ -37,6 +42,7 @@ def apply_task_run_env(run_id: str, project_slug: str, step_id: str) -> None:
 
 def child_subprocess_env(*, base: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
+    env.pop(ARTAGENTS_ACTOR, None)
     for key in (TASK_RUN_ID_ENV, TASK_PROJECT_ENV, TASK_STEP_ID_ENV):
         value = os.environ.get(key)
         if value is not None:
