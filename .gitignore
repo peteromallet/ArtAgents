@@ -54,3 +54,6 @@ cache/
 
 # Local scratch pack (gitignored)
 /artagents/packs/local/
+
+# Generated orchestrator build artifacts (compiled DSL JSON)
+artagents/packs/*/build/

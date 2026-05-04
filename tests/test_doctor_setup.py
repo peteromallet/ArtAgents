@@ -103,9 +103,9 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertNotIn("elements sync", stdout)
         self.assertIn("[skipped] elements install: effects/text-card: no dependencies declared", stdout)
 
-    def test_top_level_dirs_includes_verify_but_not_orchestrate(self) -> None:
+    def test_top_level_dirs_includes_verify_and_orchestrate(self) -> None:
         self.assertIn("verify", TOP_LEVEL_ARTAGENTS_DIRS)
-        self.assertNotIn("orchestrate", TOP_LEVEL_ARTAGENTS_DIRS)
+        self.assertIn("orchestrate", TOP_LEVEL_ARTAGENTS_DIRS)
 
     def test_repo_structure_guard_rejects_legacy_and_misplaced_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

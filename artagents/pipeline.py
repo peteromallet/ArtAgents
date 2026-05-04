@@ -60,6 +60,10 @@ def _dispatch(raw: list[str]) -> int:
         from .core.orchestrator import cli as orchestrators_cli
 
         return orchestrators_cli.main(raw[1:])
+    if raw and raw[0] == "author":
+        from .orchestrate import cli as author_cli
+
+        return author_cli.main(raw[1:])
     if raw and raw[0] == "elements":
         from .core.element import cli as elements_cli
 
@@ -133,6 +137,7 @@ Usage:
   python3 -m artagents doctor
   python3 -m artagents setup [--apply]
   python3 -m artagents orchestrators {list,inspect,validate,run} ...
+  python3 -m artagents author {new,check,describe,compile} <pack>.<name>
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,fork,install} ...
   python3 -m artagents projects {create,show,source,timeline,materialize} ...
