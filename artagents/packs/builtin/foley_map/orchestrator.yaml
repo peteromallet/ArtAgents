@@ -1,0 +1,39 @@
+{
+  "id": "builtin.foley_map",
+  "name": "Foley Map",
+  "kind": "built_in",
+  "version": "0.1",
+  "description": "Spatial Foley pipeline: tile a video, ask a VLM for a global scene description and per-tile prompts, score each tile via fal Hunyuan-Foley, render a sense-check page, and emit a static viewer that mixes the tracks by viewport position.",
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.packs.builtin.foley_map.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [
+    "builtin.tile_video",
+    "builtin.visual_understand",
+    "external.fal_foley",
+    "builtin.foley_review",
+    "builtin.spatial_audio_page"
+  ],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.foley_map.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main",
+    "env": ["FAL_KEY", "OPENAI_API_KEY"]
+  }
+}

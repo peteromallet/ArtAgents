@@ -1,0 +1,41 @@
+{
+  "id": "builtin.tile_video",
+  "name": "Tile Video",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Crop a video into an MxN grid of overlapping spatial tiles. Emits one tile clip and one first-frame PNG per tile, plus a tiles.json manifest with each tile's rect in original-video coords.",
+  "inputs": [
+    {
+      "name": "video",
+      "type": "file",
+      "required": true,
+      "description": "Source video to tile."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "tiles_manifest",
+      "type": "file",
+      "path_template": "{out}/tiles.json"
+    }
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "artagents.packs.builtin.tile_video.run"
+    ]
+  },
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.tile_video.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main"
+  }
+}

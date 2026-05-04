@@ -1,0 +1,41 @@
+{
+  "id": "builtin.foley_review",
+  "name": "Foley Review",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Build a static review.html that pairs each tile clip with its generated Foley audio for sense-checking. Reviewers can flag bad tiles; flags are written to a flagged.json sidecar.",
+  "inputs": [
+    {
+      "name": "manifest",
+      "type": "file",
+      "required": true,
+      "description": "tiles.json manifest (with foley_audio paths added)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "review_html",
+      "type": "file",
+      "path_template": "{out}/review.html"
+    }
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "artagents.packs.builtin.foley_review.run"
+    ]
+  },
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.foley_review.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "builtin.spatial_audio_page",
+  "name": "Spatial Audio Page",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Build a static page that plays the original video with N Foley tracks anchored to spatial rectangles, mixed live by viewport position via Web Audio. Output is a self-contained directory of HTML + asset copies.",
+  "inputs": [
+    {
+      "name": "manifest",
+      "type": "file",
+      "required": true,
+      "description": "tiles.json manifest (with foley_audio paths)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "page",
+      "type": "directory",
+      "path_template": "{out}"
+    }
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "artagents.packs.builtin.spatial_audio_page.run"
+    ]
+  },
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.spatial_audio_page.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main"
+  }
+}
