@@ -1,66 +1,15 @@
 #!/usr/bin/env python3
-"""ArtAgents package command gateway.
+"""ArtAgents top-level command gateway.
 
-Hype orchestration lives in :mod:`artagents.packs.builtin.hype.run`.
-This module keeps the historical top-level CLI and import surface stable.
+Subcommands dispatch to focused module CLIs (executors, orchestrators,
+elements, projects, threads, modalities, doctor, setup, audit). Brief / video
+flags fall through to the ``builtin.hype`` orchestrator resolved through the
+orchestrator registry.
 """
 
 from __future__ import annotations
 
 import sys
-
-from ._paths import REPO_ROOT as _REPO_ROOT
-from .packs.builtin.hype import run as _hype
-
-
-# Compatibility exports for older tests, wrappers, and external callers that
-# imported hype pipeline helpers from artagents.pipeline.
-STEP_ORDER = _hype.STEP_ORDER
-PER_SOURCE_SENTINELS = _hype.PER_SOURCE_SENTINELS
-PER_BRIEF_SENTINELS = _hype.PER_BRIEF_SENTINELS
-Step = _hype.Step
-usage_error = _hype.usage_error
-_resolve_theme_arg = _hype._resolve_theme_arg
-build_parser = _hype.build_parser
-load_config = _hype.load_config
-normalize_config = _hype.normalize_config
-parse_asset_entry = _hype.parse_asset_entry
-normalize_many = _hype.normalize_many
-normalize_extra_args = _hype.normalize_extra_args
-resolve_args = _hype.resolve_args
-step_argv = _hype.step_argv
-add_extra_args = _hype.add_extra_args
-asset_args = _hype.asset_args
-probe_audio_duration = _hype.probe_audio_duration
-prepare_brief_artifacts = _hype.prepare_brief_artifacts
-parse_brief_frontmatter = _hype.parse_brief_frontmatter
-build_pool_cut_cmd = _hype.build_pool_cut_cmd
-build_pool_steps = _hype.build_pool_steps
-select_steps = _hype.select_steps
-step_output_root = _hype.step_output_root
-log_dir_for_step = _hype.log_dir_for_step
-sentinel_paths = _hype.sentinel_paths
-should_rerun = _hype.should_rerun
-print_log_tail = _hype.print_log_tail
-run_step = _hype.run_step
-cmd_safe = _hype.cmd_safe
-write_skip_log = _hype.write_skip_log
-pool_main = _hype.pool_main
-asset_cache = _hype.asset_cache
-WORKSPACE_ROOT = _hype.WORKSPACE_ROOT
-REPO_ROOT = _REPO_ROOT
-
-
-def _sync_hype_aliases() -> None:
-    """Propagate monkey-patched legacy aliases before delegating to hype."""
-    _hype.run_step = run_step
-    _hype.print_log_tail = print_log_tail
-    _hype.probe_audio_duration = probe_audio_duration
-    _hype.select_steps = select_steps
-    _hype.build_pool_steps = build_pool_steps
-    _hype.build_pool_cut_cmd = build_pool_cut_cmd
-    _hype.prepare_brief_artifacts = prepare_brief_artifacts
-    _hype.pool_main = pool_main
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -120,8 +69,23 @@ def main(argv: list[str] | None = None) -> int:
         from .packs.builtin.reigh_data import run as reigh_data
 
         return reigh_data.main(raw[1:])
-    _sync_hype_aliases()
-    return _hype.main(raw)
+    return _run_default_brief_orchestrator(raw)
+
+
+def _run_default_brief_orchestrator(argv: list[str]) -> int:
+    from importlib import import_module
+
+    from .core.orchestrator.registry import load_default_registry
+
+    registry = load_default_registry()
+    orchestrator = registry.get("builtin.hype")
+    runtime_module = orchestrator.metadata.get("runtime_module")
+    runtime_entrypoint = orchestrator.metadata.get("runtime_entrypoint", "main")
+    if not isinstance(runtime_module, str) or not runtime_module:
+        raise RuntimeError("builtin.hype manifest is missing metadata.runtime_module")
+    module = import_module(runtime_module)
+    entrypoint = getattr(module, runtime_entrypoint)
+    return int(entrypoint(argv))
 
 
 def _print_entrypoint_help() -> None:
@@ -133,7 +97,7 @@ Usage:
   python3 -m artagents setup [--apply]
   python3 -m artagents orchestrators {list,inspect,validate,run} ...
   python3 -m artagents executors {list,inspect,validate,install,run} ...
-  python3 -m artagents elements {list,inspect,sync,fork,install,update} ...
+  python3 -m artagents elements {list,inspect,fork,install} ...
   python3 -m artagents projects {create,show,source,timeline,materialize} ...
   python3 -m artagents thread {new,list,show,archive,reopen,backfill,keep,dismiss,group} ...
   python3 -m artagents modalities {list,inspect} ...

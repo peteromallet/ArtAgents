@@ -804,7 +804,7 @@ def build_pool_steps() -> list[Step]:
                 args,
                 "render",
                 [
-                    *step_argv("render_remotion.py", args.python_exec),
+                    *step_argv("render.py", args.python_exec),
                     "--timeline",
                     str(args.brief_out / "hype.timeline.json"),
                     "--assets",
@@ -897,6 +897,11 @@ def select_steps(args: argparse.Namespace) -> list[Step]:
     from artagents.core.executor.registry import load_default_registry
 
     registry = load_default_registry()
+    executors_by_step = {
+        executor.metadata.get("pipeline_step"): executor
+        for executor in registry.list()
+        if executor.metadata.get("pipeline_step")
+    }
     facts = _initial_facts(args)
     all_steps = {step.name: step for step in build_pool_steps()}
     selected: list[Step] = []
@@ -904,10 +909,8 @@ def select_steps(args: argparse.Namespace) -> list[Step]:
         step = all_steps.get(name)
         if step is None:
             continue
-        executor_id = f"builtin.{name}"
-        try:
-            executor = registry.get(executor_id)
-        except KeyError:
+        executor = executors_by_step.get(name)
+        if executor is None:
             selected.append(step)
             continue
         requirements = set(executor.pipeline_requirements)

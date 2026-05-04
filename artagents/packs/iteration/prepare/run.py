@@ -22,8 +22,9 @@ from artagents.threads.record import sha256_file
 from artagents.threads.schema import SCHEMA_VERSION
 from artagents.threads.variants import selection_history
 
+UNDERSTAND_EXECUTOR_ID = "builtin.understand"
 DEFAULT_MAX_ITERATIONS = 200
-DEFAULT_SUMMARIZER_MODEL_VERSION = "builtin.understand.v1"
+DEFAULT_SUMMARIZER_MODEL_VERSION = f"{UNDERSTAND_EXECUTOR_ID}.v1"
 DEFAULT_COST_PER_CALL = 0.009
 
 
@@ -290,14 +291,14 @@ def call_builtin_understand(node: RunNode, *, summarizer_model_version: str, sum
     ]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
-        raise PrepareError((completed.stderr or completed.stdout or "builtin.understand failed").strip())
+        raise PrepareError((completed.stderr or completed.stdout or f"{UNDERSTAND_EXECUTOR_ID} failed").strip())
     text = (completed.stdout or "").strip()
     return {
         "schema_version": SCHEMA_VERSION,
         "run_id": node.run_id,
         "summary": text,
         "summarizer_model_version": summarizer_model_version,
-        "executor_id": "builtin.understand",
+        "executor_id": UNDERSTAND_EXECUTOR_ID,
         "mode": mode,
     }
 
@@ -517,7 +518,7 @@ def _fallback_summary(node: RunNode, model_version: str, reason: str) -> dict[st
         "run_id": node.run_id,
         "summary": f"{node.record.get('executor_id') or node.record.get('orchestrator_id') or 'run'}: {reason}",
         "summarizer_model_version": model_version,
-        "executor_id": "builtin.understand",
+        "executor_id": UNDERSTAND_EXECUTOR_ID,
         "fallback": True,
         "reason": reason,
     }

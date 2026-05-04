@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents import pipeline
+from artagents.packs.builtin.hype import run as pipeline
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -285,8 +285,10 @@ class PipelineCachingTest(unittest.TestCase):
         self.assertEqual([name for name, _ in calls], POOL_NO_RENDER_STEPS)
 
     def test_executors_list_dispatches_before_required_arguments(self) -> None:
+        from artagents import pipeline as gateway
+
         with mock.patch("artagents.core.executor.cli.main", return_value=0) as executors_main:
-            result = pipeline.main(["executors", "list"])
+            result = gateway.main(["executors", "list"])
 
         self.assertEqual(result, 0)
         executors_main.assert_called_once_with(["list"])

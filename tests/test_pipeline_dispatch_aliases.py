@@ -17,7 +17,7 @@ class PipelineDispatchAliasTest(unittest.TestCase):
         self.assertIn("ArtAgents command gateway", help_text)
         self.assertIn("python3 -m artagents orchestrators {list,inspect,validate,run}", help_text)
         self.assertIn("python3 -m artagents executors {list,inspect,validate,install,run}", help_text)
-        self.assertIn("python3 -m artagents elements {list,inspect,sync,fork,install,update}", help_text)
+        self.assertIn("python3 -m artagents elements {list,inspect,fork,install}", help_text)
         self.assertIn("python3 -m artagents is the package entry point", help_text)
         self.assertNotIn("pipeline.py", help_text)
         self.assertNotIn("conductors", help_text)

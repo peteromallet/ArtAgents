@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents import pipeline
+from artagents.packs.builtin.hype import run as pipeline
 from artagents.packs.builtin.hype import run as hype_run
 
 

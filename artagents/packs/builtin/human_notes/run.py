@@ -242,7 +242,7 @@ def _apply_pipeline(args: argparse.Namespace) -> None:
         refine_cmd.extend(["--env-file", str(args.env_file)])
 
     render_cmd = [
-        *_step_argv("render_remotion.py", args.python_exec),
+        *_step_argv("render.py", args.python_exec),
         "--timeline",
         str(timeline_path),
         "--assets",

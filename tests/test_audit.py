@@ -66,7 +66,7 @@ def test_audit_redacts_secret_like_values(tmp_path: Path) -> None:
 
 def test_pipeline_audit_cli_json(tmp_path: Path, capsys) -> None:
     pytest.importorskip("jsonschema")
-    from artagents.pipeline import main as pipeline_main
+    from artagents.pipeline import main as pipeline_main  # gateway
 
     ctx = AuditContext.for_run(tmp_path / "run")
     asset_id = ctx.register_asset(kind="source", label="Only source")
@@ -78,7 +78,7 @@ def test_pipeline_audit_cli_json(tmp_path: Path, capsys) -> None:
 
 def test_pipeline_audit_env_propagation_and_fallback(monkeypatch, tmp_path: Path) -> None:
     pytest.importorskip("jsonschema")
-    from artagents import pipeline
+    from artagents.packs.builtin.hype import run as pipeline
 
     script = tmp_path / "child.py"
     script.write_text(

@@ -9,7 +9,7 @@ from unittest import mock
 
 from artagents.packs.builtin.arrange import run as arrange
 from artagents.packs.builtin.cut import run as cut
-from artagents import pipeline
+from artagents.packs.builtin.hype import run as pipeline
 from artagents.packs.builtin.pool_merge import run as pool_merge
 from artagents import timeline
 

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from artagents.packs.builtin.editor_review import run as editor_review
-from artagents import pipeline
+from artagents.packs.builtin.hype import run as pipeline
 from artagents import timeline
 
 
