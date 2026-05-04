@@ -61,7 +61,7 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertEqual(strict_result, 1, strict_stderr)
         self.assertIn("[warn] optional binary ffmpeg: not found on PATH", strict_stdout)
 
-    def test_setup_dry_run_plans_local_sync_without_mutating_workspace(self) -> None:
+    def test_setup_dry_run_does_not_mutate_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp)
             with mock.patch.object(setup_cli, "REPO_ROOT", project_root):
@@ -70,8 +70,9 @@ class DoctorSetupTest(unittest.TestCase):
             self.assertEqual(result, 0, stderr)
             self.assertIn("ArtAgents setup", stdout)
             self.assertIn("dry-run: pass --apply", stdout)
-            self.assertIn("[planned] elements sync:", stdout)
+            self.assertNotIn("elements sync", stdout)
             self.assertFalse((project_root / ".artagents" / "elements" / "managed").exists())
+            self.assertFalse((project_root / "artagents" / "packs" / "local").exists())
 
     def test_setup_json_dry_run_is_machine_readable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,23 +85,22 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertFalse(payload["applied"])
         self.assertIn("dry-run", {step["status"] for step in payload["steps"]})
 
-    def test_setup_apply_delegates_to_sync_and_install_helpers(self) -> None:
+    def test_setup_apply_delegates_to_install_helpers(self) -> None:
         registry = load_element_registry()
         element = registry.get("effects", "text-card")
         fake_registry = SimpleNamespace(list=lambda: (element,))
         fake_plan = SimpleNamespace(noop_reason="no dependencies declared", command_lines=lambda: ())
         fake_result = SimpleNamespace(plan=fake_plan)
 
-        with mock.patch.object(setup_cli, "_sync_managed_defaults", return_value=["synced: managed"]) as sync, mock.patch.object(
+        with mock.patch.object(
             setup_cli, "load_element_registry", return_value=fake_registry
         ) as load_registry, mock.patch.object(setup_cli, "install_element", return_value=fake_result) as install:
             result, stdout, stderr = self.capture(setup_cli.main, ["--apply"])
 
         self.assertEqual(result, 0, stderr)
-        sync.assert_called_once_with(dry_run=False, overwrite=False, project_root=setup_cli.REPO_ROOT)
         load_registry.assert_called_once_with(project_root=setup_cli.REPO_ROOT)
         install.assert_called_once_with(element, project_root=setup_cli.REPO_ROOT, dry_run=False)
-        self.assertIn("[applied] elements sync: synced: managed", stdout)
+        self.assertNotIn("elements sync", stdout)
         self.assertIn("[skipped] elements install: effects/text-card: no dependencies declared", stdout)
 
     def test_repo_structure_guard_rejects_legacy_and_misplaced_folders(self) -> None:

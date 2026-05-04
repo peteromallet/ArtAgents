@@ -42,7 +42,7 @@ class ElementDefinition:
 
     @property
     def fork_target(self) -> Path:
-        return Path(".artagents") / "elements" / "overrides" / self.kind / self.id
+        return Path("artagents") / "packs" / "local" / "elements" / self.kind / self.id
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

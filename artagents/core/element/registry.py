@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
@@ -89,10 +90,12 @@ class ElementRegistry:
         target = self.fork_target(kind, element_id, project_root=project_root)
         if target.exists() and not overwrite:
             raise ElementRegistryError(f"element override already exists: {target}")
+        ensure_local_pack(project_root=project_root)
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(element.root, target)
+        _rewrite_pack_id(target, "local")
         return target
 
 
@@ -117,7 +120,6 @@ def load_default_registry(
 
 
 def default_sources(*, active_theme: str | Path | None = None, project_root: str | Path = REPO_ROOT) -> tuple[ElementSource, ...]:
-    root = Path(project_root)
     theme_dir = _resolve_theme_dir(active_theme)
     sources: list[ElementSource] = []
     if theme_dir is not None:
@@ -127,29 +129,46 @@ def default_sources(*, active_theme: str | Path | None = None, project_root: str
                 ElementSource("active_theme", theme_dir, 0, True),
             ]
         )
-    sources.extend(
-        [
-            ElementSource("overrides", root / ".artagents" / "elements" / "overrides", 10, True),
-            ElementSource("managed", root / ".artagents" / "elements" / "managed", 20, False),
-        ]
-    )
     return tuple(sources)
 
 
 def load_pack_elements() -> tuple[ElementDefinition, ...]:
     elements: list[ElementDefinition] = []
     for pack in discover_packs():
+        priority = 10 if pack.id == "local" else 30
         for kind, root in iter_element_roots(pack):
             element = load_element_definition(
                 root,
                 kind=kind,
                 source=f"pack:{pack.id}",
                 editable=pack.id == "local",
-                priority=30,
+                priority=priority,
             )
             validate_element_pack_id(element.metadata.get("pack_id"), pack, element_root=root)
             elements.append(element)
     return tuple(elements)
+
+
+def ensure_local_pack(*, project_root: str | Path = REPO_ROOT) -> Path:
+    pack_root = Path(project_root) / "artagents" / "packs" / "local"
+    pack_root.mkdir(parents=True, exist_ok=True)
+    manifest = pack_root / "pack.yaml"
+    if not manifest.exists():
+        manifest.write_text("id: local\nname: Local Scratch Pack\nversion: 0.1.0\n", encoding="utf-8")
+    return pack_root
+
+
+def _rewrite_pack_id(element_root: Path, new_pack_id: str) -> None:
+    from .schema import ELEMENT_MANIFEST_NAMES
+
+    for name in ELEMENT_MANIFEST_NAMES:
+        manifest = element_root / name
+        if not manifest.is_file():
+            continue
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        data["pack_id"] = new_pack_id
+        manifest.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return
 
 
 def load_source_elements(source: ElementSource) -> tuple[ElementDefinition, ...]:

@@ -33,26 +33,17 @@ class ElementsCliTest(unittest.TestCase):
         self.assertEqual(result, 0, stderr)
         self.assertIn("effects/text-card: ok", stdout)
 
-    def test_sync_update_and_fork_use_expected_roots_without_overwriting(self) -> None:
+    def test_fork_copies_into_local_pack_and_blocks_re_fork_without_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             with mock.patch.object(cli, "REPO_ROOT", project):
-                result, stdout, stderr = self.capture(["sync"])
-                self.assertEqual(result, 0, stderr)
-                managed = project / ".artagents" / "elements" / "managed" / "effects" / "text-card"
-                self.assertTrue((managed / "component.tsx").is_file())
-
                 result, stdout, stderr = self.capture(["fork", "effects", "text-card"])
                 self.assertEqual(result, 0, stderr)
-                override = project / ".artagents" / "elements" / "overrides" / "effects" / "text-card"
-                self.assertTrue((override / "component.tsx").is_file())
-
-                marker = override / "USER_EDIT"
-                marker.write_text("keep me", encoding="utf-8")
-                result, stdout, stderr = self.capture(["update"])
-                self.assertEqual(result, 0, stderr)
-                self.assertTrue(marker.is_file())
-                self.assertIn("skip override", stdout)
+                forked = project / "artagents" / "packs" / "local" / "elements" / "effects" / "text-card"
+                self.assertTrue((forked / "component.tsx").is_file())
+                payload = json.loads((forked / "element.yaml").read_text(encoding="utf-8"))
+                self.assertEqual(payload["pack_id"], "local")
+                self.assertTrue((project / "artagents" / "packs" / "local" / "pack.yaml").is_file())
 
                 result, stdout, stderr = self.capture(["fork", "effects", "text-card"])
                 self.assertEqual(result, 2)

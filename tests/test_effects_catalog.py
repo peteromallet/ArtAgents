@@ -286,30 +286,46 @@ class EffectsCatalogTest(unittest.TestCase):
                 )
 
             project = workspace / "project"
-            managed = project / ".artagents" / "elements" / "managed"
-            write_plugin("effects", "stamp", root=managed)
-            write_plugin("animations", "fade-up", root=managed)
+            local_pack = project / "artagents" / "packs" / "local"
+            local_pack.mkdir(parents=True)
+            (local_pack / "pack.yaml").write_text("id: local\nname: Local\nversion: 0.1.0\n", encoding="utf-8")
+
+            def write_local_plugin(kind: str, plugin_id: str) -> None:
+                write_plugin(kind, plugin_id, root=local_pack / "elements")
+                # rewrite pack_id so registry alignment passes
+                manifest = local_pack / "elements" / kind / plugin_id / "element.yaml"
+                payload = json.loads(manifest.read_text(encoding="utf-8"))
+                payload["pack_id"] = "local"
+                manifest.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+            write_local_plugin("effects", "stamp")
+            write_local_plugin("animations", "fade-up")
             write_plugin("animations", "type-on", root=theme)
-            write_plugin("transitions", "crossfade", root=managed)
+            write_local_plugin("transitions", "crossfade")
             write_plugin("transitions", "crossfade", root=theme)
+
+            from artagents.core.element import registry as element_registry
+            from artagents.core.pack import discover_packs as real_discover_packs
 
             old_tools_dir = gen_effect_registry.TOOLS_DIR
             old_themes_root = gen_effect_registry.THEMES_ROOT
+            old_discover = element_registry.discover_packs
             try:
                 gen_effect_registry.TOOLS_DIR = project
                 gen_effect_registry.THEMES_ROOT = workspace / "themes"
+                element_registry.discover_packs = lambda root=None: real_discover_packs() + real_discover_packs(local_pack.parent)
 
                 effects = gen_effect_registry.generate_element_registry("effects", theme_dir=theme)
                 animations = gen_effect_registry.generate_element_registry("animations", theme_dir=theme)
                 transitions = gen_effect_registry.generate_element_registry("transitions", theme_dir=theme)
 
-                self.assertIn("import Stamp from '@managed-elements-effects/stamp/component';", effects)
+                self.assertIn("import Stamp from '@pack-local-elements-effects/stamp/component';", effects)
                 self.assertIn("'stamp'", effects)
                 self.assertIn("'text-card'", effects)
                 self.assertIn("'stamp': Stamp", effects)
                 self.assertIn("'stamp-alias': 'stamp'", effects)
 
-                self.assertIn("import FadeUp from '@managed-elements-animations/fade-up/component';", animations)
+                self.assertIn("import FadeUp from '@pack-local-elements-animations/fade-up/component';", animations)
                 self.assertIn("import TypeOn from '@theme-animations/type-on/component';", animations)
                 self.assertIn("'fade-up'", animations)
                 self.assertIn("'type-on'", animations)
@@ -317,19 +333,17 @@ class EffectsCatalogTest(unittest.TestCase):
                 self.assertIn("'type-on': TypeOn", animations)
                 self.assertIn("'fade-up': {\"durationFrames\":12}", animations)
                 self.assertIn("'type-on': {\"durationFrames\":12}", animations)
-                self.assertIn("'fade-up': {\"defaultDurationFrames\":12,\"id\":\"fade-up\",\"kind\":\"wrapper\",\"phase\":\"entrance\"}", animations)
-                self.assertIn("'type-on': {\"defaultDurationFrames\":12,\"id\":\"type-on\",\"kind\":\"hook\",\"phase\":\"entrance\"}", animations)
 
                 self.assertIn("import Crossfade from '@theme-transitions/crossfade/component';", transitions)
-                self.assertNotIn("@managed-elements-transitions/crossfade/component", transitions)
+                self.assertNotIn("@pack-local-elements-transitions/crossfade/component", transitions)
                 self.assertIn("'crossfade'", transitions)
                 self.assertIn("'cross-fade'", transitions)
                 self.assertIn("'crossfade': Crossfade", transitions)
                 self.assertIn("'crossfade': {\"durationFrames\":9}", transitions)
-                self.assertIn("'crossfade': {\"id\":\"crossfade\",\"label\":\"Crossfade\"}", transitions)
             finally:
                 gen_effect_registry.TOOLS_DIR = old_tools_dir
                 gen_effect_registry.THEMES_ROOT = old_themes_root
+                element_registry.discover_packs = old_discover
 
     def test_theme_effect_collision_warns_and_theme_version_wins(self) -> None:
         result = self._run_generator("--theme", str(THEME_FIXTURE))

@@ -51,3 +51,6 @@ cache/
 .megaplan/
 .compactify/
 .megaplan-worktrees/
+
+# Local scratch pack (gitignored)
+/artagents/packs/local/

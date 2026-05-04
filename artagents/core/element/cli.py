@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
-from pathlib import Path
 from typing import Any
 
 from artagents._paths import REPO_ROOT
 
 from .install import install_element
-from .registry import ElementRegistryError, default_sources, load_default_registry
+from .registry import ElementRegistryError, load_default_registry
 from .schema import ELEMENT_KINDS, ElementValidationError
 
 
@@ -30,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python3 -m artagents elements",
-        description="List, inspect, validate, sync, fork, install, and update ArtAgents render elements.",
+        description="List, inspect, validate, fork, and install ArtAgents render elements.",
     )
     parser.add_argument("--theme", help="Active theme id, theme directory, or path to theme.json.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -51,14 +49,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("element_id", nargs="?")
     validate_parser.set_defaults(handler=_cmd_validate)
 
-    sync_parser = subparsers.add_parser("sync", help="Materialize bundled defaults into .artagents/elements/managed.")
-    sync_parser.add_argument("--dry-run", action="store_true", help="Print actions without copying files.")
-    sync_parser.set_defaults(handler=_cmd_sync)
-
-    fork_parser = subparsers.add_parser("fork", help="Fork an element into .artagents/elements/overrides.")
+    fork_parser = subparsers.add_parser("fork", help="Fork an element into the local pack (artagents/packs/local).")
     fork_parser.add_argument("kind", choices=ELEMENT_KINDS)
     fork_parser.add_argument("element_id")
-    fork_parser.add_argument("--overwrite", action="store_true", help="Replace an existing override.")
+    fork_parser.add_argument("--overwrite", action="store_true", help="Replace an existing local fork.")
     fork_parser.set_defaults(handler=_cmd_fork)
 
     install_parser = subparsers.add_parser("install", help="Plan or apply local dependency install for one element.")
@@ -67,9 +61,6 @@ def build_parser() -> argparse.ArgumentParser:
     install_parser.add_argument("--apply", action="store_true", help="Run the local install commands. Default is dry-run.")
     install_parser.set_defaults(handler=_cmd_install)
 
-    update_parser = subparsers.add_parser("update", help="Refresh managed defaults without overwriting overrides.")
-    update_parser.add_argument("--dry-run", action="store_true", help="Print actions without copying files.")
-    update_parser.set_defaults(handler=_cmd_update)
     return parser
 
 
@@ -107,20 +98,6 @@ def _cmd_validate(args: argparse.Namespace, registry: Any) -> int:
     return 0
 
 
-def _cmd_sync(args: argparse.Namespace, registry: Any) -> int:
-    del registry
-    actions = _sync_managed_defaults(dry_run=bool(args.dry_run), overwrite=False)
-    _print_actions(actions)
-    return 0
-
-
-def _cmd_update(args: argparse.Namespace, registry: Any) -> int:
-    del registry
-    actions = _sync_managed_defaults(dry_run=bool(args.dry_run), overwrite=True)
-    _print_actions(actions)
-    return 0
-
-
 def _cmd_fork(args: argparse.Namespace, registry: Any) -> int:
     target = registry.fork(args.kind, args.element_id, project_root=REPO_ROOT, overwrite=bool(args.overwrite))
     print(f"forked: {target}")
@@ -144,47 +121,6 @@ def _cmd_install(args: argparse.Namespace, registry: Any) -> int:
     if not args.apply:
         print("dry-run: pass --apply to run these local install commands")
     return result.returncode
-
-
-def _sync_managed_defaults(*, dry_run: bool, overwrite: bool, project_root: Path | None = None) -> list[str]:
-    project_root = project_root or REPO_ROOT
-    bundled_root = Path(__file__).resolve().parents[2] / "packs" / "builtin" / "elements"
-    if not bundled_root.is_dir():
-        return ["no managed sync source available"]
-    managed_root = project_root / ".artagents" / "elements" / "managed"
-    override_root = project_root / ".artagents" / "elements" / "overrides"
-    actions: list[str] = []
-    for kind in ELEMENT_KINDS:
-        source_kind = bundled_root / kind
-        if not source_kind.is_dir():
-            continue
-        for source_element in sorted(source_kind.iterdir(), key=lambda path: path.name):
-            if not source_element.is_dir():
-                continue
-            target = managed_root / kind / source_element.name
-            override = override_root / kind / source_element.name
-            if override.exists():
-                actions.append(f"skip override: {override}")
-                continue
-            if target.exists() and not overwrite:
-                actions.append(f"exists: {target}")
-                continue
-            if dry_run:
-                actions.append(("update: " if target.exists() else "sync: ") + str(target))
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(source_element, target)
-            actions.append(("updated: " if overwrite else "synced: ") + str(target))
-    if not actions:
-        actions.append("no managed defaults to sync")
-    return actions
-
-
-def _print_actions(actions: list[str]) -> None:
-    for action in actions:
-        print(action)
 
 
 if __name__ == "__main__":

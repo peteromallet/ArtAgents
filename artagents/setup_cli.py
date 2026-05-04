@@ -8,9 +8,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from artagents._paths import REPO_ROOT
-from artagents.core.element.cli import _sync_managed_defaults
 from artagents.core.element.install import install_element
 from artagents.core.element.registry import load_default_registry as load_element_registry
+from artagents.core.project.paths import PROJECTS_ROOT_ENV, resolve_projects_root
 
 
 @dataclass(frozen=True)
@@ -37,9 +37,8 @@ def plan_setup(*, apply: bool = False, project_root: str | Path | None = None) -
             detail="local mutations enabled" if apply else "no files or dependencies will be changed",
         )
     )
+    steps.append(_plan_projects_root(apply=apply))
     steps.append(_plan_agents_symlink(root, apply=apply))
-    for action in _sync_managed_defaults(dry_run=not apply, overwrite=False, project_root=root):
-        steps.append(SetupStep(name="elements sync", status="applied" if apply else "planned", detail=action))
 
     registry = load_element_registry(project_root=root)
     for element in registry.list():
@@ -52,6 +51,17 @@ def plan_setup(*, apply: bool = False, project_root: str | Path | None = None) -
         details = "; ".join(plan.command_lines())
         steps.append(SetupStep(name="elements install", status=status, detail=f"{element.kind}/{element.id}: {details}"))
     return tuple(steps)
+
+
+def _plan_projects_root(*, apply: bool) -> SetupStep:
+    projects_root = resolve_projects_root()
+    detail = f"{projects_root} ({PROJECTS_ROOT_ENV} override supported)"
+    if projects_root.is_dir():
+        return SetupStep(name="projects root", status="ok", detail=detail)
+    if apply:
+        projects_root.mkdir(parents=True, exist_ok=True)
+        return SetupStep(name="projects root", status="applied", detail=f"created {detail}")
+    return SetupStep(name="projects root", status="planned", detail=f"will create {detail}")
 
 
 def _plan_agents_symlink(root: Path, *, apply: bool) -> SetupStep:
@@ -89,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("ArtAgents setup")
     if not args.apply:
-        print("dry-run: pass --apply to sync managed defaults and run local element install commands")
+        print("dry-run: pass --apply to run local element install commands")
     for step in steps:
         print(f"[{step.status}] {step.name}: {step.detail}")
     return 0
