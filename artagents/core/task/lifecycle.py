@@ -60,6 +60,12 @@ RECOVERY COMMANDS
 - Acknowledge attested:     artagents ack <step> --project {slug} --decision approve [--agent <id> | --actor <name>]
 - View run state:           artagents status --project {slug}
 - End the run:              artagents abort --project {slug}
+
+STOP HOOK
+- The `artagents hook stop` command is the Claude Code Stop-hook entry point.
+  When wired into .claude/settings.json (see docs/HOOKS.md) it re-injects this
+  preamble and the current step on every Stop boundary so the rules above
+  stay live for the entire run. The hook is a silent no-op outside task mode.
 """
 
 

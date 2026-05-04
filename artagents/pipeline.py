@@ -17,7 +17,7 @@ import sys
 # command to dispatch through plan[cursor]. cmd_ack approve re-enters the gate
 # explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
 # bypasses the gate's command-match step.
-LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs"}
+LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook"}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,6 +72,8 @@ def _dispatch(raw: list[str]) -> int:
         return cmd_status(raw[1:])
     if raw and raw[0] == "runs":
         return _dispatch_runs(raw[1:])
+    if raw and raw[0] == "hook":
+        return _dispatch_hook(raw[1:])
     if raw and raw[0] == "publish":
         from .packs.builtin.publish import run as publish
 
@@ -151,6 +153,15 @@ def _dispatch_runs(args: list[str]) -> int:
     return 2
 
 
+def _dispatch_hook(args: list[str]) -> int:
+    if not args or args[0] != "stop":
+        print("usage: artagents hook stop", file=sys.stderr)
+        return 2
+    from .core.task.hook import cmd_hook_stop
+
+    return cmd_hook_stop(args[1:])
+
+
 def _extract_project_slug(raw: list[str]) -> str | None:
     for index, token in enumerate(raw):
         if token == "--project":
@@ -194,6 +205,7 @@ Usage:
   Task-mode agent-facing verbs (mid-run):
     python3 -m artagents next --project <slug>
     python3 -m artagents ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]
+    python3 -m artagents hook stop   # Claude Code Stop-hook entry point; see docs/HOOKS.md
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,fork,install} ...
   python3 -m artagents projects {create,show,source,timeline,materialize} ...
