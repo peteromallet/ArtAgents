@@ -171,6 +171,150 @@ def make_nested_exited_event(plan_step_path: str, returncode: int) -> dict[str, 
     }
 
 
+def make_produces_check_passed_event(
+    plan_step_path: tuple[str, ...],
+    produces_name: str,
+    *,
+    check_id: str,
+) -> dict[str, Any]:
+    return {
+        "check_id": check_id,
+        "kind": "produces_check_passed",
+        "plan_step_path": list(plan_step_path),
+        "produces_name": produces_name,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_produces_check_failed_event(
+    plan_step_path: tuple[str, ...],
+    produces_name: str,
+    *,
+    check_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "check_id": check_id,
+        "kind": "produces_check_failed",
+        "plan_step_path": list(plan_step_path),
+        "produces_name": produces_name,
+        "reason": reason,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_iteration_started_event(
+    plan_step_path: tuple[str, ...],
+    iteration: int,
+) -> dict[str, Any]:
+    return {
+        "iteration": int(iteration),
+        "kind": "iteration_started",
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_iteration_failed_event(
+    plan_step_path: tuple[str, ...],
+    iteration: int,
+    *,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "iteration": int(iteration),
+        "kind": "iteration_failed",
+        "plan_step_path": list(plan_step_path),
+        "reason": reason,
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_iteration_exhausted_event(
+    plan_step_path: tuple[str, ...],
+    *,
+    on_exhaust: str,
+    max_iterations: int,
+) -> dict[str, Any]:
+    return {
+        "kind": "iteration_exhausted",
+        "max_iterations": int(max_iterations),
+        "on_exhaust": on_exhaust,
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_for_each_expanded_event(
+    plan_step_path: tuple[str, ...],
+    item_ids: tuple[str, ...],
+) -> dict[str, Any]:
+    return {
+        "item_ids": list(item_ids),
+        "kind": "for_each_expanded",
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_item_started_event(
+    plan_step_path: tuple[str, ...],
+    item_id: str,
+) -> dict[str, Any]:
+    return {
+        "item_id": item_id,
+        "kind": "item_started",
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_item_completed_event(
+    plan_step_path: tuple[str, ...],
+    item_id: str,
+    returncode: int,
+) -> dict[str, Any]:
+    return {
+        "item_id": item_id,
+        "kind": "item_completed",
+        "plan_step_path": list(plan_step_path),
+        "returncode": int(returncode),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_item_attested_event(
+    plan_step_path: tuple[str, ...],
+    item_id: str,
+    *,
+    attestor_kind: str,
+    attestor_id: str,
+    evidence: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    return {
+        "attestor_id": attestor_id,
+        "attestor_kind": attestor_kind,
+        "evidence": list(evidence),
+        "item_id": item_id,
+        "kind": "item_attested",
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+
+
+def make_cursor_rewind_event(
+    plan_step_path: tuple[str, ...],
+    *,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "kind": "cursor_rewind",
+        "plan_step_path": list(plan_step_path),
+        "reason": reason,
+        "ts": _utc_now_iso(),
+    }
+
+
 def _event_hash(prev_hash: str, event: dict[str, Any]) -> str:
     digest = hashlib.sha256((prev_hash + canonical_event_json(event)).encode("utf-8")).hexdigest()
     return f"sha256:{digest}"

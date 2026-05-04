@@ -3,10 +3,17 @@
 from .active_run import clear_active_run, read_active_run, write_active_run
 from .env import (
     ARTAGENTS_ACTOR,
+    TASK_ITEM_ID_ENV,
+    TASK_ITERATION_ENV,
+    TASK_PROJECT_ENV,
+    TASK_RUN_ID_ENV,
+    TASK_STEP_ID_ENV,
     apply_task_run_env,
     child_subprocess_env,
     is_in_task_run,
     task_actor_env,
+    task_item_id_env,
+    task_iteration_env,
     task_project_env,
     task_run_id_env,
     task_step_id_env,
@@ -37,11 +44,16 @@ from .gate import (
     record_nested_exited,
     record_step_attested,
 )
-from .plan import compute_plan_hash, load_plan, step_dir_for
+from .plan import compute_plan_hash, load_plan, step_dir_for, step_dir_for_path
 
 __all__ = [
     "ARTAGENTS_ACTOR",
     "AttestedArgs",
+    "TASK_ITEM_ID_ENV",
+    "TASK_ITERATION_ENV",
+    "TASK_PROJECT_ENV",
+    "TASK_RUN_ID_ENV",
+    "TASK_STEP_ID_ENV",
     "CursorPath",
     "GateDecision",
     "TaskRunGateError",
@@ -70,7 +82,10 @@ __all__ = [
     "record_nested_exited",
     "record_step_attested",
     "step_dir_for",
+    "step_dir_for_path",
     "task_actor_env",
+    "task_item_id_env",
+    "task_iteration_env",
     "task_project_env",
     "task_run_id_env",
     "task_step_id_env",

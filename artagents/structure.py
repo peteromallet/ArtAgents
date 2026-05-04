@@ -35,6 +35,7 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "packs",
     "threads",
     "utilities",
+    "verify",
 }
 
 

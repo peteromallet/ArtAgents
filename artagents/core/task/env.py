@@ -8,6 +8,8 @@ from collections.abc import Mapping
 TASK_RUN_ID_ENV = "ARTAGENTS_TASK_RUN_ID"
 TASK_PROJECT_ENV = "ARTAGENTS_TASK_PROJECT"
 TASK_STEP_ID_ENV = "ARTAGENTS_TASK_STEP_ID"
+TASK_ITEM_ID_ENV = "ARTAGENTS_TASK_ITEM_ID"
+TASK_ITERATION_ENV = "ARTAGENTS_TASK_ITERATION"
 ARTAGENTS_ACTOR = "ARTAGENTS_ACTOR"
 
 
@@ -23,6 +25,14 @@ def task_step_id_env() -> str | None:
     return os.environ.get(TASK_STEP_ID_ENV)
 
 
+def task_item_id_env() -> str | None:
+    return os.environ.get(TASK_ITEM_ID_ENV)
+
+
+def task_iteration_env() -> str | None:
+    return os.environ.get(TASK_ITERATION_ENV)
+
+
 def task_actor_env() -> str | None:
     return os.environ.get(ARTAGENTS_ACTOR)
 
@@ -34,16 +44,37 @@ def is_in_task_run(slug: str | None = None) -> bool:
     return slug is None or task_project_env() == slug
 
 
-def apply_task_run_env(run_id: str, project_slug: str, step_id: str) -> None:
+def apply_task_run_env(
+    run_id: str,
+    project_slug: str,
+    step_id: str,
+    *,
+    item_id: str | None = None,
+    iteration: int | None = None,
+) -> None:
     os.environ[TASK_RUN_ID_ENV] = run_id
     os.environ[TASK_PROJECT_ENV] = project_slug
     os.environ[TASK_STEP_ID_ENV] = step_id
+    if item_id is None:
+        os.environ.pop(TASK_ITEM_ID_ENV, None)
+    else:
+        os.environ[TASK_ITEM_ID_ENV] = item_id
+    if iteration is None:
+        os.environ.pop(TASK_ITERATION_ENV, None)
+    else:
+        os.environ[TASK_ITERATION_ENV] = f"{int(iteration):03d}"
 
 
 def child_subprocess_env(*, base: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
     env.pop(ARTAGENTS_ACTOR, None)
-    for key in (TASK_RUN_ID_ENV, TASK_PROJECT_ENV, TASK_STEP_ID_ENV):
+    for key in (
+        TASK_RUN_ID_ENV,
+        TASK_PROJECT_ENV,
+        TASK_STEP_ID_ENV,
+        TASK_ITEM_ID_ENV,
+        TASK_ITERATION_ENV,
+    ):
         value = os.environ.get(key)
         if value is not None:
             env[key] = value

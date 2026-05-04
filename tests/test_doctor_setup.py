@@ -11,7 +11,7 @@ from unittest import mock
 
 from artagents import doctor, setup_cli
 from artagents.core.element.registry import load_default_registry as load_element_registry
-from artagents.structure import validate_repo_structure
+from artagents.structure import TOP_LEVEL_ARTAGENTS_DIRS, validate_repo_structure
 
 
 class DoctorSetupTest(unittest.TestCase):
@@ -102,6 +102,10 @@ class DoctorSetupTest(unittest.TestCase):
         install.assert_called_once_with(element, project_root=setup_cli.REPO_ROOT, dry_run=False)
         self.assertNotIn("elements sync", stdout)
         self.assertIn("[skipped] elements install: effects/text-card: no dependencies declared", stdout)
+
+    def test_top_level_dirs_includes_verify_but_not_orchestrate(self) -> None:
+        self.assertIn("verify", TOP_LEVEL_ARTAGENTS_DIRS)
+        self.assertNotIn("orchestrate", TOP_LEVEL_ARTAGENTS_DIRS)
 
     def test_repo_structure_guard_rejects_legacy_and_misplaced_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

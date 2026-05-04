@@ -9,7 +9,13 @@ from pathlib import Path
 import pytest
 
 from artagents.core.project import paths
-from artagents.core.task.env import TASK_PROJECT_ENV, TASK_RUN_ID_ENV, TASK_STEP_ID_ENV
+from artagents.core.task.env import (
+    TASK_ITEM_ID_ENV,
+    TASK_ITERATION_ENV,
+    TASK_PROJECT_ENV,
+    TASK_RUN_ID_ENV,
+    TASK_STEP_ID_ENV,
+)
 
 
 if "ARTAGENTS_TIMELINE_COMPOSITION_SRC" not in os.environ:
@@ -21,8 +27,20 @@ if "ARTAGENTS_TIMELINE_COMPOSITION_SRC" not in os.environ:
 @pytest.fixture
 def tmp_projects_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path))
-    for name in (TASK_RUN_ID_ENV, TASK_PROJECT_ENV, TASK_STEP_ID_ENV):
+    for name in (
+        TASK_RUN_ID_ENV,
+        TASK_PROJECT_ENV,
+        TASK_STEP_ID_ENV,
+        TASK_ITEM_ID_ENV,
+        TASK_ITERATION_ENV,
+    ):
         monkeypatch.delenv(name, raising=False)
     yield tmp_path
-    for name in (TASK_RUN_ID_ENV, TASK_PROJECT_ENV, TASK_STEP_ID_ENV):
+    for name in (
+        TASK_RUN_ID_ENV,
+        TASK_PROJECT_ENV,
+        TASK_STEP_ID_ENV,
+        TASK_ITEM_ID_ENV,
+        TASK_ITERATION_ENV,
+    ):
         monkeypatch.delenv(name, raising=False)
