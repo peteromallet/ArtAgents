@@ -10,10 +10,10 @@ from artagents.core.executor.folder import load_folder_executors
 from artagents.core.orchestrator.folder import load_folder_orchestrators
 
 
-LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives")
+LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives", "executors")
 LEGACY_LOCAL_DIRS = ("performers", "conductors", "nodes", "instruments", "primitives")
-INTERNAL_EXECUTOR_DIRS = {"__pycache__", "actions", "builtin", "bundled", "curated"}
 INTERNAL_ORCHESTRATOR_DIRS = {"__pycache__", "bundled", "curated"}
+INTERNAL_PACK_DIRS = {"__pycache__"}
 TOP_LEVEL_ARTAGENTS_FILES = {
     "__init__.py",
     "__main__.py",
@@ -32,9 +32,9 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "core",
     "domains",
     "elements",
-    "executors",
     "modalities",
     "orchestrators",
+    "packs",
     "threads",
     "utilities",
 }
@@ -55,7 +55,7 @@ def validate_repo_structure(root: str | Path = REPO_ROOT) -> StructureReport:
     errors.extend(_validate_legacy_dirs(repo_root))
     errors.extend(_validate_local_state_dirs(repo_root))
     errors.extend(_validate_top_level_artagents(repo_root / "artagents"))
-    errors.extend(_validate_executor_folders(repo_root / "artagents" / "executors"))
+    errors.extend(_validate_pack_executor_folders(repo_root / "artagents" / "packs"))
     errors.extend(_validate_orchestrator_folders(repo_root / "artagents" / "orchestrators"))
     return StructureReport(errors=tuple(errors))
 
@@ -93,32 +93,33 @@ def _validate_top_level_artagents(package_root: Path) -> list[str]:
     return errors
 
 
-def _validate_executor_folders(executors_root: Path) -> list[str]:
-    if not executors_root.is_dir():
-        return [f"missing executors directory: {executors_root}"]
+def _validate_pack_executor_folders(packs_root: Path) -> list[str]:
+    if not packs_root.is_dir():
+        return [f"missing packs directory: {packs_root}"]
 
     errors: list[str] = []
-    for folder in _public_child_dirs(executors_root, INTERNAL_EXECUTOR_DIRS):
-        errors.extend(_require_files(folder, ("executor.yaml", "run.py", "STAGE.md"), root=executors_root.parents[1]))
-        if _has_any(folder, ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json", "orchestrator.py")):
-            errors.append(f"executor folder contains orchestrator metadata: {folder.relative_to(executors_root.parents[1])}")
-        try:
-            definitions = load_folder_executors(folder)
-        except Exception as exc:
-            errors.append(f"invalid executor folder {folder.relative_to(executors_root.parents[1])}: {exc}")
-            continue
-        if not definitions:
-            errors.append(f"executor folder emitted no executor metadata: {folder.relative_to(executors_root.parents[1])}")
-            continue
-        for definition in definitions:
-            if definition.kind == "built_in" and definition.id.startswith("builtin."):
-                expected = f"builtin.{folder.name}"
-                if definition.id != expected:
-                    errors.append(f"built-in executor {definition.id!r} must live in artagents/executors/{definition.id.removeprefix('builtin.')}")
-            elif definition.kind == "external" and definition.id.startswith("external."):
-                package = definition.metadata.get("package_id") or definition.id.removeprefix("external.").split(".", 1)[0]
-                if package != folder.name:
-                    errors.append(f"external executor {definition.id!r} package {package!r} must live in artagents/executors/{package}")
+    repo_root = packs_root.parents[1]
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+        for folder in _public_child_dirs(pack_dir, INTERNAL_PACK_DIRS):
+            if not _has_any(folder, ("executor.yaml", "executor.yml", "executor.json", "executor.py")):
+                continue
+            errors.extend(_require_files(folder, ("executor.yaml", "run.py", "STAGE.md"), root=repo_root))
+            if _has_any(folder, ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json", "orchestrator.py")):
+                errors.append(f"executor folder contains orchestrator metadata: {folder.relative_to(repo_root)}")
+            try:
+                definitions = load_folder_executors(folder)
+            except Exception as exc:
+                errors.append(f"invalid executor folder {folder.relative_to(repo_root)}: {exc}")
+                continue
+            if not definitions:
+                errors.append(f"executor folder emitted no executor metadata: {folder.relative_to(repo_root)}")
+                continue
+            for definition in definitions:
+                pack_segment = definition.id.split(".", 1)[0]
+                if pack_segment != pack_dir.name:
+                    errors.append(
+                        f"executor {definition.id!r} must live in pack {pack_segment!r} but was found in pack {pack_dir.name!r}"
+                    )
     return errors
 
 

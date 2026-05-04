@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from importlib import resources
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable
 
@@ -13,11 +11,9 @@ from artagents.core.pack import discover_packs, iter_executor_roots, validate_co
 
 from .banodoco_catalog import BanodocoCatalogConfig, load_banodoco_catalog_executors
 from .folder import load_folder_executors
-from .schema import ExecutorDefinition, ExecutorValidationError, load_executor_manifest, validate_executor_definition
+from .schema import ExecutorDefinition, ExecutorValidationError, validate_executor_definition
 
 
-BUNDLED_PACKAGE = "artagents.executors.bundled"
-CURATED_PACKAGE = "artagents.executors.curated"
 BUILTIN_STEP_ORDER: tuple[str, ...] = (
     "transcribe",
     "scenes",
@@ -95,61 +91,15 @@ class ExecutorRegistry:
                     raise ExecutorRegistryError(f"executor {executor.id!r} cannot depend on itself")
 
 
-def load_builtin_executors() -> tuple[ExecutorDefinition, ...]:
-    folder_executors: list[ExecutorDefinition] = []
-    expected_ids = {f"builtin.{step_name}" for step_name in BUILTIN_STEP_ORDER}
-    for path in _builtin_folder_roots():
-        folder_executors.extend(load_folder_executors(path))
-    by_id = {executor.id: executor for executor in folder_executors if executor.id in expected_ids}
-    missing = [f"builtin.{step_name}" for step_name in BUILTIN_STEP_ORDER if f"builtin.{step_name}" not in by_id]
-    if missing:
-        raise ExecutorRegistryError(f"missing built-in executor folder metadata: {', '.join(missing)}")
-    return tuple(by_id[f"builtin.{step_name}"] for step_name in BUILTIN_STEP_ORDER)
-
-
-def load_curated_executors() -> tuple[ExecutorDefinition, ...]:
-    executors: list[ExecutorDefinition] = []
-    for path in _curated_manifest_paths():
-        executors.append(load_executor_manifest(path))
-    for path in _curated_folder_roots():
-        executors.extend(load_folder_executors(path))
-    return tuple(executors)
-
-
-def load_bundled_executors() -> tuple[ExecutorDefinition, ...]:
-    executors: list[ExecutorDefinition] = []
-    for path in _bundled_manifest_paths():
-        executors.append(load_executor_manifest(path))
-    for path in _bundled_folder_roots():
-        executors.extend(load_folder_executors(path))
-    return tuple(executors)
-
-
 def load_default_registry(banodoco_config: BanodocoCatalogConfig | None = None) -> ExecutorRegistry:
     registry = ExecutorRegistry()
     for executor in load_pack_executors():
         registry.register(executor)
-    for executor in load_builtin_executors():
-        registry.register(executor)
-    for executor in load_bundled_executors():
-        registry.register(executor)
-    for executor in load_curated_executors():
-        registry.register(executor)
-    for executor in load_project_executors():
-        if executor.id not in registry.as_mapping():
-            registry.register(executor)
     if banodoco_config is not None and banodoco_config.enabled:
         for executor in load_banodoco_catalog_executors(banodoco_config):
             registry.register(executor)
     registry.validate_all()
     return registry
-
-
-def load_project_executors() -> tuple[ExecutorDefinition, ...]:
-    executors: list[ExecutorDefinition] = []
-    for path in _project_folder_roots():
-        executors.extend(load_folder_executors(path))
-    return tuple(executors)
 
 
 def load_pack_executors() -> tuple[ExecutorDefinition, ...]:
@@ -164,89 +114,16 @@ def load_pack_executors() -> tuple[ExecutorDefinition, ...]:
 
 def _attach_pack_metadata(executor: ExecutorDefinition, pack_id: str) -> ExecutorDefinition:
     metadata = dict(executor.metadata)
-    metadata.update({"pack_id": pack_id, "source": "pack"})
+    metadata.setdefault("pack_id", pack_id)
+    metadata["source"] = "pack"
     return validate_executor_definition(replace(executor, metadata=metadata))
 
 
-def _curated_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(CURATED_PACKAGE, _content_root() / "curated")
-
-
-def _curated_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(CURATED_PACKAGE, _content_root() / "curated")
-
-
-def _bundled_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(BUNDLED_PACKAGE, _content_root() / "bundled")
-
-
-def _bundled_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(BUNDLED_PACKAGE, _content_root() / "bundled")
-
-
-def _builtin_folder_roots() -> tuple[Path, ...]:
-    source_root = _content_root()
-    return tuple(source_root / step_name for step_name in BUILTIN_STEP_ORDER if (source_root / step_name).is_dir())
-
-
-def _project_folder_roots() -> tuple[Path, ...]:
-    source_root = _content_root()
-    skipped = {"__pycache__", "actions", "builtin", "bundled", "curated"}
-    if not source_root.is_dir():
-        return ()
-    return tuple(
-        sorted(
-            path
-            for path in source_root.iterdir()
-            if path.is_dir() and path.name not in skipped and not path.name.startswith(".")
-        )
-    )
-
-
-def _content_root() -> Path:
-    return Path(__file__).resolve().parents[2] / "executors"
-
-
-def _package_manifest_paths(package: str, source_root: Path) -> tuple[Path, ...]:
-    paths: list[Path] = []
-    try:
-        package_root = resources.files(package)
-        paths.extend(Path(str(item)) for item in package_root.iterdir() if item.name.endswith(".json"))
-    except (FileNotFoundError, ModuleNotFoundError, TypeError):
-        pass
-
-    if paths:
-        return tuple(sorted(paths))
-
-    if not source_root.is_dir():
-        return ()
-    return tuple(sorted(source_root.glob("*.json")))
-
-
-def _package_folder_roots(package: str, source_root: Path) -> tuple[Path, ...]:
-    paths: list[Path] = []
-    try:
-        package_root = resources.files(package)
-        paths.extend(Path(str(item)) for item in package_root.iterdir() if item.is_dir())
-    except (FileNotFoundError, ModuleNotFoundError, TypeError):
-        pass
-
-    if paths:
-        return tuple(sorted(paths))
-
-    if not source_root.is_dir():
-        return ()
-    return tuple(sorted(path for path in source_root.iterdir() if path.is_dir()))
-
-
 __all__ = [
+    "BUILTIN_STEP_ORDER",
     "ExecutorRegistry",
     "ExecutorRegistryError",
     "BanodocoCatalogConfig",
-    "load_builtin_executors",
-    "load_bundled_executors",
-    "load_curated_executors",
-    "load_project_executors",
     "load_pack_executors",
     "load_default_registry",
 ]

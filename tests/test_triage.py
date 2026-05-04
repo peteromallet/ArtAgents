@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.executors.triage import run as triage
+from artagents.packs.builtin.triage import run as triage
 
 
 def has_forbidden_time_keys(value, forbidden) -> bool:

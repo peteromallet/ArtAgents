@@ -69,15 +69,15 @@ def main(argv: list[str] | None = None) -> int:
         _print_entrypoint_help()
         return 0
     if raw and raw[0] == "publish":
-        from .executors.publish import run as publish
+        from .packs.builtin.publish import run as publish
 
         return publish.main(raw[1:])
     if raw and raw[0] == "publish-youtube":
-        from .executors.upload_youtube import run as publish_youtube
+        from .packs.upload.youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "upload-youtube":
-        from .executors.upload_youtube import run as publish_youtube
+        from .packs.upload.youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "executors":
@@ -92,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
         from .core.element import cli as elements_cli
 
         return elements_cli.main(raw[1:])
+    if raw and raw[0] == "projects":
+        from .core.project import cli as projects_cli
+
+        return projects_cli.main(raw[1:])
     if raw and raw[0] == "thread":
         from .threads import cli as thread_cli
 
@@ -113,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
 
         return audit.main(raw[1:])
     if raw and raw[0] == "reigh-data":
-        from .executors.reigh_data import run as reigh_data
+        from .packs.builtin.reigh_data import run as reigh_data
 
         return reigh_data.main(raw[1:])
     _sync_hype_aliases()
@@ -130,6 +134,7 @@ Usage:
   python3 -m artagents orchestrators {list,inspect,validate,run} ...
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,sync,fork,install,update} ...
+  python3 -m artagents projects {create,show,source,timeline,materialize} ...
   python3 -m artagents thread {new,list,show,archive,reopen,backfill,keep,dismiss,group} ...
   python3 -m artagents modalities {list,inspect} ...
   python3 -m artagents reigh-data --project-id PROJECT_ID [--out PATH]
@@ -141,6 +146,7 @@ Start here:
   python3 -m artagents orchestrators list
   python3 -m artagents executors list
   python3 -m artagents elements list
+  python3 -m artagents projects show --project PROJECT
   python3 -m artagents thread list
   python3 -m artagents modalities list
 

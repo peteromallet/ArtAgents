@@ -50,8 +50,8 @@ class PipelineDispatchAliasTest(unittest.TestCase):
             setup_main.assert_called_once_with(["--help"])
 
     def test_publish_dispatch_uses_package_relative_imports(self) -> None:
-        from artagents.executors.publish import run as publish
-        from artagents.executors.upload_youtube import run as publish_youtube
+        from artagents.packs.builtin.publish import run as publish
+        from artagents.packs.upload.youtube import run as publish_youtube
 
         with mock.patch.object(publish, "main", return_value=51) as publish_main:
             self.assertEqual(pipeline.main(["publish", "--help"]), 51)

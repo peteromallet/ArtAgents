@@ -1,0 +1,75 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": false,
+    "sentinels": [
+      "quote_candidates.json"
+    ]
+  },
+  "clip_kinds_supported": [
+    "video",
+    "audio"
+  ],
+  "conditions": [],
+  "description": "ArtAgents pipeline step: quote_scout.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes",
+      "builtin.quality_zones",
+      "builtin.shots",
+      "builtin.triage",
+      "builtin.scene_describe"
+    ],
+    "provides": [
+      "quote_candidates"
+    ]
+  },
+  "id": "builtin.quote_scout",
+  "inputs": [
+    {
+      "description": "",
+      "name": "transcript",
+      "required": false,
+      "type": "file"
+    },
+    {
+      "description": "",
+      "name": "env_file",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "artagents.orchestrators.hype.run.build_pool_steps",
+    "pipeline_step": "quote_scout",
+    "pipeline_step_order": 6,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.packs.builtin.quote_scout.run"
+  },
+  "name": "Quote Scout",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "quote_candidates",
+      "path_template": "{out}/quote_candidates.json",
+      "type": "file"
+    }
+  ],
+  "pipeline_requirements": [
+    "transcript",
+    "scenes"
+  ],
+  "version": "1.0"
+}

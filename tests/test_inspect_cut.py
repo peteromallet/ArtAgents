@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import unittest
 
-from artagents.executors.inspect_cut import run as inspect_cut
+from artagents.packs.builtin.inspect_cut import run as inspect_cut
 
 from tests.helpers.fixture_case import make_brief_case
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.executors.iteration_assemble import run as assemble
+from artagents.packs.iteration.assemble import run as assemble
 
 
 UNRESOLVED_RUN_ID = "01ARZ3NDEKTSV4RRFFQ69G5FH0"

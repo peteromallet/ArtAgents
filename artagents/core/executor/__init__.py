@@ -20,10 +20,8 @@ from .install import (
 from .registry import (
     ExecutorRegistry,
     ExecutorRegistryError,
-    load_builtin_executors,
-    load_bundled_executors,
-    load_curated_executors,
     load_default_registry,
+    load_pack_executors,
 )
 from .runner import (
     ConditionResult,
@@ -83,10 +81,8 @@ __all__ = [
     "executor_python_path",
     "fetch_git_executor_manifest",
     "install_executor",
-    "load_builtin_executors",
-    "load_bundled_executors",
-    "load_curated_executors",
     "load_default_registry",
+    "load_pack_executors",
     "load_executor_manifest",
     "load_executor_manifest_definitions",
     "load_folder_executor",

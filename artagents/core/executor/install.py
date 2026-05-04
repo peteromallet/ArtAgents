@@ -207,9 +207,9 @@ def _safe_executor_id(executor_id: str) -> str:
 
 
 def _executor_install_id(executor: ExecutorDefinition) -> str:
-    package_id = executor.metadata.get("package_id")
-    if isinstance(package_id, str) and package_id:
-        return package_id
+    pack_id = executor.metadata.get("pack_id")
+    if isinstance(pack_id, str) and pack_id:
+        return pack_id
     return executor.id
 
 

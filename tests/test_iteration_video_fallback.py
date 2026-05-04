@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from artagents.executors.iteration_assemble import run as assemble
+from artagents.packs.iteration.assemble import run as assemble
 
 
 def test_generic_card_fallback_payload_and_command_diagnostic(tmp_path: Path) -> None:

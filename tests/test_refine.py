@@ -5,10 +5,10 @@ import unittest
 from argparse import Namespace
 from pathlib import Path
 
-from artagents.executors.cut import run as cut
-from artagents.executors.refine import run as refine
+from artagents.packs.builtin.cut import run as cut
+from artagents.packs.builtin.refine import run as refine
 from artagents import timeline
-from artagents.executors.validate import run as validate
+from artagents.packs.builtin.validate import run as validate
 from artagents.domains.hype.arrangement_rules import TRIM_BOUND_EXTENSION_SEC
 
 

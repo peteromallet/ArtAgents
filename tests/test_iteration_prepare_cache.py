@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.executors.iteration_prepare import run as prepare
+from artagents.packs.iteration.prepare import run as prepare
 
 
 THREAD_ID = "01ARZ3NDEKTSV4RRFFQ69G5FE0"

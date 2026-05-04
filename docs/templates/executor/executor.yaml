@@ -22,7 +22,7 @@
     "argv": [
       "{python_exec}",
       "-m",
-      "artagents.executors.example.run",
+      "artagents.packs.builtin.example.run",
       "--input",
       "{input}",
       "--out",
@@ -37,7 +37,7 @@
     "network": false
   },
   "metadata": {
-    "runtime_module": "artagents.executors.example.run",
+    "runtime_module": "artagents.packs.builtin.example.run",
     "runtime_file": "run.py"
   }
 }

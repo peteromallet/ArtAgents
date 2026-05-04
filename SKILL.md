@@ -73,7 +73,7 @@ Templates:
 - `docs/templates/orchestrator/` — a workflow that combines executors
 - `docs/templates/element/` — a reusable render building block
 
-Public folders have exactly one format: `artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` and `artagents/executors/<slug>/{executor.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Top-level `artagents/*.py` files are shared libraries or system commands, not alternate runnable implementations.
+Public folders have exactly one format: `artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` and `artagents/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Top-level `artagents/*.py` files are shared libraries or system commands, not alternate runnable implementations.
 
 Do not chain pipeline internals by hand unless you are debugging one specific stage. If the user gives a topic instead of a brief, use a brief-generation executor coordinated by an orchestrator — don't fake source media just to enter a source-video path. Render requires the `hype.timeline.json` and `hype.assets.json` pair produced by cut; don't skip cut unless both files already exist.
 
@@ -94,7 +94,7 @@ python3 -m artagents elements fork effects text-card
 
 - Generated files live under `runs/` (or another ignored output directory) and stay out of git. Don't commit source media, rendered videos, local dependency envs, or secrets.
 - Don't print or hardcode API keys; use `--env-file` or nearby `.env` files.
-- Treat curated tool stages as protected unless explicitly asked to edit them — notably `artagents/executors/moirae/STAGE.md` and `artagents/executors/vibecomfy/STAGE.md`.
+- Treat curated tool stages as protected unless explicitly asked to edit them — notably `artagents/packs/external/moirae/STAGE.md` and `artagents/packs/external/vibecomfy/STAGE.md`.
 - Orchestrators may call declared child orchestrators; executors must not call orchestrators.
 
 After adding or renaming effects, animations, transitions, or theme elements:

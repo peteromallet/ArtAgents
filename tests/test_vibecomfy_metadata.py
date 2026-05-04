@@ -24,10 +24,10 @@ class VibeComfyStructuredMetadataTest(unittest.TestCase):
         metadata = payload["metadata"]
 
         self.assertEqual(payload["id"], "external.vibecomfy.run")
-        self.assertEqual(payload["command"]["argv"], ["{python_exec}", "-m", "artagents.executors.vibecomfy.run", "run", "{workflow}"])
+        self.assertEqual(payload["command"]["argv"], ["{python_exec}", "-m", "artagents.packs.external.vibecomfy.run", "run", "{workflow}"])
         self.assertEqual(payload["isolation"]["requirements"], ["vibecomfy"])
         self.assertTrue(payload["isolation"]["network"])
-        self.assertEqual(metadata["package_id"], "vibecomfy")
+        self.assertEqual(metadata["pack_id"], "vibecomfy")
         self.assertEqual(metadata["homepage"], "https://github.com/peteromallet/VibeComfy")
         self.assertEqual(metadata["cli_module"], "vibecomfy.cli")
         self.assertEqual(metadata["vibecomfy_command"], "run")
@@ -91,7 +91,7 @@ class VibeComfyStructuredMetadataTest(unittest.TestCase):
                         "      requirements: [\"vibecomfy\"]",
                         "      network: true",
                         "    metadata:",
-                        "      package_id: vibecomfy",
+                        "      pack_id: vibecomfy",
                         "      catalog_source: none_declared",
                         "      workflows: []",
                         "      nodes: []",

@@ -20,9 +20,16 @@ except ImportError:  # pragma: no cover - optional dependency
     yaml = None
 
 from ...audit import AuditContext, PARENT_IDS_ENV
-from ...executors.asset_cache import run as asset_cache
+from ...packs.builtin.asset_cache import run as asset_cache
 from ... import timeline
 from ..._paths import WORKSPACE_ROOT, executor_argv
+from ...core.project.run import (
+    ProjectRunError,
+    finalize_project_run,
+    prepare_project_run,
+    project_thread_env,
+    reject_project_with_out,
+)
 from ...threads.wrapper import subprocess_env as thread_subprocess_env
 
 
@@ -103,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--video", help="Source video file.", default=argparse.SUPPRESS)
     parser.add_argument("--brief", help="Brief text file for arrangement composition.", default=argparse.SUPPRESS)
     parser.add_argument("--out", help="Per-source output directory.", default=argparse.SUPPRESS)
+    parser.add_argument("--project", help="Project slug for a persistent project run.", default=argparse.SUPPRESS)
     parser.add_argument("--audio", help="Audio source for transcription. Defaults to --video.", default=argparse.SUPPRESS)
     parser.add_argument(
         "--target-duration",
@@ -1153,13 +1161,13 @@ def write_skip_log(step: Step, args: argparse.Namespace, message: str) -> None:
 
 
 def _notes_overlap_ratio(prev: list[dict[str, Any]], curr: list[dict[str, Any]]) -> float:
-    from ...executors.editor_review import run as editor_review
+    from ...packs.builtin.editor_review import run as editor_review
 
     return editor_review.notes_overlap_ratio(prev, curr)
 
 
 def _plan_action(review: dict[str, Any]) -> str:
-    from ...executors.editor_review import run as editor_review
+    from ...packs.builtin.editor_review import run as editor_review
 
     return editor_review.plan_next_action(review)
 
@@ -1434,12 +1442,126 @@ def _register_run_inputs(args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = resolve_args(argv)
-    keep_env = os.environ.get("HYPE_KEEP_DOWNLOADS", "").strip().lower() in {"1", "true", "yes"}
-    keep_flag = bool(getattr(args, "keep_downloads", False))
-    session_enabled = not (keep_flag or keep_env)
-    with asset_cache.ephemeral_session(enabled=session_enabled):
-        return pool_main(args)
+    project_context = None
+    project_env: dict[str, str | None] = {}
+    effective_argv = list(sys.argv[1:] if argv is None else argv)
+    try:
+        try:
+            project_context, effective_argv = _prepare_project_main(effective_argv)
+        except ProjectRunError as exc:
+            print(f"artagents: {exc}", file=sys.stderr)
+            return 2
+        if project_context is not None:
+            project_env = _set_project_env()
+        try:
+            args = resolve_args(effective_argv)
+        except SystemExit as exc:
+            if project_context is not None:
+                finalize_project_run(project_context, status="error", returncode=_system_exit_code(exc), error=exc)
+                return _system_exit_code(exc)
+            raise
+        if project_context is not None:
+            args.project = project_context.project_slug
+        keep_env = os.environ.get("HYPE_KEEP_DOWNLOADS", "").strip().lower() in {"1", "true", "yes"}
+        keep_flag = bool(getattr(args, "keep_downloads", False))
+        session_enabled = not (keep_flag or keep_env)
+        try:
+            with asset_cache.ephemeral_session(enabled=session_enabled):
+                returncode = pool_main(args)
+        except SystemExit as exc:
+            if project_context is not None:
+                finalize_project_run(
+                    project_context,
+                    status="error",
+                    returncode=_system_exit_code(exc),
+                    error=exc,
+                    metadata=_project_hype_metadata(args),
+                    brief_slug=getattr(args, "brief_slug", None),
+                    artifact_roots=_project_hype_artifact_roots(args),
+                )
+                return _system_exit_code(exc)
+            raise
+        except Exception as exc:
+            if project_context is not None:
+                finalize_project_run(
+                    project_context,
+                    status="error",
+                    returncode=-1,
+                    error=exc,
+                    metadata=_project_hype_metadata(args),
+                    brief_slug=getattr(args, "brief_slug", None),
+                    artifact_roots=_project_hype_artifact_roots(args),
+                )
+            raise
+        if project_context is not None:
+            finalize_project_run(
+                project_context,
+                status="skipped" if bool(getattr(args, "dry_run", False)) else ("success" if returncode == 0 else "failed"),
+                returncode=returncode,
+                metadata=_project_hype_metadata(args),
+                brief_slug=getattr(args, "brief_slug", None),
+                artifact_roots=_project_hype_artifact_roots(args),
+            )
+        return returncode
+    finally:
+        _restore_project_env(project_env)
+
+
+def _prepare_project_main(argv: list[str]) -> tuple[Any | None, list[str]]:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--project")
+    parser.add_argument("--out")
+    parsed, _unknown = parser.parse_known_args(argv)
+    if not parsed.project:
+        return None, argv
+    reject_project_with_out(parsed.project, parsed.out)
+    context = prepare_project_run(
+        parsed.project,
+        tool_id="builtin.hype",
+        kind="orchestrator",
+        argv=["hype", *argv],
+        metadata={"entrypoint": "direct"},
+    )
+    return context, [*argv, "--out", str(context.run_root)]
+
+
+def _set_project_env() -> dict[str, str | None]:
+    prior = {key: os.environ.get(key) for key in project_thread_env()}
+    os.environ.update(project_thread_env())
+    return prior
+
+
+def _restore_project_env(prior: dict[str, str | None]) -> None:
+    for key, value in prior.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
+
+
+def _system_exit_code(exc: SystemExit) -> int:
+    if isinstance(exc.code, int):
+        return exc.code
+    return 1
+
+
+def _project_hype_metadata(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "brief_out": str(getattr(args, "brief_out", "")),
+        "brief_slug": str(getattr(args, "brief_slug", "")),
+        "dry_run": bool(getattr(args, "dry_run", False)),
+    }
+
+
+def _project_hype_artifact_roots(args: argparse.Namespace) -> list[Path]:
+    roots: list[Path] = []
+    brief_out = getattr(args, "brief_out", None)
+    if brief_out is not None:
+        roots.append(Path(brief_out))
+    out = getattr(args, "out", None)
+    if out is not None:
+        roots.append(Path(out))
+    return roots
 
 
 if __name__ == "__main__":

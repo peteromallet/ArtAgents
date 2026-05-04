@@ -123,12 +123,17 @@ class DoctorSetupTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            bad_executor = root / "artagents" / "executors" / "render"
-            bad_executor.mkdir(parents=True)
-            (bad_executor / "executor.yaml").write_text(
+            misplaced_pack_dir = root / "artagents" / "packs" / "external"
+            misplaced_pack_dir.mkdir(parents=True)
+            (misplaced_pack_dir / "pack.yaml").write_text("id: external\n", encoding="utf-8")
+            misplaced_executor = misplaced_pack_dir / "render"
+            misplaced_executor.mkdir(parents=True)
+            (misplaced_executor / "STAGE.md").write_text("# stage\n", encoding="utf-8")
+            (misplaced_executor / "run.py").write_text("", encoding="utf-8")
+            (misplaced_executor / "executor.yaml").write_text(
                 "\n".join(
                     [
-                        "id: builtin.not_render",
+                        "id: builtin.render",
                         "name: Render",
                         "kind: built_in",
                         "version: '1.0'",
@@ -147,7 +152,7 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertIn("top-level artagents directory is not a canonical concept: artagents/skills", detail)
         self.assertIn("artagents/orchestrators/vibecomfy missing orchestrator.yaml", detail)
         self.assertIn("orchestrator folder contains executor metadata: artagents/orchestrators/vibecomfy", detail)
-        self.assertIn("built-in executor 'builtin.not_render' must live in artagents/executors/not_render", detail)
+        self.assertIn("executor 'builtin.render' must live in pack 'builtin' but was found in pack 'external'", detail)
 
 
 if __name__ == "__main__":

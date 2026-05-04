@@ -228,7 +228,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.transcribe.run",
+                f"artagents.packs.builtin.transcribe.run",
                 "--audio",
                 str((root / "audio.wav").resolve()),
                 "--out",
@@ -240,7 +240,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.scenes.run",
+                f"artagents.packs.builtin.scenes.run",
                 "--video",
                 str((root / "main.mp4").resolve()),
                 "--out",
@@ -252,7 +252,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.quality_zones.run",
+                f"artagents.packs.builtin.quality_zones.run",
                 str((root / "main.mp4").resolve()),
                 "--out",
                 str((out_dir / "quality_zones.json").resolve()),
@@ -264,7 +264,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.render.run",
+                f"artagents.packs.builtin.render.run",
                 "--timeline",
                 str((out_dir / "briefs" / "out" / "hype.timeline.json").resolve()),
                 "--assets",
@@ -442,7 +442,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.arrange.run",
+                f"artagents.packs.builtin.arrange.run",
                 "--pool",
                 str((out_dir / "pool.json").resolve()),
                 "--brief",
@@ -461,7 +461,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.refine.run",
+                f"artagents.packs.builtin.refine.run",
                 "--arrangement",
                 str((second_dir / "arrangement.json").resolve()),
                 "--pool",
@@ -485,7 +485,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.render.run",
+                f"artagents.packs.builtin.render.run",
                 "--timeline",
                 str((second_dir / "hype.timeline.json").resolve()),
                 "--assets",
@@ -501,7 +501,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.executors.validate.run",
+                f"artagents.packs.builtin.validate.run",
                 "--video",
                 str((second_dir / "hype.mp4").resolve()),
                 "--timeline",

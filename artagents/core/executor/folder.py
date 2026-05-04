@@ -231,13 +231,13 @@ def compact(value):
     return value
 
 
-def definition_payload(definition, package_id):
+def definition_payload(definition, pack_id):
     payload = definition.to_dict()
-    if package_id is not None:
-        if not isinstance(package_id, str) or not package_id:
-            raise TypeError("top-level PACKAGE_ID must be a non-empty string")
+    if pack_id is not None:
+        if not isinstance(pack_id, str) or not pack_id:
+            raise TypeError("top-level PACK_ID must be a non-empty string")
         metadata = dict(payload.get("metadata") or {})
-        metadata["package_id"] = package_id
+        metadata["pack_id"] = pack_id
         payload["metadata"] = metadata
     return compact(payload)
 
@@ -254,8 +254,8 @@ try:
         definitions = decorated_definitions(namespace)
         if not definitions:
             raise ValueError("folder executor must define top-level executor or EXECUTOR, EXECUTORS, or decorated callables")
-    package_id = namespace.get("PACKAGE_ID")
-    print(PREFIX + json.dumps([definition_payload(definition, package_id) for definition in definitions], sort_keys=True))
+    pack_id = namespace.get("PACK_ID")
+    print(PREFIX + json.dumps([definition_payload(definition, pack_id) for definition in definitions], sort_keys=True))
 except Exception:
     traceback.print_exc(file=sys.stderr)
     raise SystemExit(1)

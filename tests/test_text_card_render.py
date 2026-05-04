@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.executors.render import run as render_remotion
+from artagents.packs.builtin.render import run as render_remotion
 from artagents import timeline
 
 

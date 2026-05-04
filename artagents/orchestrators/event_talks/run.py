@@ -202,7 +202,7 @@ def _render_manifest(args: argparse.Namespace) -> int:
 
 
 def _render_manifest_remotion_wrapper(talks: list[Talk], args: argparse.Namespace) -> int:
-    from artagents.executors.render.run import render as render_remotion
+    from artagents.packs.builtin.render.run import render as render_remotion
 
     _require_ffmpeg()
     brand_assets = _remotion_brand_assets(args)
@@ -470,7 +470,7 @@ def _render_wrapper_body(
 
 
 def _render_manifest_remotion(talks: list[Talk], args: argparse.Namespace) -> int:
-    from artagents.executors.render.run import render as render_remotion
+    from artagents.packs.builtin.render.run import render as render_remotion
 
     assets = _remotion_brand_assets(args)
     for talk in talks:

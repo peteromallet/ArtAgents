@@ -2,9 +2,9 @@ from pathlib import Path
 import unittest
 
 from artagents.domains.hype import enriched_arrangement
-from artagents.executors.refine.src.reviewers.overlay_fit import OverlayFitReviewer
-from artagents.executors.refine.src.reviewers.speaker_flow import SpeakerFlowReviewer
-from artagents.executors.refine.src.reviewers.visual_quality import VisualQualityReviewer
+from artagents.packs.builtin.refine.src.reviewers.overlay_fit import OverlayFitReviewer
+from artagents.packs.builtin.refine.src.reviewers.speaker_flow import SpeakerFlowReviewer
+from artagents.packs.builtin.refine.src.reviewers.visual_quality import VisualQualityReviewer
 
 
 def make_clip(

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.executors.render import run as render_remotion
+from artagents.packs.builtin.render import run as render_remotion
 from artagents import timeline
 
 

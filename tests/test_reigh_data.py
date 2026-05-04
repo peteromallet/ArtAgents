@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.executors.reigh_data import run as reigh_data
+from artagents.packs.builtin.reigh_data import run as reigh_data
 
 
 class FakeResponse:

@@ -15,7 +15,7 @@ from typing import Any, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from artagents.executors.generate_image.run import _candidate_env_files, _read_env_value
+from artagents.packs.builtin.generate_image.run import _candidate_env_files, _read_env_value
 from artagents.threads.variants import write_sidecar as write_variant_sidecar
 
 

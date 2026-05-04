@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from artagents.executors.sprite_sheet.run import choose_layout, main, validate_sheet_dimensions, write_layout_guide
+from artagents.packs.builtin.sprite_sheet.run import choose_layout, main, validate_sheet_dimensions, write_layout_guide
 
 
 def test_layout_guide_writes_png_and_manifest_shape(tmp_path):

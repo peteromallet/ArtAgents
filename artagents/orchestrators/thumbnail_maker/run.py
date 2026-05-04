@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any, Sequence
 
-from artagents.executors.asset_cache import run as asset_cache
+from artagents.packs.builtin.asset_cache import run as asset_cache
 
 
 DEFAULT_SIZE = "1536x864"
@@ -451,7 +451,7 @@ def _write_candidate_contact_sheet(candidates: list[dict[str, Any]], out_path: P
         path = _placeholder_contact_sheet(candidates, out_path, reason="dry-run or no extracted frame")
         return {"path": str(path), "mode": "placeholder", "frame_count": len(candidates)}
     try:
-        from artagents.executors.visual_understand.run import _build_contact_sheet
+        from artagents.packs.builtin.visual_understand.run import _build_contact_sheet
 
         path = _build_contact_sheet(
             frame_items,
@@ -491,7 +491,7 @@ def _planned_dry_run_candidates(args: argparse.Namespace, evidence_plan: dict[st
 
 
 def _load_or_create_scenes(video_path: Path, layout: dict[str, Path]) -> tuple[list[dict[str, Any]], Path, bool]:
-    from artagents.executors.scenes import run as scenes_module
+    from artagents.packs.builtin.scenes import run as scenes_module
 
     scenes_path = layout["evidence"] / "scenes.json"
     csv_path = scenes_path.with_name("scenes.csv")
@@ -507,7 +507,7 @@ def _load_or_create_shots(
     scenes: list[dict[str, Any]],
     layout: dict[str, Path],
 ) -> tuple[list[dict[str, Any]], Path, bool]:
-    from artagents.executors.shots import run as shots_module
+    from artagents.packs.builtin.shots import run as shots_module
 
     shots_dir = layout["evidence"] / "shots"
     shots_path = shots_dir / "shots.json"
@@ -668,8 +668,8 @@ def _run_visual_selection(
     if not candidates:
         return None
     try:
-        from artagents.executors.visual_understand import run as visual_understand
-        from artagents.executors.generate_image.run import load_api_key
+        from artagents.packs.builtin.visual_understand import run as visual_understand
+        from artagents.packs.builtin.generate_image.run import load_api_key
 
         model = visual_understand.MODEL_PRESETS[args.visual_mode]
         response = visual_understand._call_responses_api(
@@ -1053,7 +1053,7 @@ def _run_image_generation(
 ) -> tuple[int | None, list[dict[str, Any]]]:
     if args.dry_run:
         return None, _planned_generated_outputs(jobs, layout)
-    from artagents.executors.generate_image import run as generate_image
+    from artagents.packs.builtin.generate_image import run as generate_image
 
     manifest_path = layout["generated"] / "generate-image-manifest.json"
     returncode = generate_image.main(
@@ -1115,7 +1115,7 @@ def _write_final_contact_sheet(outputs: list[dict[str, Any]], out_path: Path) ->
         path = _placeholder_contact_sheet(placeholder_items, out_path, reason="planned thumbnail output")
         return {"path": str(path), "mode": "placeholder", "image_count": len(outputs)}
     try:
-        from artagents.executors.visual_understand.run import _build_contact_sheet
+        from artagents.packs.builtin.visual_understand.run import _build_contact_sheet
 
         path = _build_contact_sheet(
             frame_items,

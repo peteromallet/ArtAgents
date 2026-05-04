@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.executors.arrange import run as arrange
-from artagents.executors.editor_review import run as editor_review
-from artagents.executors.human_notes import run as human_notes
+from artagents.packs.builtin.arrange import run as arrange
+from artagents.packs.builtin.editor_review import run as editor_review
+from artagents.packs.builtin.human_notes import run as human_notes
 from artagents import timeline
 
 
@@ -396,10 +396,10 @@ class HumanNotesTest(unittest.TestCase):
         self.assertEqual(
             [call[0][2] for call in calls],
             [
-                "artagents.executors.arrange.run",
-                "artagents.executors.cut.run",
-                "artagents.executors.refine.run",
-                "artagents.executors.render.run",
+                "artagents.packs.builtin.arrange.run",
+                "artagents.packs.builtin.cut.run",
+                "artagents.packs.builtin.refine.run",
+                "artagents.packs.builtin.render.run",
             ],
         )
         for _, kwargs in calls:

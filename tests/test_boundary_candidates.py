@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from artagents.executors.boundary_candidates.run import main
+from artagents.packs.builtin.boundary_candidates.run import main
 
 
 def test_boundary_candidates_packages_asset_level_refs(tmp_path):

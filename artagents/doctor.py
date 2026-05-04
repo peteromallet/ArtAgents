@@ -42,6 +42,7 @@ def run_checks(*, optional_binaries: tuple[str, ...] = ("ffmpeg", "npx", "uv", "
     checks.append(_capture_check("vibecomfy metadata", _check_vibecomfy_metadata))
     checks.append(_capture_check("remotion config", _check_remotion_config))
     checks.append(_capture_check("timeline catalog", _check_timeline_catalog))
+    checks.append(_check_projects_root())
     for binary in optional_binaries:
         checks.append(_check_optional_binary(binary))
     return tuple(checks)
@@ -118,6 +119,7 @@ def _check_required_imports() -> DoctorCheck:
         "artagents.core.element.registry",
         "artagents.core.executor.registry",
         "artagents.core.orchestrator.registry",
+        "artagents.core.project",
     )
     for module in modules:
         importlib.import_module(module)
@@ -164,7 +166,7 @@ def _check_vibecomfy_metadata() -> str:
     run = registry.get("external.vibecomfy.run")
     metadata = run.metadata
     required = {
-        "package_id": "vibecomfy",
+        "pack_id": "vibecomfy",
         "homepage": "https://github.com/peteromallet/VibeComfy",
         "catalog_source": "none_declared",
     }
@@ -207,6 +209,21 @@ def _check_timeline_catalog() -> str:
     if missing:
         raise RuntimeError(f"missing timeline catalog ids: {', '.join(missing)}")
     return f"effects={len(effects)}, animations={len(animations)}, transitions={len(transitions)}"
+
+
+def _check_projects_root() -> DoctorCheck:
+    from artagents.core.project.paths import PROJECTS_ROOT_ENV, resolve_projects_root
+
+    projects_root = resolve_projects_root()
+    detail = f"{projects_root} ({PROJECTS_ROOT_ENV} override supported)"
+    if projects_root.is_dir():
+        return DoctorCheck(name="projects root", status="ok", detail=detail, required=False)
+    return DoctorCheck(
+        name="projects root",
+        status="warn",
+        detail=f"{detail}; run `python3 -m artagents setup --apply` to create it",
+        required=False,
+    )
 
 
 def _check_optional_binary(binary: str) -> DoctorCheck:

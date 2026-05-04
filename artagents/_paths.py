@@ -11,7 +11,7 @@ WORKSPACE_ROOT = REPO_ROOT.parent
 # the legacy filename while we migrate, and makes the one name mismatch
 # (render_remotion -> executors.render) explicit in one place.
 _EXECUTOR_MODULE_OVERRIDES = {
-    "render_remotion": "artagents.executors.render.run",
+    "render_remotion": "artagents.packs.builtin.render.run",
 }
 
 
@@ -22,5 +22,5 @@ def executor_argv(script_name: str, python_exec: str) -> list[str]:
     legacy ``bin/`` filename (``"transcribe.py"``).
     """
     stem = script_name[:-3] if script_name.endswith(".py") else script_name
-    module = _EXECUTOR_MODULE_OVERRIDES.get(stem, f"artagents.executors.{stem}.run")
+    module = _EXECUTOR_MODULE_OVERRIDES.get(stem, f"artagents.packs.builtin.{stem}.run")
     return [python_exec, "-m", module]

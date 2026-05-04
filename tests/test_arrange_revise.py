@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.executors.arrange import run as arrange
+from artagents.packs.builtin.arrange import run as arrange
 from artagents import timeline
 
 

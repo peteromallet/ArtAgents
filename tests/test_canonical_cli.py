@@ -71,7 +71,7 @@ class CanonicalCliTest(unittest.TestCase):
             ["run", "builtin.render", "--out", "runs/example", "--brief", "brief.txt", "--dry-run"],
         )
         self.assertEqual(result, 0, stderr)
-        self.assertIn("artagents.executors.render.run", stdout)
+        self.assertIn("artagents.packs.builtin.render.run", stdout)
 
     def test_pipeline_dispatches_canonical_cli_modules(self) -> None:
         with mock.patch.object(orchestrators_cli, "main", return_value=61) as main:

@@ -8,11 +8,18 @@ import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from artagents.core.project.run import (
+    ProjectRunContext,
+    finalize_project_run,
+    prepare_project_run,
+    project_thread_env,
+    reject_project_with_out,
+)
 from artagents.threads import wrapper as thread_wrapper
 
 from .install import executor_python_path
@@ -46,6 +53,7 @@ def _builtin_steps_by_name() -> Mapping[str, Any]:
 class ExecutorRunRequest:
     executor_id: str
     out: Path | str
+    project: str | None = None
     inputs: Mapping[str, Any] = field(default_factory=dict)
     outputs: Mapping[str, Any] = field(default_factory=dict)
     brief: Path | str | None = None
@@ -80,13 +88,23 @@ class ExecutorRunResult:
 def run_executor(request: ExecutorRunRequest, registry: ExecutorRegistry | None = None) -> ExecutorRunResult:
     active_registry = registry or load_default_registry()
     executor = active_registry.get(request.executor_id)
-    context = thread_wrapper.begin_executor_run(request, executor)
+    project_context, effective_request = _prepare_project_request(request, executor)
+    context = None if project_context is not None else thread_wrapper.begin_executor_run(effective_request, executor)
     try:
-        result = _run_executor_inner(request, executor)
+        result = _run_executor_inner(effective_request, executor)
     except Exception as exc:
         thread_wrapper.finalize_exception(context, exc)
+        if project_context is not None:
+            _finalize_project_executor(project_context, effective_request, status="error", returncode=-1, error=exc)
         raise
     thread_wrapper.finalize_result(context, result)
+    if project_context is not None:
+        _finalize_project_executor(
+            project_context,
+            effective_request,
+            status=_project_status_for_result(result),
+            returncode=result.returncode,
+        )
     return result
 
 
@@ -131,7 +149,7 @@ def _run_upload_youtube(request: ExecutorRunRequest) -> ExecutorRunResult:
             payload={"would_run": "upload.youtube", "inputs": inputs},
         )
 
-    from artagents.executors.upload_youtube.src.social_publish import publish_youtube_video
+    from artagents.packs.upload.youtube.src.social_publish import publish_youtube_video
 
     result = publish_youtube_video(
         video_url=_required_input(inputs, "video_url"),
@@ -271,7 +289,7 @@ def _run_external_executor(executor: ExecutorDefinition, request: ExecutorRunReq
     completed = subprocess.run(
         list(command),
         cwd=cwd,
-        env={**os.environ, **env, **thread_wrapper.subprocess_env()},
+        env={**os.environ, **env, **_project_subprocess_env(request), **thread_wrapper.subprocess_env()},
         check=False,
     )
     return ExecutorRunResult(
@@ -303,6 +321,73 @@ def _expand_external_command(
     cwd = _expand_placeholders(executor.command.cwd, placeholders) if executor.command.cwd else None
     env = {key: _expand_placeholders(value, placeholders) for key, value in executor.command.env.items()}
     return argv, cwd, env
+
+
+def _prepare_project_request(
+    request: ExecutorRunRequest,
+    executor: ExecutorDefinition,
+) -> tuple[ProjectRunContext | None, ExecutorRunRequest]:
+    if not request.project:
+        return None, request
+    reject_project_with_out(request.project, request.out)
+    context = prepare_project_run(
+        request.project,
+        tool_id=executor.id,
+        kind="executor",
+        argv=_project_argv(request),
+        metadata={"dry_run": bool(request.dry_run)},
+    )
+    return context, replace(request, out=context.run_root)
+
+
+def _project_argv(request: ExecutorRunRequest) -> list[str]:
+    argv = ["executors", "run", request.executor_id]
+    if request.project:
+        argv.extend(["--project", request.project])
+    if request.brief:
+        argv.extend(["--brief", str(request.brief)])
+    for key, value in request.inputs.items():
+        argv.extend(["--input", f"{key}={_stringify_value(value)}"])
+    if request.dry_run:
+        argv.append("--dry-run")
+    if request.check_binaries:
+        argv.append("--check-binaries")
+    if request.python_exec:
+        argv.extend(["--python-exec", request.python_exec])
+    if request.verbose:
+        argv.append("--verbose")
+    return argv
+
+
+def _project_status_for_result(result: ExecutorRunResult) -> str:
+    if result.skipped or result.dry_run:
+        return "skipped"
+    if not result.ok:
+        return "failed"
+    return "success"
+
+
+def _finalize_project_executor(
+    context: ProjectRunContext,
+    request: ExecutorRunRequest,
+    *,
+    status: str,
+    returncode: int | None,
+    error: BaseException | str | None = None,
+) -> None:
+    metadata = {"dry_run": bool(request.dry_run)}
+    finalize_project_run(
+        context,
+        status=status,
+        returncode=returncode,
+        error=error,
+        metadata=metadata,
+        artifact_roots=[context.run_root],
+    )
+
+
+def _project_subprocess_env(request: ExecutorRunRequest) -> dict[str, str]:
+    return project_thread_env() if request.project else {}
 
 
 def _placeholder_values(executor: ExecutorDefinition, request: ExecutorRunRequest, values: Mapping[str, Any]) -> dict[str, str]:

@@ -1,4 +1,4 @@
-from artagents.executors.iteration_prepare import run as prepare
+from artagents.packs.iteration.prepare import run as prepare
 
 
 def test_oq6_quality_formula_counts_valid_roots_without_penalty() -> None:
