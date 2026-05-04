@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from artagents.packs.builtin.generate_image.run import _variant_artifacts_for_generated_images
-from artagents.orchestrators.logo_ideas.run import _variant_artifacts_for_logo_ideas
+from artagents.packs.builtin.logo_ideas.run import _variant_artifacts_for_logo_ideas
 
 
 def test_generate_image_variant_artifact_metadata() -> None:

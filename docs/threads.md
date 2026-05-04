@@ -88,7 +88,7 @@ are not v1 behavior.
 Before rendering an iteration video, inspect the thread:
 
 ```bash
-python3 -m artagents.orchestrators.iteration_video.run inspect <thread>
+python3 -m artagents.packs.builtin.iteration_video.run inspect <thread>
 ```
 
 Inspect does not render and does not dispatch summarization. It reports detected

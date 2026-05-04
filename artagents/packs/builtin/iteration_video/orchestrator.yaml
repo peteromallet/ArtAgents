@@ -6,7 +6,7 @@
   "description": "Prepare an iteration graph, assemble render adapter files, render through builtin.render, and finalize iteration video outputs.",
   "runtime": {
     "kind": "python",
-    "module": "artagents.orchestrators.iteration_video.run",
+    "module": "artagents.packs.builtin.iteration_video.run",
     "function": "run_orchestrator"
   },
   "inputs": [
@@ -41,7 +41,7 @@
     "mode": "none"
   },
   "metadata": {
-    "runtime_module": "artagents.orchestrators.iteration_video.run",
+    "runtime_module": "artagents.packs.builtin.iteration_video.run",
     "runtime_file": "run.py",
     "runtime_entrypoint": "run_orchestrator",
     "inspect_entrypoint": "main inspect"

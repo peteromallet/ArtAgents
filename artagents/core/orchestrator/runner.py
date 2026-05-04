@@ -13,6 +13,13 @@ from typing import Any, Mapping
 
 from artagents.contracts.schema import Output
 from artagents.core.executor.runner import _has_value, _stringify_value
+from artagents.core.project.run import (
+    ProjectRunContext,
+    finalize_project_run,
+    prepare_project_run,
+    project_thread_env,
+    reject_project_with_out,
+)
 from artagents.threads import wrapper as thread_wrapper
 
 from .registry import OrchestratorRegistry, load_default_registry
@@ -30,6 +37,7 @@ class OrchestratorRunnerError(OrchestratorValidationError):
 class OrchestratorRunRequest:
     orchestrator_id: str
     out: Path | str | None = None
+    project: str | None = None
     inputs: Mapping[str, Any] = field(default_factory=dict)
     outputs: Mapping[str, Any] = field(default_factory=dict)
     brief: Path | str | None = None
@@ -124,13 +132,23 @@ class OrchestratorRunResult:
 def run_orchestrator(request: OrchestratorRunRequest, registry: OrchestratorRegistry | None = None) -> OrchestratorRunResult:
     active_registry = registry or load_default_registry()
     orchestrator = active_registry.get(request.orchestrator_id)
-    context = thread_wrapper.begin_orchestrator_run(request, orchestrator)
+    project_context, effective_request = _prepare_project_request(request, orchestrator)
+    context = None if project_context is not None else thread_wrapper.begin_orchestrator_run(effective_request, orchestrator)
     try:
-        result = _run_orchestrator_inner(request, orchestrator)
+        result = _run_orchestrator_inner(effective_request, orchestrator)
     except Exception as exc:
         thread_wrapper.finalize_exception(context, exc)
+        if project_context is not None:
+            _finalize_project_orchestrator(project_context, effective_request, status="error", returncode=-1, error=exc)
         raise
     thread_wrapper.finalize_result(context, result)
+    if project_context is not None:
+        _finalize_project_orchestrator(
+            project_context,
+            effective_request,
+            status=_project_status_for_result(result),
+            returncode=result.returncode,
+        )
     return result
 
 
@@ -200,7 +218,7 @@ def _run_command_orchestrator(
     completed = subprocess.run(
         list(command),
         cwd=cwd,
-        env={**os.environ, **env, **thread_wrapper.subprocess_env()},
+        env={**os.environ, **env, **_project_subprocess_env(request), **thread_wrapper.subprocess_env()},
         check=False,
     )
     return OrchestratorRunResult(
@@ -376,6 +394,91 @@ def _placeholder_values(orchestrator: OrchestratorDefinition, request: Orchestra
     return placeholders
 
 
+def _prepare_project_request(
+    request: OrchestratorRunRequest,
+    orchestrator: OrchestratorDefinition,
+) -> tuple[ProjectRunContext | None, OrchestratorRunRequest]:
+    if not request.project:
+        return None, request
+    reject_project_with_out(request.project, request.out)
+    if orchestrator.runtime.kind != "command":
+        raise OrchestratorRunnerError("--project is currently supported only for command-runtime orchestrators")
+    if _orchestrator_requires_output_path(orchestrator) and _has_cli_option(tuple(request.orchestrator_args), "--out"):
+        raise OrchestratorRunnerError(
+            f"--project cannot be combined with passthrough --out for {orchestrator.id}"
+        )
+    context = prepare_project_run(
+        request.project,
+        tool_id=orchestrator.id,
+        kind="orchestrator",
+        argv=_project_argv(request),
+        metadata={"dry_run": bool(request.dry_run)},
+    )
+    args = tuple(request.orchestrator_args)
+    if _orchestrator_requires_output_path(orchestrator):
+        args = (*args, "--out", str(context.run_root))
+    return context, replace(request, out=context.run_root, orchestrator_args=args)
+
+
+def _orchestrator_requires_output_path(orchestrator: OrchestratorDefinition) -> bool:
+    return bool(orchestrator.metadata.get("requires_output_path"))
+
+
+def _project_argv(request: OrchestratorRunRequest) -> list[str]:
+    argv = ["orchestrators", "run", request.orchestrator_id]
+    if request.project:
+        argv.extend(["--project", request.project])
+    if request.brief:
+        argv.extend(["--brief", str(request.brief)])
+    for key, value in request.inputs.items():
+        argv.extend(["--input", f"{key}={_stringify_value(value)}"])
+    if request.dry_run:
+        argv.append("--dry-run")
+    if request.python_exec:
+        argv.extend(["--python-exec", request.python_exec])
+    if request.verbose:
+        argv.append("--verbose")
+    if request.orchestrator_args:
+        argv.append("--")
+        argv.extend(request.orchestrator_args)
+    return argv
+
+
+def _project_status_for_result(result: OrchestratorRunResult) -> str:
+    if result.dry_run:
+        return "skipped"
+    if not result.ok:
+        return "failed"
+    return "success"
+
+
+def _finalize_project_orchestrator(
+    context: ProjectRunContext,
+    request: OrchestratorRunRequest,
+    *,
+    status: str,
+    returncode: int | None,
+    error: BaseException | str | None = None,
+) -> None:
+    metadata = {"dry_run": bool(request.dry_run)}
+    finalize_project_run(
+        context,
+        status=status,
+        returncode=returncode,
+        error=error,
+        metadata=metadata,
+        artifact_roots=[context.run_root],
+    )
+
+
+def _project_subprocess_env(request: OrchestratorRunRequest) -> dict[str, str]:
+    return project_thread_env() if request.project else {}
+
+
+def _has_cli_option(args: tuple[str, ...], option: str) -> bool:
+    return any(arg == option or arg.startswith(f"{option}=") for arg in args)
+
+
 def _output_value(output: Output, request: OrchestratorRunRequest, placeholders: Mapping[str, str]) -> str:
     if output.name in request.outputs:
         return _stringify_value(request.outputs[output.name])
@@ -411,16 +514,13 @@ def _validate_required_inputs(orchestrator: OrchestratorDefinition, values: Mapp
 def _validate_out_requirement(orchestrator: OrchestratorDefinition, request: OrchestratorRunRequest) -> None:
     if request.out is not None:
         return
-    if orchestrator.id == "builtin.thumbnail_maker":
+    if _orchestrator_requires_output_path(orchestrator):
+        raise OrchestratorRunnerError(f"--out is required for {orchestrator.id}")
+    if request.dry_run:
         return
-    if not request.dry_run:
-        raise OrchestratorRunnerError("--out is required for orchestrator execution")
-    if orchestrator.id == "builtin.event_talks":
-        return
-    if orchestrator.id == "builtin.hype":
-        raise OrchestratorRunnerError("--out is required for builtin.hype dry-run")
     if orchestrator.runtime.kind == "command" and _command_runtime_requires_out(orchestrator, request):
         raise OrchestratorRunnerError("--out is required for command runtime placeholders")
+    raise OrchestratorRunnerError("--out is required for orchestrator execution")
 
 
 def _command_runtime_requires_out(orchestrator: OrchestratorDefinition, request: OrchestratorRunRequest) -> bool:

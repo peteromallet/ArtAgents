@@ -55,7 +55,7 @@ Each tool has its own `STAGE.md` next to its `run.py`. That is the source of tru
 
 At the start of any session that will produce runs, run python3 -m artagents thread show @active first. The [thread] prefix on every command output is your continuous indicator; if it shows the wrong thread, run thread new or pass --thread @new to your next command. Selections are append-only; the most recent write is authoritative on read; prior selections are preserved as history but do not affect current keepers.
 
-Before rendering an iteration video, run `python3 -m artagents.orchestrators.iteration_video.run inspect <thread>` to see modalities, renderers, quality, cache counts, and estimated cost without rendering.
+Before rendering an iteration video, run `python3 -m artagents.packs.builtin.iteration_video.run inspect <thread>` to see modalities, renderers, quality, cache counts, and estimated cost without rendering.
 
 ## Make something new
 

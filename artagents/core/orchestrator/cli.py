@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from artagents.core.executor.banodoco_catalog import BanodocoCatalogConfig
+from artagents.core.project.run import ProjectRunError
 
 from .registry import OrchestratorRegistry, load_default_registry
 from .schema import OrchestratorDefinition, OrchestratorValidationError
@@ -24,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         registry = load_default_registry(banodoco_config=_banodoco_config_from_args(args))
         return int(args.handler(args, registry))
-    except (KeyError, OrchestratorValidationError, ValueError) as exc:
+    except (KeyError, OrchestratorValidationError, ProjectRunError, ValueError) as exc:
         print(f"orchestrators: {exc}", file=sys.stderr)
         return 2
 
@@ -60,6 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run or dry-run one orchestrator.")
     run_parser.add_argument("orchestrator_id")
     run_parser.add_argument("--out", help="Output directory for runtime placeholders.")
+    run_parser.add_argument("--project", help="Project slug for a persistent project run.")
     run_parser.add_argument("--brief", help="Brief path for runtime placeholders.")
     run_parser.add_argument("--input", action="append", default=[], metavar="NAME=VALUE", help="Orchestrator input value; may be repeated.")
     run_parser.add_argument("--dry-run", action="store_true", help="Plan commands without executing command runtimes.")
@@ -140,6 +142,7 @@ def _cmd_run(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
     request = OrchestratorRunRequest(
         orchestrator_id=args.orchestrator_id,
         out=Path(args.out) if args.out else None,
+        project=args.project,
         inputs=_parse_input_values(args.input),
         brief=Path(args.brief) if args.brief else None,
         orchestrator_args=tuple(args.orchestrator_args),

@@ -10,9 +10,8 @@ from artagents.core.executor.folder import load_folder_executors
 from artagents.core.orchestrator.folder import load_folder_orchestrators
 
 
-LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives", "executors")
+LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives", "executors", "orchestrators")
 LEGACY_LOCAL_DIRS = ("performers", "conductors", "nodes", "instruments", "primitives")
-INTERNAL_ORCHESTRATOR_DIRS = {"__pycache__", "bundled", "curated"}
 INTERNAL_PACK_DIRS = {"__pycache__"}
 TOP_LEVEL_ARTAGENTS_FILES = {
     "__init__.py",
@@ -33,7 +32,6 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "domains",
     "elements",
     "modalities",
-    "orchestrators",
     "packs",
     "threads",
     "utilities",
@@ -56,7 +54,7 @@ def validate_repo_structure(root: str | Path = REPO_ROOT) -> StructureReport:
     errors.extend(_validate_local_state_dirs(repo_root))
     errors.extend(_validate_top_level_artagents(repo_root / "artagents"))
     errors.extend(_validate_pack_executor_folders(repo_root / "artagents" / "packs"))
-    errors.extend(_validate_orchestrator_folders(repo_root / "artagents" / "orchestrators"))
+    errors.extend(_validate_pack_orchestrator_folders(repo_root / "artagents" / "packs"))
     return StructureReport(errors=tuple(errors))
 
 
@@ -123,27 +121,33 @@ def _validate_pack_executor_folders(packs_root: Path) -> list[str]:
     return errors
 
 
-def _validate_orchestrator_folders(orchestrators_root: Path) -> list[str]:
-    if not orchestrators_root.is_dir():
-        return [f"missing orchestrators directory: {orchestrators_root}"]
+def _validate_pack_orchestrator_folders(packs_root: Path) -> list[str]:
+    if not packs_root.is_dir():
+        return [f"missing packs directory: {packs_root}"]
 
     errors: list[str] = []
-    for folder in _public_child_dirs(orchestrators_root, INTERNAL_ORCHESTRATOR_DIRS):
-        errors.extend(_require_files(folder, ("orchestrator.yaml", "run.py", "STAGE.md"), root=orchestrators_root.parents[1]))
-        if _has_any(folder, ("executor.yaml", "executor.yml", "executor.json", "executor.py")):
-            errors.append(f"orchestrator folder contains executor metadata: {folder.relative_to(orchestrators_root.parents[1])}")
-        try:
-            definitions = load_folder_orchestrators(folder)
-        except Exception as exc:
-            errors.append(f"invalid orchestrator folder {folder.relative_to(orchestrators_root.parents[1])}: {exc}")
-            continue
-        if not definitions:
-            errors.append(f"orchestrator folder emitted no orchestrator metadata: {folder.relative_to(orchestrators_root.parents[1])}")
-            continue
-        for definition in definitions:
-            expected = f"builtin.{folder.name}"
-            if definition.kind != "built_in" or definition.id != expected:
-                errors.append(f"built-in orchestrator folder {folder.name!r} must expose id {expected!r}")
+    repo_root = packs_root.parents[1]
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+        for folder in _public_child_dirs(pack_dir, INTERNAL_PACK_DIRS):
+            if not _has_any(folder, ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json", "orchestrator.py")):
+                continue
+            errors.extend(_require_files(folder, ("orchestrator.yaml", "run.py", "STAGE.md"), root=repo_root))
+            if _has_any(folder, ("executor.yaml", "executor.yml", "executor.json", "executor.py")):
+                errors.append(f"orchestrator folder contains executor metadata: {folder.relative_to(repo_root)}")
+            try:
+                definitions = load_folder_orchestrators(folder)
+            except Exception as exc:
+                errors.append(f"invalid orchestrator folder {folder.relative_to(repo_root)}: {exc}")
+                continue
+            if not definitions:
+                errors.append(f"orchestrator folder emitted no orchestrator metadata: {folder.relative_to(repo_root)}")
+                continue
+            for definition in definitions:
+                pack_segment = definition.id.split(".", 1)[0]
+                if pack_segment != pack_dir.name:
+                    errors.append(
+                        f"orchestrator {definition.id!r} must live in pack {pack_segment!r} but was found in pack {pack_dir.name!r}"
+                    )
     return errors
 
 

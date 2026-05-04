@@ -4,7 +4,6 @@ import unittest
 from artagents.core.executor import ExecutorDefinition, ExecutorRegistry, load_default_registry as load_executor_registry
 from artagents.core.orchestrator import OrchestratorDefinition, OrchestratorRegistry, load_default_registry as load_orchestrator_registry
 import artagents.elements as legacy_elements
-import artagents.orchestrators as legacy_orchestrators
 
 
 class CanonicalAliasTest(unittest.TestCase):
@@ -31,11 +30,9 @@ class CanonicalAliasTest(unittest.TestCase):
         self.assertIsNone(importlib.util.find_spec("artagents.performers"))
         self.assertIsNone(importlib.util.find_spec("artagents.conductors"))
         self.assertIsNone(importlib.util.find_spec("artagents.executors"))
+        self.assertIsNone(importlib.util.find_spec("artagents.orchestrators"))
 
-    def test_content_packages_keep_framework_api_exports(self) -> None:
-        self.assertEqual(legacy_orchestrators.OrchestratorRunRequest.__module__, "artagents.core.orchestrator.runner")
-        self.assertEqual(legacy_orchestrators.OrchestratorRegistry.__module__, "artagents.core.orchestrator.registry")
-        self.assertIs(legacy_orchestrators.load_default_registry, load_orchestrator_registry)
+    def test_element_framework_api_exports(self) -> None:
         self.assertEqual(legacy_elements.ElementRegistry.__module__, "artagents.core.element.registry")
         self.assertEqual(legacy_elements.ElementDefinition.__module__, "artagents.core.element.schema")
 

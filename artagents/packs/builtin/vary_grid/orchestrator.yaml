@@ -1,0 +1,36 @@
+{
+  "id": "builtin.vary_grid",
+  "name": "Vary Grid",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Iterative grid editor: take an existing grid image, pick one or more cells as references, and generate a new grid of variations via fal openai/gpt-image-2/edit. Output is itself a grid, ready to be sliced and fed back in for the next iteration.",
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.packs.builtin.vary_grid.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.vary_grid.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main",
+    "env": [
+      "FIREWORKS_API_KEY",
+      "FAL_KEY"
+    ]
+  }
+}

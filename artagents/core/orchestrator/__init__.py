@@ -5,10 +5,8 @@ from .folder import load_folder_orchestrator, load_folder_orchestrators
 from .registry import (
     OrchestratorRegistry,
     OrchestratorRegistryError,
-    load_builtin_orchestrators,
-    load_bundled_orchestrators,
-    load_curated_orchestrators,
     load_default_registry,
+    load_pack_orchestrators,
 )
 from .runner import (
     OrchestratorPlan,
@@ -52,10 +50,8 @@ __all__ = [
     "Port",
     "RuntimeSpec",
     "build_orchestrator_command",
-    "load_builtin_orchestrators",
-    "load_bundled_orchestrators",
-    "load_curated_orchestrators",
     "load_default_registry",
+    "load_pack_orchestrators",
     "load_folder_orchestrator",
     "load_folder_orchestrators",
     "load_orchestrator_manifest",

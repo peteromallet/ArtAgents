@@ -10,7 +10,7 @@
       "argv": [
         "{python_exec}",
         "-m",
-        "artagents.orchestrators.logo_ideas.run",
+        "artagents.packs.builtin.logo_ideas.run",
         "{orchestrator_args}"
       ]
     }
@@ -25,7 +25,7 @@
     "network": true
   },
   "metadata": {
-    "runtime_module": "artagents.orchestrators.logo_ideas.run",
+    "runtime_module": "artagents.packs.builtin.logo_ideas.run",
     "runtime_file": "run.py",
     "runtime_entrypoint": "main",
     "env": [

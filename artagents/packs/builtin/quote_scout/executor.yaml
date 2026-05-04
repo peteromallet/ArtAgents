@@ -50,7 +50,7 @@
   },
   "kind": "built_in",
   "metadata": {
-    "command_builder": "artagents.orchestrators.hype.run.build_pool_steps",
+    "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
     "pipeline_step": "quote_scout",
     "pipeline_step_order": 6,
     "runtime_entrypoint": "main",

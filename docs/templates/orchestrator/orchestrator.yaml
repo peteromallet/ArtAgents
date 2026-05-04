@@ -10,7 +10,7 @@
       "argv": [
         "{python_exec}",
         "-m",
-        "artagents.orchestrators.example.run",
+        "artagents.packs.builtin.example.run",
         "{orchestrator_args}"
       ]
     }
@@ -23,7 +23,7 @@
     "mode": "none"
   },
   "metadata": {
-    "runtime_module": "artagents.orchestrators.example.run",
+    "runtime_module": "artagents.packs.builtin.example.run",
     "runtime_file": "run.py"
   }
 }

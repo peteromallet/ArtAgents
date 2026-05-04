@@ -33,7 +33,7 @@ def test_threads_doc_covers_required_t11_sections_without_lock_repair_command() 
         assert heading in text
     compact = re.sub(r"\s+", " ", text.lower())
     assert "selections are append-only; the most recent write is authoritative on read; prior selections are preserved as history" in compact
-    assert "python3 -m artagents.orchestrators.iteration_video.run inspect <thread>" in text
+    assert "python3 -m artagents.packs.builtin.iteration_video.run inspect <thread>" in text
     assert "hype.timeline.json" in text and "hype.assets.json" in text and "iteration.mp4" in text
     assert "preview_modes" in text
     assert "thread gc" not in text
@@ -42,7 +42,7 @@ def test_threads_doc_covers_required_t11_sections_without_lock_repair_command() 
 def test_skill_includes_thread_session_guidance() -> None:
     text = Path("SKILL.md").read_text(encoding="utf-8")
     assert SKILL_PARAGRAPH in text
-    assert "python3 -m artagents.orchestrators.iteration_video.run inspect <thread>" in text
+    assert "python3 -m artagents.packs.builtin.iteration_video.run inspect <thread>" in text
 
 
 def test_executor_and_orchestrator_inspect_show_active_thread_footer(tmp_path: Path, monkeypatch) -> None:

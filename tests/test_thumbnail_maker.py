@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.orchestrators.thumbnail_maker import run as thumbnail_maker
+from artagents.packs.builtin.thumbnail_maker import run as thumbnail_maker
 
 
 class ThumbnailMakerTest(unittest.TestCase):

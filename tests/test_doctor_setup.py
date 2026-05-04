@@ -108,9 +108,29 @@ class DoctorSetupTest(unittest.TestCase):
             root = Path(tmp)
             (root / "artagents" / "conductors").mkdir(parents=True)
             (root / "artagents" / "skills" / "reigh-data").mkdir(parents=True)
-            bad_orchestrator = root / "artagents" / "orchestrators" / "vibecomfy"
-            bad_orchestrator.mkdir(parents=True)
-            (bad_orchestrator / "executor.yaml").write_text(
+            external_pack_dir = root / "artagents" / "packs" / "external"
+            external_pack_dir.mkdir(parents=True)
+            (external_pack_dir / "pack.yaml").write_text("id: external\n", encoding="utf-8")
+            mixed_orchestrator = external_pack_dir / "vibecomfy"
+            mixed_orchestrator.mkdir(parents=True)
+            (mixed_orchestrator / "STAGE.md").write_text("# stage\n", encoding="utf-8")
+            (mixed_orchestrator / "run.py").write_text("", encoding="utf-8")
+            (mixed_orchestrator / "orchestrator.yaml").write_text(
+                "\n".join(
+                    [
+                        "id: external.vibecomfy",
+                        "name: VibeComfy",
+                        "kind: external",
+                        "version: '1.0'",
+                        "runtime:",
+                        "  kind: command",
+                        "  command:",
+                        "    argv: [\"echo\", \"vibe\"]",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (mixed_orchestrator / "executor.yaml").write_text(
                 "\n".join(
                     [
                         "id: external.vibecomfy.run",
@@ -123,10 +143,7 @@ class DoctorSetupTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            misplaced_pack_dir = root / "artagents" / "packs" / "external"
-            misplaced_pack_dir.mkdir(parents=True)
-            (misplaced_pack_dir / "pack.yaml").write_text("id: external\n", encoding="utf-8")
-            misplaced_executor = misplaced_pack_dir / "render"
+            misplaced_executor = external_pack_dir / "render"
             misplaced_executor.mkdir(parents=True)
             (misplaced_executor / "STAGE.md").write_text("# stage\n", encoding="utf-8")
             (misplaced_executor / "run.py").write_text("", encoding="utf-8")
@@ -150,8 +167,10 @@ class DoctorSetupTest(unittest.TestCase):
         detail = "\n".join(report.errors)
         self.assertIn("legacy public package must not exist: artagents/conductors", detail)
         self.assertIn("top-level artagents directory is not a canonical concept: artagents/skills", detail)
-        self.assertIn("artagents/orchestrators/vibecomfy missing orchestrator.yaml", detail)
-        self.assertIn("orchestrator folder contains executor metadata: artagents/orchestrators/vibecomfy", detail)
+        self.assertIn(
+            "orchestrator folder contains executor metadata: artagents/packs/external/vibecomfy",
+            detail,
+        )
         self.assertIn("executor 'builtin.render' must live in pack 'builtin' but was found in pack 'external'", detail)
 
 

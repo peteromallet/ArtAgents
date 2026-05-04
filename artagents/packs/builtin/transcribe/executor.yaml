@@ -48,7 +48,7 @@
   },
   "kind": "built_in",
   "metadata": {
-    "command_builder": "artagents.orchestrators.hype.run.build_pool_steps",
+    "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
     "pipeline_step": "transcribe",
     "pipeline_step_order": 0,
     "runtime_entrypoint": "main",

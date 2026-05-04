@@ -19,18 +19,18 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     yaml = None
 
-from ...audit import AuditContext, PARENT_IDS_ENV
-from ...packs.builtin.asset_cache import run as asset_cache
-from ... import timeline
-from ..._paths import WORKSPACE_ROOT, executor_argv
-from ...core.project.run import (
+from ....audit import AuditContext, PARENT_IDS_ENV
+from ..asset_cache import run as asset_cache
+from .... import timeline
+from ...._paths import WORKSPACE_ROOT, executor_argv
+from ....core.project.run import (
     ProjectRunError,
     finalize_project_run,
     prepare_project_run,
     project_thread_env,
     reject_project_with_out,
 )
-from ...threads.wrapper import subprocess_env as thread_subprocess_env
+from ....threads.wrapper import subprocess_env as thread_subprocess_env
 
 
 STEP_ORDER = (
@@ -1161,13 +1161,13 @@ def write_skip_log(step: Step, args: argparse.Namespace, message: str) -> None:
 
 
 def _notes_overlap_ratio(prev: list[dict[str, Any]], curr: list[dict[str, Any]]) -> float:
-    from ...packs.builtin.editor_review import run as editor_review
+    from ..editor_review import run as editor_review
 
     return editor_review.notes_overlap_ratio(prev, curr)
 
 
 def _plan_action(review: dict[str, Any]) -> str:
-    from ...packs.builtin.editor_review import run as editor_review
+    from ..editor_review import run as editor_review
 
     return editor_review.plan_next_action(review)
 

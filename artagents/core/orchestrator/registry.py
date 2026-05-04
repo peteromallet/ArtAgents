@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from importlib import resources
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable
 
@@ -15,14 +13,9 @@ from artagents.core.pack import discover_packs, iter_orchestrator_roots, validat
 from .schema import (
     OrchestratorDefinition,
     OrchestratorValidationError,
-    load_orchestrator_manifest,
     validate_orchestrator_definition,
 )
 from .folder import load_folder_orchestrators
-
-
-BUNDLED_PACKAGE = "artagents.orchestrators.bundled"
-CURATED_PACKAGE = "artagents.orchestrators.curated"
 
 
 class OrchestratorRegistryError(OrchestratorValidationError):
@@ -133,35 +126,6 @@ class OrchestratorRegistry:
             visit(orchestrator_id)
 
 
-def load_builtin_orchestrators() -> tuple[OrchestratorDefinition, ...]:
-    orchestrators: list[OrchestratorDefinition] = []
-    for root in _builtin_folder_roots():
-        orchestrators.extend(load_folder_orchestrators(root))
-    return tuple(sorted(orchestrators, key=lambda o: o.id))
-
-
-def load_curated_orchestrators() -> tuple[OrchestratorDefinition, ...]:
-    orchestrators: list[OrchestratorDefinition] = []
-    for path in _curated_manifest_paths():
-        definition = load_orchestrator_manifest(path)
-        if not _is_builtin_definition(definition):
-            orchestrators.append(definition)
-    for path in _curated_folder_roots():
-        orchestrators.extend(definition for definition in load_folder_orchestrators(path) if not _is_builtin_definition(definition))
-    return tuple(orchestrators)
-
-
-def load_bundled_orchestrators() -> tuple[OrchestratorDefinition, ...]:
-    orchestrators: list[OrchestratorDefinition] = []
-    for path in _bundled_manifest_paths():
-        definition = load_orchestrator_manifest(path)
-        if not _is_builtin_definition(definition):
-            orchestrators.append(definition)
-    for path in _bundled_folder_roots():
-        orchestrators.extend(definition for definition in load_folder_orchestrators(path) if not _is_builtin_definition(definition))
-    return tuple(orchestrators)
-
-
 def load_default_registry(
     *,
     executor_registry: ExecutorRegistry | None = None,
@@ -170,12 +134,6 @@ def load_default_registry(
     active_executor_registry = executor_registry
     registry = OrchestratorRegistry(executor_registry=active_executor_registry)
     for orchestrator in load_pack_orchestrators():
-        registry.register(orchestrator)
-    for orchestrator in load_builtin_orchestrators():
-        registry.register(orchestrator)
-    for orchestrator in load_bundled_orchestrators():
-        registry.register(orchestrator)
-    for orchestrator in load_curated_orchestrators():
         registry.register(orchestrator)
     registry.validate_all(executor_registry=active_executor_registry)
     return registry
@@ -193,85 +151,14 @@ def load_pack_orchestrators() -> tuple[OrchestratorDefinition, ...]:
 
 def _attach_pack_metadata(orchestrator: OrchestratorDefinition, pack_id: str) -> OrchestratorDefinition:
     metadata = dict(orchestrator.metadata)
-    metadata.update({"pack_id": pack_id, "source": "pack"})
+    metadata.setdefault("pack_id", pack_id)
+    metadata["source"] = "pack"
     return validate_orchestrator_definition(replace(orchestrator, metadata=metadata))
-
-
-def _curated_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(CURATED_PACKAGE, _content_root() / "curated")
-
-
-def _curated_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(CURATED_PACKAGE, _content_root() / "curated")
-
-
-def _bundled_manifest_paths() -> tuple[Path, ...]:
-    return _package_manifest_paths(BUNDLED_PACKAGE, _content_root() / "bundled")
-
-
-def _bundled_folder_roots() -> tuple[Path, ...]:
-    return _package_folder_roots(BUNDLED_PACKAGE, _content_root() / "bundled")
-
-
-def _builtin_folder_roots() -> tuple[Path, ...]:
-    root = _content_root()
-    skip = {"__pycache__", "bundled", "curated"}
-    return tuple(
-        path
-        for path in sorted(root.iterdir())
-        if path.is_dir()
-        and path.name not in skip
-        and (path / "orchestrator.yaml").is_file()
-        and (path / "run.py").is_file()
-    )
-
-
-def _content_root() -> Path:
-    return Path(__file__).resolve().parents[2] / "orchestrators"
-
-
-def _package_manifest_paths(package: str, source_root: Path) -> tuple[Path, ...]:
-    paths: list[Path] = []
-    try:
-        package_root = resources.files(package)
-        paths.extend(Path(str(item)) for item in package_root.iterdir() if item.name.endswith(".json"))
-    except (FileNotFoundError, ModuleNotFoundError, TypeError):
-        pass
-
-    if paths:
-        return tuple(sorted(paths))
-
-    if not source_root.is_dir():
-        return ()
-    return tuple(sorted(source_root.glob("*.json")))
-
-
-def _package_folder_roots(package: str, source_root: Path) -> tuple[Path, ...]:
-    paths: list[Path] = []
-    try:
-        package_root = resources.files(package)
-        paths.extend(Path(str(item)) for item in package_root.iterdir() if item.is_dir())
-    except (FileNotFoundError, ModuleNotFoundError, TypeError):
-        pass
-
-    if paths:
-        return tuple(sorted(paths))
-
-    if not source_root.is_dir():
-        return ()
-    return tuple(sorted(path for path in source_root.iterdir() if path.is_dir()))
-
-
-def _is_builtin_definition(orchestrator: OrchestratorDefinition) -> bool:
-    return orchestrator.kind == "built_in" or orchestrator.id.startswith("builtin.")
 
 
 __all__ = [
     "OrchestratorRegistry",
     "OrchestratorRegistryError",
-    "load_builtin_orchestrators",
-    "load_bundled_orchestrators",
-    "load_curated_orchestrators",
     "load_pack_orchestrators",
     "load_default_registry",
 ]

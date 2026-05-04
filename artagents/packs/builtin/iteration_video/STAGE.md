@@ -7,7 +7,7 @@ The render handoff is explicit: assemble writes `hype.timeline.json` and `hype.a
 Inspect first when provenance quality is uncertain:
 
 ```bash
-python3 -m artagents.orchestrators.iteration_video.run inspect @active --no-content
+python3 -m artagents.packs.builtin.iteration_video.run inspect @active --no-content
 ```
 
 Run through the canonical gateway:

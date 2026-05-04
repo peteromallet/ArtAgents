@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ArtAgents package command gateway.
 
-Hype orchestration lives in :mod:`artagents.orchestrators.hype.run`.
+Hype orchestration lives in :mod:`artagents.packs.builtin.hype.run`.
 This module keeps the historical top-level CLI and import surface stable.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 import sys
 
 from ._paths import REPO_ROOT as _REPO_ROOT
-from .orchestrators.hype import run as _hype
+from .packs.builtin.hype import run as _hype
 
 
 # Compatibility exports for older tests, wrappers, and external callers that
