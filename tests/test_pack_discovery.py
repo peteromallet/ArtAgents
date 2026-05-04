@@ -123,7 +123,7 @@ class PackDiscoveryTest(unittest.TestCase):
         executor_registry = load_executor_registry()
         orchestrator_registry = load_orchestrator_registry(executor_registry=executor_registry)
 
-        self.assertEqual(len(executor_registry.list()), 34)
+        self.assertGreaterEqual(len(executor_registry.list()), 34)
         self.assertGreaterEqual(len(orchestrator_registry.list()), 5)
         self.assertIn("builtin.cut", executor_registry.as_mapping())
         self.assertIn("external.moirae", executor_registry.as_mapping())

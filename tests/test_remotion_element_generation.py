@@ -26,13 +26,15 @@ class RemotionElementGenerationTest(unittest.TestCase):
             self.assertNotIn("primitive-root", generated)
 
     def test_remotion_alias_files_do_not_reference_workspace_element_aliases(self) -> None:
-        # webpack-alias.mjs intentionally exposes the `@workspace-*` aliases
-        # required by `@banodoco/timeline-composition`'s codegenned
-        # `animations.generated.ts`. The invariant we still enforce: AA's own
-        # generator and remotion config files must not reference them.
+        # `@workspace-*` aliases must be resolvable by the bundler because
+        # `@banodoco/timeline-composition`'s codegenned `animations.generated.ts`
+        # imports them transitively from `<TimelineComposition>`. They are
+        # registered in `webpack-alias.mjs` (smoke bundle) and `remotion.config.ts`
+        # (npx remotion render). The invariant we still enforce: AA's own
+        # generator and tsconfig must not reference them — those are orthogonal
+        # compile/codegen surfaces.
         checked = [
             ROOT / "scripts" / "gen_effect_registry.py",
-            ROOT / "remotion" / "remotion.config.ts",
             ROOT / "remotion" / "tsconfig.json",
         ]
         for path in checked:

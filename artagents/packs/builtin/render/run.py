@@ -250,11 +250,23 @@ def _theme_for_props(theme_path: Path) -> dict:
         return {
             "id": "banodoco-default",
             "visual": {
+                "color": {
+                    "fg": "#ffffff",
+                    "bg": "#000000",
+                    "accent": "#ffffff",
+                },
+                "type": {
+                    "families": {"heading": "Georgia, serif", "body": "Georgia, serif"},
+                    "size": {"base": 64, "small": 36, "large": 96},
+                    "weight": {"normal": 400, "bold": 700},
+                    "lineHeight": 1.1,
+                },
+                "motion": {"fadeMs": 250},
                 "canvas": {
                     "width": 1920,
                     "height": 1080,
                     "fps": 30,
-                }
+                },
             },
         }
     theme = load_theme(resolved)

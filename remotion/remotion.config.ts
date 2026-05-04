@@ -28,6 +28,9 @@ Config.overrideWebpackConfig((currentConfiguration) => ({
       '@theme-transitions': path.resolve(activeThemeDir, 'transitions'),
       '@pack-local-elements-transitions': path.resolve(localPackElementsDir, 'transitions'),
       '@pack-builtin-elements-transitions': path.resolve(builtinPackElementsDir, 'transitions'),
+      '@workspace-animations': path.resolve(builtinPackElementsDir, 'animations'),
+      '@workspace-effects': path.resolve(builtinPackElementsDir, 'effects'),
+      '@workspace-transitions': path.resolve(builtinPackElementsDir, 'transitions'),
     },
     modules: [
       ...(currentConfiguration.resolve?.modules ?? ['node_modules']),
