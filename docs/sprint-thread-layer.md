@@ -121,7 +121,7 @@ Schema-versioning machinery is also trimmed: keep `schema_version: 1` on persist
 - **Day 3** carries the agent-UX stability rule: prefix output is stdout-only, ordered, and treated as a public CLI contract governed by `schema_version`.
 - **Day 4** lands SD-007, SD-013, SD-014, SD-015, SD-016, SD-017, SD-031, SD-033: lifecycle tail, lazy reaper, v1 variant schema, append-only selections, typed chosen edges, groups index, variant gestures, and the two allowed producer patches.
 - **Day 5** lands SD-009, SD-019, SD-034, and the long-form part of SD-038: brief snapshotting, provenance block in `hype.metadata.json`, `thread backfill`, and `docs/threads.md`.
-- **Fail-closed reminder**: the default output artifact role is `other` in v1; only `artagents/executors/generate_image/run.py` and `artagents/orchestrators/logo_ideas/run.py` opt into `role: variant` per SD-031 and DEF-4. No other executor `run.py` is modified.
+- **Fail-closed reminder**: the default output artifact role is `other` in v1; only `artagents/packs/builtin/generate_image/run.py` and `artagents/packs/builtin/logo_ideas/run.py` opt into `role: variant` per SD-031 and DEF-4. No other executor `run.py` is modified.
 
 ### Week 2: Iteration Video MVP
 
@@ -190,11 +190,11 @@ Put the v1 run record behind the single executor/orchestrator chokepoints and fr
 
 - Add `artagents/threads/record.py` for begin/finalize record construction.
 - Add `artagents/threads/wrapper.py` with `threads.begin(request)` and `threads.finalize(record_id, result)` helpers.
-- Modify `ExecutorRunRequest` at `artagents/executors/runner.py:43` and the orchestrator run request equivalent to carry `thread`, `variants`, and `from_variant`.
+- Modify `ExecutorRunRequest` at `artagents/core/executor/runner.py:43` and the orchestrator run request equivalent to carry `thread`, `variants`, and `from_variant`.
 - Add `--thread <id|@new|@none>`, `--variants N`, and `--from <run-id>:<n>` to both `python3 -m artagents executors run ...` and `python3 -m artagents orchestrators run ...`.
-- Wrap `run_executor()` at `artagents/executors/runner.py:75` and the orchestrator-runner equivalent with begin/finalize.
+- Wrap `run_executor()` at `artagents/core/executor/runner.py:75` and the orchestrator-runner equivalent with begin/finalize.
 - Preserve all SD-030 no-op gates: `dry_run=True`, unwritable output, output under `tempfile.gettempdir()`, `request.thread == "@none"`, and `ARTAGENTS_THREADS_OFF=1`.
-- Leave the `upload.youtube` short-circuit at `artagents/executors/runner.py:78` untouched; verify it produces zero thread artifacts and zero errors.
+- Leave the `upload.youtube` short-circuit at `artagents/core/executor/runner.py:78` untouched; verify it produces zero thread artifacts and zero errors.
 - Write the trimmed SD-008 v1 `run.json` fields: `schema_version`, `run_id`, `thread_id`, typed `parent_run_ids[]`, `executor_id`, `orchestrator_id`, `kind`, `started_at`, `ended_at`, `returncode`, `out_path`, `cli_args_redacted`, `agent_version`, `brief_content_sha256`, `inputs_digest`, `input_artifacts[]`, `output_artifacts[]`, `external_service_calls[]`, and `starred`.
 - Use typed `parent_run_ids` entries for both causal and chosen edges: `{run_id, kind: "causal"}` and `{run_id, kind: "chosen", group: "..."}`. Do not add top-level `chosen_from_groups` in v1.
 - Keep `external_service_calls` to three fields per DEF-8: `model`, `model_version`, and `request_id`.
@@ -250,7 +250,7 @@ Make thread attribution visible and explainable to agents the same day it appear
 - Add `python3 -m artagents thread new`, `thread list`, and `thread show` CLI.
 - Add `thread show @active --no-content` for SD-041.
 - Do not add `[thread-health]` smell lines on `thread list`; DEF-2 defers that output format.
-- Modify `_run_external_executor` at `artagents/executors/runner.py:258` to thread `ARTAGENTS_THREAD_ID` into the subprocess env when present, so external executor processes inherit the parent thread without re-stamping.
+- Modify `_run_external_executor` at `artagents/core/executor/runner.py:258` to thread `ARTAGENTS_THREAD_ID` into the subprocess env when present, so external executor processes inherit the parent thread without re-stamping.
 - Child wrappers skip begin when `ARTAGENTS_THREAD_ID` is set and instead attach to the parent context.
 - Append this exact SKILL.md paragraph:
 
@@ -307,7 +307,7 @@ Complete lifecycle commands and variants without expanding the agent-facing surf
 - Emit `[variants]` only when unresolved variants exist; it is silenced after `thread keep ...` or `thread keep ...:none`.
 - Do not add the `[hint]` fan-out line; DEF-3 defers it.
 - Put the SD-042 sentence in `[variants]` help and `thread keep --help`: "selections are append-only; the most recent write is authoritative on read; prior selections are preserved as history but do not affect current keepers."
-- Patch only `artagents/executors/generate_image/run.py` and `artagents/orchestrators/logo_ideas/run.py`.
+- Patch only `artagents/packs/builtin/generate_image/run.py` and `artagents/packs/builtin/logo_ideas/run.py`.
 - `generate_image` declares `role: variant` on generated image siblings, emits `group=sha256(run_id+prompt_index)[:16]`, sets `group_index`, and fills `duration` where applicable.
 - `logo_ideas` folds `name`, `rationale`, `prompt`, and `generated.*` into `variant_meta`, stamps `role: variant`, `group`, and `group_index`.
 - No other executor `run.py` is modified.
@@ -400,7 +400,7 @@ Create the modality registry and the first half of `iteration.prepare`: collect 
 - Each renderer declares `kinds`, `clip_modes`, `default_clip_mode_for(shape, style)`, `produces_audio`, and `cost_hint`.
 - Register `generic_card` last in the fallback chain so specific renderers always win when they match.
 - Add `python3 -m artagents modalities list` and `python3 -m artagents modalities inspect <renderer>`.
-- Add `artagents/executors/iteration_prepare/` as the single v1 prepare executor.
+- Add `artagents/packs/iteration/prepare/` as the single v1 prepare executor.
 - Implement the collection phase inside `iteration.prepare`: walk typed `parent_run_ids` backward from the target run using the provenance graph, not thread membership alone.
 - Label runs in the prepare manifest as `in_thread` or `pulled_by_ancestry` for the future HTML report.
 - Compute `data_quality` with the OQ-6 formula: `0.5*parent_capture_score + 0.3*has_brief_sha + 0.2*has_resolved_input_artifact`.
@@ -481,7 +481,7 @@ Assemble the editable timeline from prepared iteration data and enforce the qual
 
 **Deliverables**
 
-- Add `artagents/executors/iteration_assemble/`.
+- Add `artagents/packs/iteration/assemble/`.
 - Read the `iteration.prepare` manifest and `iteration.quality.json`; do not re-run collection or summarization.
 - Resolve renderer by artifact `kind` only per DEF-5. Do not use `preview_modes`.
 - Apply style precedence from SD-027 with the v1 trim: theme > direction label > style preset > defaults. `--direction` is accepted as a label only and not parsed into structured creative instructions.
@@ -525,7 +525,7 @@ Wire the `builtin.iteration_video` orchestrator and make `iteration_video inspec
 
 **Deliverables**
 
-- Add `artagents/orchestrators/iteration_video/` as `builtin.iteration_video`.
+- Add `artagents/packs/builtin/iteration_video/` as `builtin.iteration_video`.
 - Wire the v1 orchestrator chain: `iteration.prepare -> iteration.assemble -> builtin.render -> finalize`.
 - Reuse `builtin.render`; do not duplicate render pipeline internals. `iteration.assemble` owns the adapter handoff by writing `hype.timeline.json` and `hype.assets.json`.
 - Emit the SD-022 five-output set:
@@ -752,7 +752,7 @@ The end-of-Day-2 Frozen Schema Review is the most important process gate. The Da
    **Mitigation:** `fcntl.flock` uses a 30-second acquire timeout; timeout errors explain safe manual stale-lock remediation without naming a repair command; `tests/test_threads_index.py` covers 8 parallel writers and stuck-owner timeout messaging.
 
 3. **Chokepoint regression breaks existing tools.** Wrapping `run_executor()` and the orchestrator runner can accidentally affect dry runs, temp outputs, upload paths, or old workflows.
-   **Mitigation:** SD-030 no-op gates are tested daily; `upload.youtube` at `artagents/executors/runner.py:78` is explicitly covered by `tests/test_threads_upload_youtube_noop.py`; full pytest runs at each day boundary.
+   **Mitigation:** SD-030 no-op gates are tested daily; `upload.youtube` at `artagents/core/executor/runner.py:78` is explicitly covered by `tests/test_threads_upload_youtube_noop.py`; full pytest runs at each day boundary.
 
 4. **Schema bug after Day 2.** A late SD-008 field change can poison all new runs or force rushed migration work.
    **Mitigation:** the Frozen Schema Review freezes `schema_version=1` at end of Day 2; later field additions/removals/renames require explicit sprint-lead review, a compatibility note, and test updates before merge. Formal migration helper machinery is not part of v1.
@@ -959,7 +959,7 @@ The sprint is done only when every item below is observable:
 
 (l) The exact SKILL.md paragraph appears once and matches `tests/test_threads_skill_md_text.py`.
 
-(m) No existing executor `run.py` is modified except `artagents/executors/generate_image/run.py` and `artagents/orchestrators/logo_ideas/run.py` for the SD-031 variant producer patches.
+(m) No existing executor `run.py` is modified except `artagents/packs/builtin/generate_image/run.py` and `artagents/packs/builtin/logo_ideas/run.py` for the SD-031 variant producer patches.
 
 (n) `--no-content` works for `thread show` and `iteration.report.html`; brief privacy is path-based through `runs/<slug>/private/`, with no dedicated brief-privacy flag.
 

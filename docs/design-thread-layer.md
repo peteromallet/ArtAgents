@@ -14,7 +14,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - ArtAgents is **invoked by LLM agents** (Claude Code, etc.), not human operators. UX optimizes for an actor with no persistent memory across conversations.
 - Every invocation produces files in `runs/<slug>/`. Today these are flat siblings; the new layer adds metadata stamping without changing the directory contract.
-- The existing chokepoints are `run_executor()` in `artagents/executors/runner.py:75` and the orchestrator dispatch in `artagents/orchestrators/runner.py`. All new behavior lives in or above these wrappers — **no executor or orchestrator implementation is modified except where it produces variant outputs.**
+- The existing chokepoints are `run_executor()` in `artagents/core/executor/runner.py:75` and the orchestrator dispatch in `artagents/core/orchestrator/runner.py`. All new behavior lives in or above these wrappers — **no executor or orchestrator implementation is modified except where it produces variant outputs.**
 - `.artagents/` is the canonical local-state root (already in `.gitignore`). New persistent state lives there.
 - All path references in persisted JSON must be repo-relative or content-addressed. No absolute paths.
 
@@ -138,11 +138,11 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - **SD-029** — `generic_card` renderer is always registered as a fallback. When it fires, every iteration that uses it gets a "no renderer for `kind:<X>`" annotation in the HTML report and a stdout warning. Unknown modalities degrade gracefully and **loudly**. _load_bearing: true_
 
-- **SD-030** — Single chokepoint integration: `run_executor()` at `artagents/executors/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ARTAGENTS_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
+- **SD-030** — Single chokepoint integration: `run_executor()` at `artagents/core/executor/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ARTAGENTS_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
 
 - **SD-031** — Existing-executor patches required by this layer:
-  - `artagents/executors/generate_image/run.py` — declare `role: variant` on the N images; emit `group` from `(run_id, prompt_index)`; populate `preview_modes` and `duration`.
-  - `artagents/orchestrators/logo_ideas/run.py` — fold existing rich per-candidate metadata (`name`, `rationale`, `prompt`, `generated.*`) into `variant_meta` and stamp `role: variant`, `group`, `group_index`.
+  - `artagents/packs/builtin/generate_image/run.py` — declare `role: variant` on the N images; emit `group` from `(run_id, prompt_index)`; populate `preview_modes` and `duration`.
+  - `artagents/packs/builtin/logo_ideas/run.py` — fold existing rich per-candidate metadata (`name`, `rationale`, `prompt`, `generated.*`) into `variant_meta` and stamp `role: variant`, `group`, `group_index`.
   - All other executors are unmodified for v1.
   _load_bearing: true_
 

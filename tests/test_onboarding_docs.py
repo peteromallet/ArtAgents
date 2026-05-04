@@ -44,12 +44,12 @@ class OnboardingDocsTest(unittest.TestCase):
             "python3 -m artagents",
             "executable package gateway",
             "python3 -m artagents setup",
-            ".artagents/elements/overrides",
+            "artagents/packs/local/elements",
             "python3 scripts/gen_effect_registry.py",
             "artagents/packs/external/moirae/STAGE.md",
             "artagents/packs/external/vibecomfy/STAGE.md",
-            "artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}",
             "artagents/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}",
+            "artagents/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}",
             "Top-level `artagents/*.py`",
             "examples/briefs/",
             "docs/creating-tools.md",
@@ -109,9 +109,7 @@ class OnboardingDocsTest(unittest.TestCase):
             "docs/templates/orchestrator/run.py",
             "docs/templates/orchestrator/STAGE.md",
             "docs/templates/element/component.tsx",
-            "docs/templates/element/schema.json",
-            "docs/templates/element/defaults.json",
-            "docs/templates/element/meta.json",
+            "docs/templates/element/element.yaml",
         )
         for path in required:
             with self.subTest(path=path):

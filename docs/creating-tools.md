@@ -113,38 +113,45 @@ brief and then delegates to the existing hype or render flow.
 
 ## Required Formats
 
+All shipped content lives under packs at `artagents/packs/<pack>/`. Executor and
+orchestrator ids must be qualified — `<pack>.<name>` — and the first segment
+must equal the owning pack's id (e.g. `builtin.cut` lives in `packs/builtin/`,
+`external.vibecomfy.run` lives in `packs/external/`). Element ids stay bare and
+are scoped by `kind` (`effects`, `animations`, `transitions`).
+
 Executor folders use:
 
 ```text
-artagents/executors/<slug>/
-  executor.yaml
+artagents/packs/<pack>/<name>/
+  executor.yaml      # id: "<pack>.<name>"
   run.py
   STAGE.md
-  src/              optional private helper package
+  src/               optional private helper package
 ```
 
 Orchestrator folders use:
 
 ```text
-artagents/orchestrators/<slug>/
-  orchestrator.yaml
+artagents/packs/<pack>/<name>/
+  orchestrator.yaml  # id: "<pack>.<name>"
   run.py
   STAGE.md
-  src/              optional private helper package
+  src/               optional private helper package
 ```
 
 Element folders use:
 
 ```text
-artagents/elements/bundled/<kind>/<id>/
+artagents/packs/<pack>/elements/<kind>/<id>/
   component.tsx
-  schema.json
-  defaults.json
-  meta.json
+  element.yaml       # id, kind (singular: animation|effect|transition),
+                     # pack_id, metadata, schema, defaults, dependencies
 ```
 
-User-editable forks go under `.artagents/elements/overrides/<kind>/<id>/` and
-should be created with:
+User-editable forks land in the gitignored `local` pack at
+`artagents/packs/local/elements/<kind>/<id>/`. The first fork auto-creates
+`artagents/packs/local/pack.yaml` and rewrites the copied element's `pack_id`
+to `local`:
 
 ```bash
 python3 -m artagents elements fork effects text-card

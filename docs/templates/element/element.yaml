@@ -1,0 +1,26 @@
+{
+  "id": "example-card",
+  "kind": "effect",
+  "pack_id": "builtin",
+  "metadata": {
+    "label": "Example Card",
+    "description": "Describe the reusable render building block.",
+    "whenToUse": "Use when a timeline needs this specific visual primitive."
+  },
+  "schema": {
+    "type": "object",
+    "required": ["content"],
+    "properties": {
+      "content": {
+        "type": "string"
+      }
+    }
+  },
+  "defaults": {
+    "content": ""
+  },
+  "dependencies": {
+    "js_packages": [],
+    "python_requirements": []
+  }
+}

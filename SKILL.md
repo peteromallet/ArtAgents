@@ -73,7 +73,7 @@ Templates:
 - `docs/templates/orchestrator/` — a workflow that combines executors
 - `docs/templates/element/` — a reusable render building block
 
-Public folders have exactly one format: `artagents/orchestrators/<slug>/{orchestrator.yaml,STAGE.md,run.py}` and `artagents/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Top-level `artagents/*.py` files are shared libraries or system commands, not alternate runnable implementations.
+Content lives under packs at `artagents/packs/<pack>/`. Executor folders use the layout `artagents/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}` and orchestrator folders use `artagents/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Element folders live at `artagents/packs/<pack>/elements/<kind>/<id>/{component.tsx,element.yaml}` (kind ∈ {effects, animations, transitions}). Top-level `artagents/*.py` files are shared libraries or system commands, not alternate runnable implementations. Executor and orchestrator ids are always qualified — `<pack>.<name>` (e.g. `builtin.cut`, `external.vibecomfy.run`); bare ids are rejected.
 
 Do not chain pipeline internals by hand unless you are debugging one specific stage. If the user gives a topic instead of a brief, use a brief-generation executor coordinated by an orchestrator — don't fake source media just to enter a source-video path. Render requires the `hype.timeline.json` and `hype.assets.json` pair produced by cut; don't skip cut unless both files already exist.
 
@@ -83,10 +83,9 @@ Built-in orchestrators: `builtin.hype`, `builtin.event_talks`, `builtin.thumbnai
 
 Built-in executors include `builtin.transcribe`, `builtin.cut`, `builtin.render`, `builtin.validate`, `builtin.understand` (audio/visual/video dispatcher; pass `--mode {audio,visual,video}`), `builtin.generate_image` (with a `saint-peter-of-banodoco` preset for the onboarding portrait), and the rest of the pipeline. External executors include `external.moirae` and `external.vibecomfy.run` (executor only, not an orchestrator).
 
-Element source priority: active theme → `.artagents/elements/overrides` → `.artagents/elements/managed` → `artagents/elements/bundled`.
+Element source priority: active theme → `artagents/packs/local/elements/<kind>/<id>` (gitignored scratch pack) → `artagents/packs/builtin/elements/<kind>/<id>`. Forking copies the source element into `artagents/packs/local/`, auto-creating `artagents/packs/local/pack.yaml` and rewriting the element's `pack_id` to `local`.
 
 ```bash
-python3 -m artagents elements sync --dry-run
 python3 -m artagents elements fork effects text-card
 ```
 
