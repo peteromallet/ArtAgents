@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from artagents.core.project.run import ProjectRunError
+
 from .banodoco_catalog import BanodocoCatalogConfig
 from .registry import ExecutorRegistry, load_default_registry
 from .schema import ExecutorDefinition, ExecutorValidationError
@@ -20,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         registry = load_default_registry(_banodoco_config_from_args(args))
         return int(args.handler(args, registry))
-    except (KeyError, ExecutorValidationError, ValueError) as exc:
+    except (KeyError, ExecutorValidationError, ProjectRunError, ValueError) as exc:
         print(f"executors: {exc}", file=sys.stderr)
         return 2
 
@@ -62,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run or dry-run one executor.")
     run_parser.add_argument("executor_id")
     run_parser.add_argument("--out", help="Output directory for runtime placeholders.")
+    run_parser.add_argument("--project", help="Project slug for a persistent project run.")
     run_parser.add_argument("--input", action="append", default=[], metavar="NAME=VALUE", help="Executor input value; may be repeated.")
     run_parser.add_argument("--brief", help="Brief path for built-in pipeline context synthesis.")
     run_parser.add_argument("--dry-run", action="store_true", help="Build and print the command without executing it.")
@@ -180,11 +183,14 @@ def _cmd_run(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
 
     _require_qualified_id(args.executor_id, "executor id")
     executor = registry.get(args.executor_id)
-    if not args.out and _executor_needs_out(executor):
+    if args.project and args.out:
+        raise ValueError("--project cannot be combined with --out; project runs own their output directory")
+    if not args.out and not args.project and _executor_needs_out(executor):
         raise ValueError("--out is required for this executor")
     request = ExecutorRunRequest(
         executor_id=args.executor_id,
         out=Path(args.out) if args.out else "",
+        project=args.project,
         inputs=_run_inputs(args),
         brief=Path(args.brief) if args.brief else None,
         dry_run=bool(args.dry_run),

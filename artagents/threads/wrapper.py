@@ -23,6 +23,7 @@ PARENT_RUN_ID_ENV = "ARTAGENTS_PARENT_RUN_ID"
 INHERITED_ENV = "ARTAGENTS_THREAD_INHERITED"
 THREADS_OFF_ENV = "ARTAGENTS_THREADS_OFF"
 REPO_ROOT_ENV = "ARTAGENTS_REPO_ROOT"
+PROJECT_RUN_ENV = "ARTAGENTS_PROJECT_RUN"
 
 _ACTIVE_CONTEXT: contextvars.ContextVar["RunContext | None"] = contextvars.ContextVar("artagents_thread_context", default=None)
 
@@ -173,6 +174,8 @@ def _finish(context: RunContext, *, returncode: int | None, status: str, error: 
 
 def _should_noop(request: Any) -> bool:
     if os.environ.get(THREADS_OFF_ENV, "").strip().lower() in {"1", "true", "yes"}:
+        return True
+    if os.environ.get(PROJECT_RUN_ENV, "").strip().lower() in {"1", "true", "yes"}:
         return True
     if os.environ.get(INHERITED_ENV, "").strip():
         return True

@@ -1,0 +1,35 @@
+{
+  "id": "builtin.animate_image",
+  "name": "Animate Image",
+  "kind": "built_in",
+  "version": "1.0",
+  "description": "Two-stage Fal pipeline: (1) generate a still image with openai/gpt-image-2/edit using a reference image + prompt, then (2) animate that image with fal-ai/wan/v2.2-14b/animate/move driven by a reference video.",
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "artagents.packs.builtin.animate_image.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "metadata": {
+    "runtime_module": "artagents.packs.builtin.animate_image.run",
+    "runtime_file": "run.py",
+    "runtime_entrypoint": "main",
+    "env": [
+      "FAL_KEY"
+    ]
+  }
+}

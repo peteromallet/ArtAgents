@@ -943,6 +943,11 @@ def save_registry(registry: AssetRegistry, path: Path) -> None:
     validate_registry(registry)
     _write_json(path, registry)
 
+def materialize_project_timeline(*args: Any, **kwargs: Any) -> tuple[TimelineConfig, AssetRegistry]:
+    from artagents.core.project.materialize import materialize_project_timeline as _materialize_project_timeline
+
+    return _materialize_project_timeline(*args, **kwargs)
+
 def load_metadata(path: Path) -> PipelineMetadata:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     validate_metadata(data)
