@@ -187,14 +187,18 @@ def make_produces_check_passed_event(
     produces_name: str,
     *,
     check_id: str,
+    cas_sha256: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    event: dict[str, Any] = {
         "check_id": check_id,
         "kind": "produces_check_passed",
         "plan_step_path": list(plan_step_path),
         "produces_name": produces_name,
         "ts": _utc_now_iso(),
     }
+    if cas_sha256 is not None:
+        event["cas_sha256"] = cas_sha256
+    return event
 
 
 def make_produces_check_failed_event(

@@ -45,6 +45,7 @@ from artagents.core.task.events import (
     read_events,
     verify_chain,
 )
+from artagents.core.task.cas import intern, link_into_produces
 from artagents.core.task.plan import (
     STEP_PATH_SEP,
     AckRule,
@@ -1156,15 +1157,27 @@ def _run_inline_checks(decision: GateDecision, produces: tuple[ProducesEntry, ..
                     ),
                 )
             return False
+        cas_sha256 = _intern_produces_artifact(decision, artifact_path)
         append_event(
             decision.events_path,
             make_produces_check_passed_event(
                 decision.plan_step_path,
                 entry.name,
                 check_id=entry.check.check_id,
+                cas_sha256=cas_sha256,
             ),
         )
     return True
+
+
+def _intern_produces_artifact(decision: GateDecision, artifact_path: Path) -> str | None:
+    if decision.project_root is None:
+        return None
+    if artifact_path.is_symlink():
+        return None
+    cas_target = intern(decision.project_root, artifact_path)
+    link_into_produces(cas_target, artifact_path)
+    return cas_target.name
 
 
 def record_step_attested(
