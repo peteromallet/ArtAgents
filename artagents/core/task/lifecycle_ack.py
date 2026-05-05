@@ -201,8 +201,11 @@ def _ack_approve(args, slug, peek, projects_root, proj_root) -> int:
         return 1
 
     # FLAG-P5-001: synthesize the incoming command as step.command +
-    # identity/evidence/item tokens, NOT 'ack --step ...'.
-    parts: list[str] = [peek.step.command]
+    # identity/evidence/item tokens, NOT 'ack --step ...'. step.command may
+    # already be a multi-token command (e.g., "echo review"); split it so
+    # match_attested_command's canonical rejoin compares token-for-token
+    # rather than treating the whole prefix as a single quoted argument.
+    parts: list[str] = shlex.split(peek.step.command)
     if args.agent:
         parts += ["--agent", args.agent]
     if args.actor:

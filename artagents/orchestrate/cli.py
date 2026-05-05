@@ -1,11 +1,11 @@
 """`artagents author` CLI: compile / check / describe / new (Phase 4) +
-test / explain (Phase 5).
+test / explain (Phase 5/9).
 
-Phase 5 ``author test`` is a SCAFFOLD: it does a simple file-vs-file unified
-diff between a pack's golden events.jsonl and a captured fixture run, ignoring
-volatile ``ts`` and ``hash`` fields. The runtime replay path that would
-actually drive a fixture through the gate / inline checks lands in Phase 9
-(see FLAG-P5-004).
+Phase 9 ``author test`` actually replays a fixture through the gate via
+``orchestrate.test_runner.run_fixture`` inside a scratch projects root, then
+diffs the resulting events.jsonl against ``<pack>/golden/<fixture>.events.jsonl``
+after stripping volatile fields. ``--regenerate`` writes the current events
+back as the new golden.
 """
 
 from __future__ import annotations
@@ -15,10 +15,13 @@ import difflib
 import json
 import re
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional
 
+from artagents.core.task.events import read_events
+from artagents.core.task.normalize import dump_events_jsonl, normalize_events
 from artagents.core.task.plan import (
     AttestedStep,
     CodeStep,
@@ -44,6 +47,7 @@ from .dsl import (
     _PlanBuilder,
     _StepHandle,
 )
+from .test_runner import run_fixture
 
 
 _QID_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
@@ -284,91 +288,99 @@ def _cmd_new(qid: str, packs_root: Optional[Path]) -> int:
     return 0
 
 
-_VOLATILE_EVENT_FIELDS = ("ts", "hash")
+def _fixture_dir_for_run(pack_root: Path, fixture_name: str) -> Optional[Path]:
+    """Return the fixture seed directory if it exists and has any payload.
 
-
-def _strip_volatile(line: str) -> str:
-    """Return the canonical-without-volatile form of an events.jsonl line.
-
-    Strips ``ts`` and ``hash`` so two captures of the same logical run can be
-    compared without false positives from timestamp drift or chained-hash
-    re-keying. Returns the raw line on JSON decode failure so a malformed
-    fixture surfaces in the diff rather than being silently masked.
+    A bare ``.keep`` placeholder (only ``.keep`` inside the directory, no real
+    inputs) is treated as no fixture — ``run_fixture`` is given ``None`` so it
+    skips the copytree and runs against an empty scratch project.
     """
-    raw = line.rstrip("\n")
-    if not raw:
-        return raw
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return raw
-    if not isinstance(payload, dict):
-        return raw
-    stripped = {k: v for k, v in payload.items() if k not in _VOLATILE_EVENT_FIELDS}
-    return json.dumps(stripped, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    fixture_dir = pack_root / "fixtures" / fixture_name
+    if not fixture_dir.is_dir():
+        return None
+    payload = [p for p in fixture_dir.iterdir() if p.name != ".keep"]
+    if not payload:
+        return None
+    return fixture_dir
 
 
 def _cmd_test(
     qid: str,
     fixture_name: str,
     packs_root: Optional[Path],
+    *,
+    regenerate: bool = False,
 ) -> int:
-    """Phase 5 scaffold: file-diff a captured fixture's events.jsonl against
-    the pack's golden events.jsonl, ignoring volatile ``ts`` and ``hash`` fields.
-
-    Returns 0 on match, 1 on drift (printing the unified diff), 2 with a
-    Phase 9 message when the golden file is missing or empty (capture is
-    Phase 9 per FLAG-P5-004 — DO NOT build a runtime replay path here).
+    """Phase 9 author-test: replay the orchestrator's compiled plan against the
+    fixture inside a scratch projects root with auto-approval ON, then diff or
+    regenerate the canonical golden events.jsonl.
     """
     try:
         pack, name = _qualified_split(qid)
     except OrchestrateDefinitionError as exc:
         _print_err(f"author test {qid}: {exc}")
         return 1
+
     root = _packs_root_arg(packs_root)
     pack_root = root / pack
+    build_path = pack_root / "build" / f"{name}.json"
+    if not build_path.is_file():
+        try:
+            compile_to_path(qid, packs_root=root)
+        except (OrchestrateDefinitionError, TaskPlanError) as exc:
+            _print_err(f"author test {qid}: compile failed: {exc}")
+            return 1
+
     golden_path = pack_root / "golden" / f"{fixture_name}.events.jsonl"
-    fixture_dir = pack_root / "fixtures" / fixture_name
-    captured_path = fixture_dir / "events.jsonl"
+    fixture_dir = _fixture_dir_for_run(pack_root, fixture_name)
 
-    if not golden_path.is_file() or golden_path.stat().st_size == 0:
-        _print_err(
-            f"author test {qid} --fixture {fixture_name}: implement Phase 9 "
-            f"to capture golden runs (run `artagents author test --capture "
-            f"{fixture_name}` once Phase 9 lands). Expected non-empty golden "
-            f"at {golden_path}."
-        )
-        return 2
+    with tempfile.TemporaryDirectory() as scratch:
+        projects_root = Path(scratch)
+        try:
+            events_path = run_fixture(
+                qualified_id=qid,
+                fixture_dir=fixture_dir,
+                packs_root=root,
+                projects_root=projects_root,
+            )
+        except RuntimeError as exc:
+            _print_err(f"author test {qid} --fixture {fixture_name}: {exc}")
+            return 1
+        run_dir = events_path.parent
+        events = read_events(events_path)
+        normalized = normalize_events(events, run_dir=run_dir)
 
-    if not captured_path.is_file():
-        _print_err(
-            f"author test {qid} --fixture {fixture_name}: no captured fixture "
-            f"run yet at {captured_path} — Phase 9 will produce one."
-        )
-        return 2
+        if regenerate:
+            dump_events_jsonl(normalized, golden_path)
+            print(f"wrote {golden_path} — commit if intentional")
+            return 0
 
-    try:
+        if not golden_path.is_file() or golden_path.stat().st_size == 0:
+            _print_err(
+                f"author test {qid} --fixture {fixture_name}: no committed "
+                f"golden at {golden_path}; rerun with --regenerate to create one"
+            )
+            return 1
+
+        actual_path = run_dir / "normalized.events.jsonl"
+        dump_events_jsonl(normalized, actual_path)
+        actual_lines = actual_path.read_text(encoding="utf-8").splitlines()
         golden_lines = golden_path.read_text(encoding="utf-8").splitlines()
-        captured_lines = captured_path.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        _print_err(f"author test {qid} --fixture {fixture_name}: read failed: {exc}")
-        return 1
 
-    norm_golden = [_strip_volatile(line) for line in golden_lines]
-    norm_captured = [_strip_volatile(line) for line in captured_lines]
-    if norm_golden == norm_captured:
-        print(f"ok {qid} --fixture {fixture_name} ({len(norm_golden)} events)")
-        return 0
-    diff = difflib.unified_diff(
-        norm_golden,
-        norm_captured,
-        fromfile=f"golden/{fixture_name}.events.jsonl",
-        tofile=f"fixtures/{fixture_name}/events.jsonl",
-        lineterm="",
-    )
-    for line in diff:
-        print(line)
-    return 1
+        if actual_lines == golden_lines:
+            print(f"ok {qid} --fixture {fixture_name} ({len(actual_lines)} events)")
+            return 0
+
+        diff = difflib.unified_diff(
+            golden_lines,
+            actual_lines,
+            fromfile=f"golden/{fixture_name}.events.jsonl",
+            tofile="actual",
+            lineterm="",
+        )
+        for line in diff:
+            print(line)
+        return 1
 
 
 def _format_step_explain(
@@ -468,6 +480,11 @@ def _build_parser() -> argparse.ArgumentParser:
     test_p = sub.add_parser("test", help="author test <pack>.<name> --fixture <name>")
     test_p.add_argument("qualified_id", help="qualified id of the form <pack>.<name>")
     test_p.add_argument("--fixture", required=True, help="fixture name (under <pack>/fixtures/)")
+    test_p.add_argument(
+        "--regenerate",
+        action="store_true",
+        help="write the current normalized events.jsonl as the new golden",
+    )
     return parser
 
 
@@ -489,7 +506,12 @@ def main(argv: Optional[list] = None, *, packs_root: Optional[Path] = None) -> i
     if args.cmd == "new":
         return _cmd_new(qid, packs_root)
     if args.cmd == "test":
-        return _cmd_test(qid, args.fixture, packs_root)
+        return _cmd_test(
+            qid,
+            args.fixture,
+            packs_root,
+            regenerate=args.regenerate,
+        )
     if args.cmd == "explain":
         return _cmd_explain(qid, packs_root)
     parser.print_usage(file=sys.stderr)

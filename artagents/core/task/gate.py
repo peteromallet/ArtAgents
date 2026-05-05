@@ -22,6 +22,7 @@ from artagents.core.project.paths import project_dir
 from artagents.core.task.active_run import read_active_run
 from artagents.core.task.env import (
     apply_task_run_env,
+    is_author_test_mode,
     is_in_task_run,
     task_actor_env,
 )
@@ -927,21 +928,18 @@ def _dispatch_attested(
     )
 
     if item_id is not None:
-        append_event(
-            events_path,
-            make_item_attested_event(
-                path_tuple,
-                item_id,
-                attestor_kind=attestor_kind,
-                attestor_id=attestor_id,
-                evidence=args.evidence,
-            ),
+        event = make_item_attested_event(
+            path_tuple,
+            item_id,
+            attestor_kind=attestor_kind,
+            attestor_id=attestor_id,
+            evidence=args.evidence,
         )
     else:
-        append_event(
-            events_path,
-            make_step_attested_event(path_str, attestor_kind, attestor_id, args.evidence),
-        )
+        event = make_step_attested_event(path_str, attestor_kind, attestor_id, args.evidence)
+    if is_author_test_mode():
+        event["source"] = "author_test"
+    append_event(events_path, event)
     decision = GateDecision(
         active=True,
         run_id=run_id,
@@ -1079,6 +1077,11 @@ def validate_attested_identity(
     # ack.kind == "actor"
     if args.actor is None:
         _reject(slug, "attested step ack.kind=actor requires --actor", abort=False)
+    if is_author_test_mode():
+        # Author-test mode: skip ARTAGENTS_ACTOR-match and self-ack checks so the
+        # harness can drive attestations under a synthetic actor. Canonical kind
+        # ("actor") is preserved — author-test provenance rides on event["source"].
+        return "actor", args.actor  # type: ignore[return-value]
     if task_actor_env() != args.actor:
         _reject(slug, "attested --actor does not match ARTAGENTS_ACTOR env", abort=False)
     # FLAG-005: self-ack rejection only applies to actor attestations because agents

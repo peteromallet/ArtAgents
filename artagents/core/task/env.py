@@ -11,6 +11,7 @@ TASK_STEP_ID_ENV = "ARTAGENTS_TASK_STEP_ID"
 TASK_ITEM_ID_ENV = "ARTAGENTS_TASK_ITEM_ID"
 TASK_ITERATION_ENV = "ARTAGENTS_TASK_ITERATION"
 ARTAGENTS_ACTOR = "ARTAGENTS_ACTOR"
+ARTAGENTS_AUTHOR_TEST = "ARTAGENTS_AUTHOR_TEST"
 
 
 def task_project_env() -> str | None:
@@ -35,6 +36,10 @@ def task_iteration_env() -> str | None:
 
 def task_actor_env() -> str | None:
     return os.environ.get(ARTAGENTS_ACTOR)
+
+
+def is_author_test_mode() -> bool:
+    return os.environ.get(ARTAGENTS_AUTHOR_TEST) == "1"
 
 
 def is_in_task_run(slug: str | None = None) -> bool:

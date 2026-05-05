@@ -1,0 +1,4 @@
+{"actor":"author_test","kind":"run_started","plan_hash":"sha256:b46d0f86815c06b4db7500fb74f8d032b20d24ccf468bc02eaa8b081166e7870"}
+{"command":"python3 -c 'print('\"'\"'ok'\"'\"')'","kind":"step_dispatched","plan_step_id":"noop"}
+{"kind":"step_completed","plan_step_id":"noop","returncode":0}
+{"attestor_id":"author_test","attestor_kind":"actor","evidence":[],"kind":"step_attested","plan_step_id":"review","source":"author_test"}
