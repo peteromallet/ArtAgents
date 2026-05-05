@@ -33,6 +33,13 @@ from .events import (
     read_events,
     verify_chain,
 )
+from .inbox import (
+    InboxEntry,
+    consume_inbox_entry,
+    inbox_dir,
+    pending_count,
+    scan_inbox,
+)
 from .preamble import PROHIBITION_PREAMBLE
 from .gate import (
     AttestedArgs,
@@ -65,6 +72,7 @@ __all__ = [
     "TASK_STEP_ID_ENV",
     "CursorPath",
     "GateDecision",
+    "InboxEntry",
     "PeekResult",
     "TaskRunGateError",
     "append_event",
@@ -74,8 +82,10 @@ __all__ = [
     "clear_active_run",
     "command_for_argv",
     "compute_plan_hash",
+    "consume_inbox_entry",
     "derive_cursor",
     "gate_command",
+    "inbox_dir",
     "is_in_task_run",
     "load_plan",
     "make_cursor_rewind_event",
@@ -89,12 +99,14 @@ __all__ = [
     "make_step_dispatched_event",
     "match_attested_command",
     "peek_current_step",
+    "pending_count",
     "read_active_run",
     "read_events",
     "record_dispatch_complete",
     "record_nested_entered",
     "record_nested_exited",
     "record_step_attested",
+    "scan_inbox",
     "step_dir_for",
     "step_dir_for_path",
     "task_actor_env",

@@ -31,12 +31,14 @@ from artagents.core.task.active_run import (
 )
 from artagents.core.task.env import task_actor_env
 from artagents.core.task.events import (
+    EventLogError,
     append_event,
     make_run_aborted_event,
     make_run_started_event,
     read_events,
 )
-from artagents.core.task.gate import peek_current_step
+from artagents.core.task.gate import TaskRunGateError, peek_current_step
+from artagents.core.task.inbox import consume_inbox_entry, pending_count, scan_inbox
 from artagents.core.task.plan import (
     STEP_PATH_SEP,
     AttestedStep,
@@ -66,6 +68,25 @@ STOP HOOK
   When wired into .claude/settings.json (see docs/HOOKS.md) it re-injects this
   preamble and the current step on every Stop boundary so the rules above
   stay live for the entire run. The hook is a silent no-op outside task mode.
+
+INBOX SURFACE
+- External processes (humans, scripts, other tools) signal completion of an
+  attested step by dropping a JSON file into runs/{run_id}/inbox/.
+- File shape:
+    {{
+      "step_id": "<id of the current attested step>",
+      "decision": "approve" | "retry" | "abort",
+      "evidence": {{ "<key>": "<non-empty string>", ... }},
+      "submitted_at": "<ISO 8601 timestamp>",
+      "submitted_by": "<external system or operator name>",
+      "item_id": "<optional for_each item id>"
+    }}
+- Consume-on-next: artagents next reads inbox/, validates each file against
+  the current cursor, and appends a step_attested / item_attested /
+  cursor_rewind / run_aborted event before computing the next step.
+- Agent attestations only — actor-ack steps must use `artagents ack` (the
+  inbox file would be quarantined to inbox/.rejected/ otherwise).
+- WARNING: `artagents next` is state-mutating when inbox/ has files.
 """
 
 
@@ -299,6 +320,10 @@ def cmd_status(
             names = ", ".join(p.name for p in peek.step.produces)
             print(f"produces:  {names}")
 
+    pending = pending_count(proj_root / "runs" / run_id)
+    if pending > 0:
+        print(f"inbox:     {pending} pending")
+
     print("recent events:")
     for ev in events[-5:]:
         kind = ev.get("kind", "?")
@@ -402,6 +427,18 @@ def cmd_next(
     proj_root = project_dir(slug, root=projects_root)
     plan_path = proj_root / "plan.json"
     events_path = proj_root / "runs" / run_id / "events.jsonl"
+    run_dir = proj_root / "runs" / run_id
+
+    # FLAG-P8-005: cmd_next becomes state-mutating when inbox/ contains valid
+    # files. Each entry is consumed best-effort so a single bad file cannot
+    # crash the verb.
+    for entry in scan_inbox(run_dir):
+        try:
+            consume_inbox_entry(
+                run_dir, entry, slug=slug, projects_root=projects_root
+            )
+        except (TaskRunGateError, OSError, EventLogError):
+            continue
 
     plan = load_plan(plan_path)
     events = read_events(events_path)
