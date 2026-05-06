@@ -15,7 +15,6 @@
     "effect"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: editor_review.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -64,6 +63,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "edit",
+    "review",
+    "video",
+    "arrangement",
+    "notes",
+    "pipeline"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -88,5 +95,6 @@
     "timeline",
     "source_audio"
   ],
+  "short_description": "Run heuristic editorial reviewers over an arrangement and emit notes.",
   "version": "1.0"
 }

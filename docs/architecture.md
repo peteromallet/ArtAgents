@@ -98,6 +98,7 @@ Executor-owned complexity stays in the executor folder, usually under optional l
 | `artagents/packs/local/elements/<kind>/<id>` | Element support | Gitignored scratch pack where `elements fork` lands edited copies (auto-creates `artagents/packs/local/pack.yaml`). |
 | `artagents/core/element/catalog.py` | Element support | Effect, animation, and transition catalog support used by render validation. |
 | `scripts/gen_effect_registry.py` | Element support | Generates Remotion registries from the element registry; emits `@pack-<pack>-elements-<kind>/...` imports. |
+| `scripts/gen_capability_index.py` | Capability discovery | Regenerates the capability index block in `SKILL.md` from executor, orchestrator, and element manifests. |
 | `artagents/timeline.py` | Shared library and element validator | Reigh-compatible timeline schema and effect/animation/transition validation. |
 | `remotion/*` | Element runtime support | TypeScript renderer consuming generated element registries via `@pack-builtin-elements-*` and `@pack-local-elements-*` aliases. |
 

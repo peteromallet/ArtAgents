@@ -6,7 +6,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Fade animation wrapper for entrance/exit phases over a configurable duration.",
   "id": "fade",
+  "keywords": [
+    "fade",
+    "animation",
+    "wrapper",
+    "entrance",
+    "exit"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 12,
@@ -26,5 +34,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Fade in/out wrapper animation."
 }

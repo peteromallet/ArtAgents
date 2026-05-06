@@ -22,6 +22,15 @@
   "child_orchestrators": [],
   "description": "Orchestrates the built-in hype editing pipeline.",
   "id": "builtin.hype",
+  "keywords": [
+    "hype",
+    "pipeline",
+    "video",
+    "edit",
+    "render",
+    "transcribe",
+    "cut"
+  ],
   "kind": "built_in",
   "metadata": {
     "requires_output_path": true,
@@ -41,5 +50,6 @@
     },
     "kind": "command"
   },
+  "short_description": "Run the canonical hype editing pipeline end-to-end (transcribe \u2192 cut \u2192 render \u2192 validate).",
   "version": "1.0"
 }

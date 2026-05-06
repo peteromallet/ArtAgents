@@ -30,6 +30,7 @@ class Output:
     description: str = ""
     placeholder: str | None = None
     path_template: str | None = None
+    extension: str | None = None
 
 
 PerformerPort = Port

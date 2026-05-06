@@ -22,6 +22,14 @@
   "isolation": {
     "mode": "subprocess"
   },
+  "keywords": [
+    "video",
+    "understand",
+    "llm",
+    "audio",
+    "describe",
+    "analyze"
+  ],
   "kind": "built_in",
   "metadata": {
     "runtime_entrypoint": "main",
@@ -29,5 +37,6 @@
     "runtime_module": "artagents.packs.builtin.video_understand.run"
   },
   "name": "Video Understand",
+  "short_description": "Inspect synchronized audio+video windows with a video-understanding model.",
   "version": "1.0"
 }

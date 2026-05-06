@@ -1,0 +1,257 @@
+title: "Wan Animate — Best Practices (per Banodoco)"
+
+skin: "ares"
+typing_speed: 0.035
+pause_between: 0.9
+
+output:
+  width: 1920
+  height: 1080
+  final_width: 1920
+  final_height: 1080
+  fps: 30
+  font_size: 28
+  font_family: "JetBrainsMono Nerd Font Mono"
+  theme: "github-dark"
+  # Tall buffer so 5 Q+A exchanges fit without scrolling. With cumulative
+  # content reaching ~85 rows by Q5, an 80-row buffer would scroll and pin
+  # the auto-tracking camera at the bottom of the viewport.
+  terminal_rows: 120
+
+scenes:
+  # ─── Chat opens ────────────────────────────────────────────────────────
+  # Lock the initial camera at y=0 so the banner is fully visible at the
+  # top. (Default would land at y=0.34 and crop the first 3 rows.)
+  - action: camera
+    zoom: 1.0
+    y: 0.0
+    duration: 0.0
+
+  - action: clear
+
+  # No banner / dead space — the chat starts immediately. The Hive Mind
+  # title + end cards live in the post-render composite, no in-source
+  # padding needed.
+  - action: pause
+    duration: 0.5
+
+  # ─── Q1: pose ──────────────────────────────────────────────────────────
+  # auto_y: camera follows the cursor through the exchange so the active
+  # part of the conversation stays in the middle of the viewport.
+  - user: "/hivemind what pose estimator should I use for Wan Animate?"
+    thinking_time: 2.4
+    pre_pause: 0.3
+    tools:
+      - icon: "🔍"
+        verb: "search"
+        detail: '"wan animate pose"'
+        duration: "1.4s"
+        delay: 0.2
+      - icon: "📡"
+        verb: "fetch"
+        detail: "wan_chatter · daily_summaries"
+        duration: "0.9s"
+        delay: 0.3
+    response: |
+      **Sapiens2 is the consensus** — Kijai shipped the canonical
+      ComfyUI nodes: github.com/kijai/ComfyUI-Sapiens2
+      Feed it raw output, not OpenPose-format (djbfilmz tip).
+
+      Other voices in the community:
+
+        • **Ablejones** (recent): "Try vit pose, easiest way to get
+          that running is the WanAnimate preprocess stuff"
+
+        • **scf** (dissent): "sapiens pose isn't much better than
+          open/dwpose" — recommends DWPose-TensorRT for speed:
+          github.com/yuvraj108c/ComfyUI-Dwpose-Tensorrt
+
+        • **JalenBrunson** on XPose — better for hard cases (kids,
+          animals, complex motion):
+          github.com/vivoCameraResearch/Hyper-Motion
+
+        • **Kijai** himself acknowledges Sapiens2 is "a lot slower
+          than tensorRT dwpose"
+
+      **Verdict:** Sapiens2 for quality, DWPose-TRT for speed,
+      XPose if Sapiens2 misses the pose.
+    response_label: " > Claude "
+    camera:
+      zoom: 1.0
+      x: 0.5
+      auto_y: true
+      at: "user_start"
+      duration: 0.6
+      ease: "ease-in-out"
+
+  # ─── Q2: lightx2v ──────────────────────────────────────────────────────
+  - user: "ok and the lightx2v lora — Kijai's workflow has it at strength 1.2 instead of 1.0. why?"
+    thinking_time: 1.4
+    tools:
+      - icon: "🔍"
+        verb: "search"
+        detail: '"lightx2v 1.2"'
+        duration: "0.7s"
+        delay: 0.2
+    response: |
+      Intentional — leave it at 1.2 for Wan Animate. Everywhere
+      else in the Wan ecosystem it's 1.0, but the animate node
+      specifically wants 1.2.
+
+      That said — if you want max identity fidelity, turn lightx2v
+      OFF entirely. Speed LoRAs visibly destroy face/skin detail
+      at high strength. People in wan_chatter are actively asking
+      for the "without-lightx" recipe; there's no canonical answer
+      yet, but the direction is more steps + slightly higher CFG.
+
+      For style transfer with a Wan character LoRA, use the
+      *extracted* LoRA form (Kijai's note).
+    response_label: " > Claude "
+    camera:
+      zoom: 1.0
+      x: 0.5
+      auto_y: true
+      at: "user_start"
+      duration: 0.6
+      ease: "ease-in-out"
+
+  # ─── Q3: past 5-second limit ───────────────────────────────────────────
+  - user: "I need 30s+ shots — how do I get past the 5-second limit?"
+    thinking_time: 1.8
+    tools:
+      - icon: "🔍"
+        verb: "search"
+        detail: '"context windows · long video"'
+        duration: "1.0s"
+        delay: 0.2
+      - icon: "📡"
+        verb: "fetch"
+        detail: "Comfy-Org/ComfyUI#12645"
+        duration: "0.8s"
+        delay: 0.2
+    response: |
+      Three real options, ranked easiest → most consistent:
+
+        1. Kijai's wrapper auto-loop          — default, just works
+        2. Native context windows             — Ablejones, PR #12645:
+             github.com/Comfy-Org/ComfyUI/pull/12645
+             (workflow attached in the PR comment)
+        3. WanAnimate's own causal extension  — most temporally
+           consistent but degrades over long runs (Ablejones)
+
+      Settings that the community actually uses:
+      • Kijai: window_size 121, overlap 48 — works for 500 frames
+      • mdkb tested 121 frames at frame_window_size 77; "loss of
+        face consistency is worse once I go over 77 frames"
+      • djbfilmz: with InfiniteTalk-style extension, 57 is the
+        magic number — 57 works, others get weird
+
+      Pushed limits in the wild:
+      • boorayjenkins ran a 700-frame Wan Animate at 1080p
+        (OOM'd on VAE decode but the gen itself completed)
+      • Same user has 360s gens working
+      • Jax: 719 frames "drift with time, end of video isn't good"
+        — the long-shot drift problem is real
+
+      Curated reference: 42hub's
+      wanx-troopers.github.io/what-plugs-where/context-windows.html
+    response_label: " > Claude "
+    camera:
+      zoom: 1.0
+      x: 0.5
+      auto_y: true
+      at: "user_start"
+      duration: 0.6
+      ease: "ease-in-out"
+
+  # ─── Q4: color shifting ────────────────────────────────────────────────
+  - user: "and the colors keep shifting between windows on my 30s shots — what fixes that?"
+    thinking_time: 1.6
+    tools:
+      - icon: "🔍"
+        verb: "search"
+        detail: '"color match · reference frame"'
+        duration: "0.9s"
+        delay: 0.2
+    response: |
+      The fix Kijai + Ablejones converged on:
+
+      → Pick ONE reference frame (usually the first frame of
+        the extended section). Compute color-match metrics for
+        that frame only. Apply those *same* metrics uniformly
+        to every frame. Don't do per-frame matching — that's
+        what causes the drift everyone complains about.
+
+      The node:
+      • Kijai's color match (now native in ComfyUI as of
+        2026-04-21 — "better than my old ColorMatch, fully on
+        GPU and with more source match modes")
+      • Method: try **Reinhard** first — Kijai found it
+        "notably better" than mkl/histogram for this approach
+
+      Other angles people use:
+      • devnullblackcat: trim the worst-affected ends; "color
+        shift is worst at the very beginning and end, so I
+        trim that off" + smoothcut between clips
+      • Same user: shot-match in DaVinci Resolve as a fallback
+      • Kijai source-side fix: "Use the ffmpeg version of the
+        VHS loader to avoid the color shift" in the input
+    response_label: " > Claude "
+    camera:
+      zoom: 1.0
+      x: 0.5
+      auto_y: true
+      at: "user_start"
+      duration: 0.6
+      ease: "ease-in-out"
+
+  # ─── Q5: historical context ────────────────────────────────────────────
+  - user: "last one — what came before Wan Animate? curious how this evolved."
+    thinking_time: 1.5
+    tools:
+      - icon: "🧠"
+        verb: "recall"
+        detail: "animatediff · unianimate · wan history"
+        duration: "0.8s"
+        delay: 0.2
+    response: |
+      The lineage, roughly:
+
+      • **AnimateDiff era (2023–2024)** — Kosinkadink's
+        Evolved repo was the standard. As pom put it back in
+        Oct 2023: "the community is largely focused on
+        Animatediff... it feels like the best approach for
+        artists." Frame-perfect control was the dream.
+
+      • **UniAnimate (Wan 2.1)** — pose-conditioned animation
+        on the Wan 2.1 I2V backbone. Kijai's take: still
+        useful, "more like a controlnet" than Wan Animate.
+        Wan Animate is essentially "further trained UniAnimate"
+        on Wan 2.2 (his words).
+
+      • **Now (Wan 2.2 era)** — Wan Animate handles facial
+        expressions SCAIL doesn't. SCAIL handles complex motion
+        Wan Animate can't (multi-character spinning, etc.).
+        InfiniteTalk for speech-driven. Fun VACE for animated
+        backgrounds. Each tool has a lane.
+
+      What's actually new in the last 6 months: native context
+      windows (was wrapper-only), single-ref color matching,
+      Sapiens2 pose estimation, lightx2v speed LoRAs. The
+      30s+ shots people are casually doing now were unthinkable
+      this time last year.
+
+      42hub keeps the wiki current at
+      wanx-troopers.github.io/wan-animates.html
+    response_label: " > Claude "
+    camera:
+      zoom: 1.0
+      x: 0.5
+      auto_y: true
+      at: "user_start"
+      duration: 0.6
+      ease: "ease-in-out"
+
+  # ─── Outro: hold on the final answer ──────────────────────────────────
+  - action: pause
+    duration: 1.6

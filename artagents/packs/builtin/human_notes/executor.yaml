@@ -1,1 +1,44 @@
-{"id":"builtin.human_notes","name":"Human Notes","kind":"built_in","version":"1.0","description":"Convert human editorial notes into structured inputs for the pipeline.","inputs":[{"name":"notes","type":"file","description":"Human notes file."}],"command":{"argv":["{python_exec}","-m","artagents.packs.builtin.human_notes.run","--notes","{notes}","--out","{out}"]},"cache":{"mode":"none"},"isolation":{"mode":"subprocess"},"metadata":{"runtime_module":"artagents.packs.builtin.human_notes.run","runtime_file":"run.py"}}
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "artagents.packs.builtin.human_notes.run",
+      "--notes",
+      "{notes}",
+      "--out",
+      "{out}"
+    ]
+  },
+  "description": "Convert human editorial notes into structured inputs for the pipeline.",
+  "id": "builtin.human_notes",
+  "inputs": [
+    {
+      "description": "Human notes file.",
+      "name": "notes",
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess"
+  },
+  "keywords": [
+    "notes",
+    "human",
+    "edit",
+    "input",
+    "pipeline",
+    "text"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.packs.builtin.human_notes.run"
+  },
+  "name": "Human Notes",
+  "short_description": "Convert human editorial notes into structured pipeline inputs.",
+  "version": "1.0"
+}

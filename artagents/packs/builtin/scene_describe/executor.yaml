@@ -11,7 +11,6 @@
     "video"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: scene_describe.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -58,6 +57,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "scenes",
+    "describe",
+    "vision",
+    "video",
+    "caption",
+    "llm"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -81,5 +88,6 @@
     "scenes",
     "scene_triage"
   ],
+  "short_description": "Caption each detected scene with a vision model for downstream selection.",
   "version": "1.0"
 }

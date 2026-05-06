@@ -3,7 +3,9 @@
   "name": "Example",
   "kind": "built_in",
   "version": "1.0",
-  "description": "Describe the concrete unit of work this executor performs.",
+  "short_description": "One-sentence verb-first capability summary (≤120 chars).",
+  "description": "Longer description of the concrete unit of work this executor performs (≤500 chars).",
+  "keywords": ["example", "verb", "modality"],
   "inputs": [
     {
       "name": "input",

@@ -3,7 +3,9 @@
   "name": "Example",
   "kind": "built_in",
   "version": "1.0",
-  "description": "Describe the workflow this orchestrator coordinates.",
+  "short_description": "One-sentence verb-first workflow summary (≤120 chars).",
+  "description": "Longer description of the workflow this orchestrator coordinates (≤500 chars).",
+  "keywords": ["example", "workflow"],
   "runtime": {
     "kind": "command",
     "command": {

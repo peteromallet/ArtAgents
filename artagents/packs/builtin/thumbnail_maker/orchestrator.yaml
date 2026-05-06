@@ -6,6 +6,14 @@
   "child_orchestrators": [],
   "description": "Plans source evidence and thumbnail generation candidates for a video/query pair.",
   "id": "builtin.thumbnail_maker",
+  "keywords": [
+    "thumbnail",
+    "video",
+    "image",
+    "plan",
+    "candidates",
+    "generate"
+  ],
   "kind": "built_in",
   "metadata": {
     "requires_output_path": true,
@@ -25,5 +33,6 @@
     },
     "kind": "command"
   },
+  "short_description": "Plan source evidence and thumbnail generation candidates for a video/query pair.",
   "version": "1.0"
 }

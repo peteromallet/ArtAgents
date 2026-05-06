@@ -71,6 +71,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "validate",
+    "video",
+    "render",
+    "timeline",
+    "check",
+    "metadata"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -95,5 +103,6 @@
     "timeline",
     "transcript"
   ],
+  "short_description": "Validate the rendered video against its declared timeline and metadata.",
   "version": "1.0"
 }

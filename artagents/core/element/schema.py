@@ -39,6 +39,9 @@ class ElementDefinition:
     defaults: dict[str, Any]
     metadata: dict[str, Any] = field(default_factory=dict)
     dependencies: ElementDependencies = field(default_factory=ElementDependencies)
+    description: str = ""
+    short_description: str = ""
+    keywords: tuple[str, ...] = ()
 
     @property
     def fork_target(self) -> Path:
@@ -95,6 +98,9 @@ def load_element_definition(
     component = (element_root / "component.tsx").resolve()
     if not component.is_file():
         raise ElementValidationError(f"element {element_id!r} missing component.tsx")
+    description = _optional_capability_string(payload, "description", manifest_path)
+    short_description = _optional_capability_string(payload, "short_description", manifest_path)
+    keywords = _optional_capability_string_list(payload, "keywords", manifest_path)
     definition = ElementDefinition(
         id=element_id,
         kind=folder_kind,
@@ -107,6 +113,9 @@ def load_element_definition(
         defaults=dict(defaults_section),
         metadata=metadata,
         dependencies=dependencies,
+        description=description,
+        short_description=short_description,
+        keywords=keywords,
     )
     return validate_element_definition(definition)
 
@@ -132,6 +141,12 @@ def validate_element_definition(raw: ElementDefinition | dict[str, Any]) -> Elem
         raise ElementValidationError("element.defaults must be an object")
     if not isinstance(definition.metadata, dict):
         raise ElementValidationError("element.metadata must be an object")
+    _validate_capability_text(
+        definition.description,
+        definition.short_description,
+        definition.keywords,
+        manifest_id=f"{definition.kind}/{definition.id}",
+    )
     return definition
 
 
@@ -148,6 +163,9 @@ def _parse_definition(raw: dict[str, Any]) -> ElementDefinition:
         defaults=dict(raw.get("defaults", {})),
         metadata=dict(raw.get("metadata", {})),
         dependencies=_parse_dependencies(raw.get("dependencies", {}), path="element.dependencies"),
+        description=str(raw.get("description", "") or ""),
+        short_description=str(raw.get("short_description", "") or ""),
+        keywords=tuple(raw.get("keywords", ()) or ()),
     )
 
 
@@ -202,6 +220,72 @@ def _validate_kind(kind: str) -> ElementKind:
     if kind not in ELEMENT_KINDS:
         raise ElementValidationError(f"element.kind must be one of {list(ELEMENT_KINDS)}")
     return kind  # type: ignore[return-value]
+
+
+SHORT_DESCRIPTION_MAX_LEN = 120
+DESCRIPTION_MAX_LEN = 500
+KEYWORD_MAX_LEN = 32
+KEYWORDS_MAX_COUNT = 12
+
+
+def _optional_capability_string(payload: dict[str, Any], key: str, manifest_path: Path) -> str:
+    value = payload.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ElementValidationError(f"{manifest_path}: {key} must be a string")
+    return value
+
+
+def _optional_capability_string_list(
+    payload: dict[str, Any], key: str, manifest_path: Path
+) -> tuple[str, ...]:
+    raw = payload.get(key)
+    if raw is None:
+        return ()
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise ElementValidationError(f"{manifest_path}: {key} must be a list of strings")
+    return tuple(raw)
+
+
+def _validate_capability_text(
+    description: str,
+    short_description: str,
+    keywords: tuple[str, ...],
+    *,
+    manifest_id: str,
+) -> None:
+    if len(description) > DESCRIPTION_MAX_LEN:
+        raise ElementValidationError(
+            f"{manifest_id}: description is {len(description)} chars; max is {DESCRIPTION_MAX_LEN}"
+        )
+    if len(short_description) > SHORT_DESCRIPTION_MAX_LEN:
+        raise ElementValidationError(
+            f"{manifest_id}: short_description is {len(short_description)} chars; max is {SHORT_DESCRIPTION_MAX_LEN}"
+        )
+    if len(keywords) > KEYWORDS_MAX_COUNT:
+        raise ElementValidationError(
+            f"{manifest_id}: keywords has {len(keywords)} entries; max is {KEYWORDS_MAX_COUNT}"
+        )
+    seen: set[str] = set()
+    for index, keyword in enumerate(keywords):
+        if len(keyword) > KEYWORD_MAX_LEN:
+            raise ElementValidationError(
+                f"{manifest_id}: keywords[{index}] is {len(keyword)} chars; max is {KEYWORD_MAX_LEN}"
+            )
+        if any(ch.isspace() for ch in keyword):
+            raise ElementValidationError(
+                f"{manifest_id}: keywords[{index}] {keyword!r} must not contain whitespace"
+            )
+        if keyword.lower() != keyword:
+            raise ElementValidationError(
+                f"{manifest_id}: keywords[{index}] {keyword!r} must be lowercase"
+            )
+        if keyword in seen:
+            raise ElementValidationError(
+                f"{manifest_id}: keywords[{index}] {keyword!r} is a duplicate"
+            )
+        seen.add(keyword)
 
 
 def _validate_id(value: str, path: str) -> None:

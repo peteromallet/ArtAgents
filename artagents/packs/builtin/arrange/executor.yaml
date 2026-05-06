@@ -77,6 +77,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "arrange",
+    "pipeline",
+    "video",
+    "edit",
+    "pool",
+    "brief"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -100,5 +108,6 @@
     "brief",
     "pool"
   ],
+  "short_description": "Compose a brief-specific shot arrangement from the source clip pool.",
   "version": "1.0"
 }

@@ -6,7 +6,13 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Fade transition through black between two clips.",
   "id": "fade",
+  "keywords": [
+    "fade",
+    "transition",
+    "black"
+  ],
   "kind": "transition",
   "metadata": {
     "label": "Fade"
@@ -20,5 +26,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Fade-through-black transition."
 }

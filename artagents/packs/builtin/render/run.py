@@ -308,9 +308,14 @@ def _regenerate_element_registries(project_dir: Path, theme_path: Path | None) -
     cmd = [sys.executable, str(generator)]
     if theme_path is not None:
         cmd.extend(["--theme", str(_resolve_theme_path(theme_path))])
+    env = os.environ.copy()
+    composition_src = project_dir / "node_modules" / "@banodoco" / "timeline-composition" / "typescript" / "src"
+    if composition_src.is_dir():
+        env.setdefault("ARTAGENTS_TIMELINE_COMPOSITION_SRC", str(composition_src))
     subprocess.run(
         cmd,
         cwd=str(REPO_ROOT),
+        env=env,
         capture_output=True,
         check=True,
         text=True,
@@ -389,6 +394,7 @@ def render(
                 str(props_path),
                 "--output",
                 str(out_path),
+                "--allow-html-in-canvas",
             ],
             cwd=str(project_dir),
             capture_output=True,

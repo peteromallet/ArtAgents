@@ -6,6 +6,14 @@
   "child_orchestrators": [],
   "description": "Orchestrates event-talk template, search, holding-screen, and render commands.",
   "id": "builtin.event_talks",
+  "keywords": [
+    "event",
+    "talks",
+    "video",
+    "render",
+    "search",
+    "template"
+  ],
   "kind": "built_in",
   "metadata": {
     "requires_output_path": true,
@@ -31,5 +39,6 @@
     },
     "kind": "command"
   },
+  "short_description": "Orchestrate event-talk template, search, holding-screen, and render commands into a finished video.",
   "version": "1.0"
 }

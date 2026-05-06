@@ -111,7 +111,7 @@ class DoctorSetupTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "artagents" / "conductors").mkdir(parents=True)
-            (root / "artagents" / "skills" / "reigh-data").mkdir(parents=True)
+            (root / "artagents" / "tools" / "reigh-data").mkdir(parents=True)
             external_pack_dir = root / "artagents" / "packs" / "external"
             external_pack_dir.mkdir(parents=True)
             (external_pack_dir / "pack.yaml").write_text("id: external\n", encoding="utf-8")
@@ -170,7 +170,7 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertFalse(report.ok)
         detail = "\n".join(report.errors)
         self.assertIn("legacy public package must not exist: artagents/conductors", detail)
-        self.assertIn("top-level artagents directory is not a canonical concept: artagents/skills", detail)
+        self.assertIn("top-level artagents directory is not a canonical concept: artagents/tools", detail)
         self.assertIn(
             "orchestrator folder contains executor metadata: artagents/packs/external/vibecomfy",
             detail,

@@ -11,6 +11,12 @@ from typing import Any
 
 from artagents.core.project.run import ProjectRunError
 
+from artagents.core._search import (
+    SearchRecord,
+    search as run_search,
+    short_description_or_truncated,
+)
+
 from .banodoco_catalog import BanodocoCatalogConfig
 from .registry import ExecutorRegistry, load_default_registry
 from .schema import ExecutorDefinition, ExecutorValidationError
@@ -44,7 +50,14 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="List available executors.")
     list_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     list_parser.add_argument("--kind", choices=("built_in", "external"), help="Filter executors by kind.")
+    list_parser.add_argument("--no-describe", action="store_true", help="Omit the short_description column for legacy parsers.")
     list_parser.set_defaults(handler=_cmd_list)
+
+    search_parser = subparsers.add_parser("search", help="Search executors by id, keywords, descriptions, and binaries.")
+    search_parser.add_argument("terms", nargs="+", help="One or more search terms.")
+    search_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    search_parser.add_argument("--limit", type=int, default=25, help="Maximum number of hits (default 25).")
+    search_parser.set_defaults(handler=_cmd_search)
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one executor.")
     inspect_parser.add_argument("executor_id")
@@ -123,9 +136,47 @@ def _cmd_list(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
     if args.json:
         print(json.dumps({"executors": [executor.to_dict() for executor in executors]}, indent=2, sort_keys=True))
         return 0
+    no_describe = bool(getattr(args, "no_describe", False))
     for executor in executors:
-        print(f"{executor.id}\t{executor.kind}\t{executor.name}")
+        if no_describe:
+            print(f"{executor.id}\t{executor.kind}\t{executor.name}")
+        else:
+            short = short_description_or_truncated(executor.short_description, executor.description)
+            print(f"{executor.id}\t{executor.kind}\t{executor.name}\t{short}")
     return 0
+
+
+def _cmd_search(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
+    records = [_executor_search_record(executor) for executor in registry.list()]
+    hits = run_search(records, list(args.terms), limit=int(args.limit))
+    if args.json:
+        payload = [
+            {
+                "id": hit.record.id,
+                "kind": hit.record.kind,
+                "score": round(hit.score, 3),
+                "short_description": hit.record.short_description,
+            }
+            for hit in hits
+        ]
+        print(json.dumps({"hits": payload}, indent=2, sort_keys=True))
+        return 0
+    for hit in hits:
+        print(f"{hit.score:.2f}\t{hit.record.id}\t{hit.record.kind}\t{hit.record.short_description}")
+    return 0
+
+
+def _executor_search_record(executor: ExecutorDefinition) -> SearchRecord:
+    short = short_description_or_truncated(executor.short_description, executor.description)
+    fields = {
+        "id": executor.id,
+        "name": executor.name,
+        "short_description": executor.short_description,
+        "description": executor.description,
+        "keywords": " ".join(executor.keywords),
+        "binaries": " ".join(executor.isolation.binaries),
+    }
+    return SearchRecord(id=executor.id, kind=executor.kind, short_description=short, fields=fields)
 
 
 def _cmd_inspect(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
@@ -138,8 +189,12 @@ def _cmd_inspect(args: argparse.Namespace, registry: ExecutorRegistry) -> int:
     print(f"name: {executor.name}")
     print(f"kind: {executor.kind}")
     print(f"version: {executor.version}")
+    if executor.short_description:
+        print(f"short_description: {executor.short_description}")
     if executor.description:
         print(f"description: {executor.description}")
+    if executor.keywords:
+        print(f"keywords: {', '.join(executor.keywords)}")
     _print_ports("inputs", executor.inputs)
     _print_outputs(executor)
     if executor.command is not None:

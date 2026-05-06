@@ -12,7 +12,6 @@
     "audio"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: pool_build.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -67,6 +66,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "pool",
+    "video",
+    "scenes",
+    "build",
+    "clips",
+    "pipeline"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -91,5 +98,6 @@
     "scene_descriptions",
     "quote_candidates"
   ],
+  "short_description": "Build the candidate clip pool from triaged source-video scenes.",
   "version": "1.0"
 }

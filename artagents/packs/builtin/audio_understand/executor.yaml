@@ -22,6 +22,14 @@
   "isolation": {
     "mode": "subprocess"
   },
+  "keywords": [
+    "audio",
+    "understand",
+    "llm",
+    "analyze",
+    "transcript",
+    "describe"
+  ],
   "kind": "built_in",
   "metadata": {
     "runtime_entrypoint": "main",
@@ -29,5 +37,6 @@
     "runtime_module": "artagents.packs.builtin.audio_understand.run"
   },
   "name": "Audio Understand",
+  "short_description": "Inspect audio clips or sampled windows with an audio-understanding LLM.",
   "version": "1.0"
 }

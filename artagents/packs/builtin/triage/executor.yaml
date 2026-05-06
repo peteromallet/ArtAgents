@@ -11,7 +11,6 @@
     "video"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: triage.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -51,6 +50,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "triage",
+    "scenes",
+    "video",
+    "filter",
+    "quality",
+    "pipeline"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -74,5 +81,6 @@
     "scenes",
     "shots"
   ],
+  "short_description": "Triage source-video scenes by quality before pool building.",
   "version": "1.0"
 }

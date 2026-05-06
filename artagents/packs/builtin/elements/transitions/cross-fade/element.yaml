@@ -6,7 +6,14 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Cross-fade transition that blends out one clip while blending in the next.",
   "id": "cross-fade",
+  "keywords": [
+    "cross-fade",
+    "transition",
+    "blend",
+    "fade"
+  ],
   "kind": "transition",
   "metadata": {
     "label": "Cross Fade"
@@ -20,5 +27,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Cross fade transition."
 }

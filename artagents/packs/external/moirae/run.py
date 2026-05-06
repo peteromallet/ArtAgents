@@ -17,7 +17,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return subprocess.run([sys.executable, "-m", "moirae", str(args.screenplay), "-o", str(args.output)]).returncode
+    output = Path(args.output)
+    if output.suffix == "":
+        output = output.with_suffix(".mp4")
+    rc = subprocess.run([sys.executable, "-m", "moirae", str(args.screenplay), "-o", str(output)]).returncode
+    if rc == 0 and output != Path(args.output) and not Path(args.output).exists():
+        Path(args.output).symlink_to(output.name)
+    return rc
 
 
 if __name__ == "__main__":

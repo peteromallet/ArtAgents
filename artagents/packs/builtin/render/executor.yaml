@@ -63,6 +63,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "render",
+    "video",
+    "remotion",
+    "timeline",
+    "hype",
+    "mp4"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -87,5 +95,6 @@
     "assets",
     "theme"
   ],
+  "short_description": "Render a hype timeline to hype.mp4 through the Remotion compositor.",
   "version": "1.0"
 }

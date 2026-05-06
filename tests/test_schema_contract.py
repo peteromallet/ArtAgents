@@ -50,6 +50,20 @@ class SchemaContractTest(unittest.TestCase):
         self.assertEqual(roundtripped_timeline, original_timeline)
         self.assertEqual(roundtripped_assets, original_assets)
 
+    def test_golden_timeline_teaches_concern_tracks(self) -> None:
+        config = timeline.load_timeline(EXAMPLES / "hype.timeline.json")
+        visual_tracks = [track["id"] for track in config["tracks"] if track.get("kind") == "visual"]
+        self.assertEqual(visual_tracks, ["brand", "captions", "broll", "v1"])
+
+        clips_by_track: dict[str, list[dict]] = {}
+        for clip in config["clips"]:
+            clips_by_track.setdefault(clip["track"], []).append(clip)
+
+        self.assertEqual(clips_by_track["brand"][0]["id"], "brand_wordmark")
+        self.assertEqual(clips_by_track["captions"][0]["id"], "cap_search")
+        self.assertEqual(clips_by_track["broll"][0]["id"], "broll_cutaway")
+        self.assertEqual(clips_by_track["v1"][0]["id"], "src_open")
+
     def test_full_roundtrip(self) -> None:
         roundtripped_timeline, original_timeline = self._roundtrip_timeline(EXAMPLES / "hype.timeline.full.json")
         roundtripped_assets, original_assets = self._roundtrip_registry(EXAMPLES / "hype.assets.full.json")

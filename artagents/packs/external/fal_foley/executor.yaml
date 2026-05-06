@@ -1,24 +1,7 @@
 {
-  "id": "external.fal_foley",
-  "name": "fal Hunyuan-Video Foley",
-  "kind": "external",
-  "version": "0.1.0",
-  "description": "Generate Foley audio for one short video clip via fal.ai's hunyuan-video-foley model. Takes a clip + text prompt, returns one audio file matched to the clip's duration.",
-  "inputs": [
-    {
-      "name": "clip",
-      "type": "file",
-      "required": true,
-      "description": "Video clip to score with Foley audio (mp4/mov/webm, <=15s recommended)."
-    }
-  ],
-  "outputs": [
-    {
-      "name": "audio",
-      "type": "file",
-      "path_template": "{out}"
-    }
-  ],
+  "cache": {
+    "mode": "none"
+  },
   "command": {
     "argv": [
       "{python_exec}",
@@ -26,19 +9,47 @@
       "artagents.packs.external.fal_foley.run"
     ]
   },
-  "cache": {
-    "mode": "none"
-  },
+  "description": "Generate Foley audio for one short video clip via fal.ai's hunyuan-video-foley model. Takes a clip + text prompt, returns one audio file matched to the clip's duration.",
+  "id": "external.fal_foley",
+  "inputs": [
+    {
+      "description": "Video clip to score with Foley audio (mp4/mov/webm, <=15s recommended).",
+      "name": "clip",
+      "required": true,
+      "type": "file"
+    }
+  ],
   "isolation": {
     "mode": "subprocess",
     "network": true
   },
+  "keywords": [
+    "fal",
+    "foley",
+    "audio",
+    "video",
+    "hunyuan",
+    "generate"
+  ],
+  "kind": "external",
   "metadata": {
-    "runtime_module": "artagents.packs.external.fal_foley.run",
-    "runtime_file": "run.py",
-    "runtime_entrypoint": "main",
+    "env": [
+      "FAL_KEY"
+    ],
     "fal_model_id": "fal-ai/hunyuan-video-foley",
-    "env": ["FAL_KEY"],
-    "pricing": "$0.10 per 10s of input video"
-  }
+    "pricing": "$0.10 per 10s of input video",
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.packs.external.fal_foley.run"
+  },
+  "name": "fal Hunyuan-Video Foley",
+  "outputs": [
+    {
+      "name": "audio",
+      "path_template": "{out}",
+      "type": "file"
+    }
+  ],
+  "short_description": "Generate Foley audio for one short video clip via fal.ai's hunyuan-video-foley model.",
+  "version": "0.1.0"
 }

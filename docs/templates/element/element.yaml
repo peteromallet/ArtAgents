@@ -2,6 +2,9 @@
   "id": "example-card",
   "kind": "effect",
   "pack_id": "builtin",
+  "short_description": "One-sentence verb-first element summary (≤120 chars).",
+  "description": "Longer description of the reusable render building block (≤500 chars).",
+  "keywords": ["example", "card", "text"],
   "metadata": {
     "label": "Example Card",
     "description": "Describe the reusable render building block.",

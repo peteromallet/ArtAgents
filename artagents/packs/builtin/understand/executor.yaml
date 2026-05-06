@@ -24,6 +24,14 @@
   "isolation": {
     "mode": "subprocess"
   },
+  "keywords": [
+    "understand",
+    "dispatch",
+    "audio",
+    "video",
+    "image",
+    "llm"
+  ],
   "kind": "built_in",
   "metadata": {
     "runtime_entrypoint": "main",
@@ -31,5 +39,6 @@
     "runtime_module": "artagents.packs.builtin.understand.run"
   },
   "name": "Understand",
+  "short_description": "Dispatch to the audio, visual, or video understanding executor based on --mode.",
   "version": "1.0"
 }

@@ -44,6 +44,15 @@
           "vibecomfy"
         ]
       },
+      "keywords": [
+        "comfyui",
+        "vibecomfy",
+        "workflow",
+        "image",
+        "video",
+        "generate",
+        "run"
+      ],
       "kind": "external",
       "metadata": {
         "catalog_source": "none_declared",
@@ -77,6 +86,7 @@
         "workflows": []
       },
       "name": "VibeComfy Run",
+      "short_description": "Run a VibeComfy / ComfyUI workflow JSON through the VibeComfy CLI.",
       "version": "0.1.0"
     },
     {
@@ -123,6 +133,14 @@
           "vibecomfy"
         ]
       },
+      "keywords": [
+        "comfyui",
+        "vibecomfy",
+        "workflow",
+        "validate",
+        "check",
+        "json"
+      ],
       "kind": "external",
       "metadata": {
         "catalog_source": "none_declared",
@@ -156,6 +174,7 @@
         "workflows": []
       },
       "name": "VibeComfy Validate",
+      "short_description": "Validate a VibeComfy / ComfyUI workflow JSON without executing it.",
       "version": "0.1.0"
     }
   ]

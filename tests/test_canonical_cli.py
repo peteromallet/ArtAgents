@@ -5,7 +5,12 @@ import unittest
 from unittest import mock
 
 from artagents import pipeline
+from artagents.core.element import cli as elements_cli
 from artagents.core.executor import cli as executors_cli
+from artagents.core.executor.schema import (
+    ExecutorValidationError,
+    validate_executor_definition,
+)
 from artagents.core.orchestrator import cli as orchestrators_cli
 
 
@@ -135,6 +140,109 @@ class CanonicalCliTest(unittest.TestCase):
         with mock.patch.object(executors_cli, "main", return_value=82) as main:
             self.assertEqual(pipeline.main(["executors", "list"]), 82)
             main.assert_called_once_with(["list"])
+
+
+class CapabilityDiscoveryTest(unittest.TestCase):
+    def capture(self, fn, argv):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            result = fn(argv)
+        return result, stdout.getvalue(), stderr.getvalue()
+
+    def test_executors_list_includes_short_description_column(self) -> None:
+        result, stdout, stderr = self.capture(executors_cli.main, ["list"])
+        self.assertEqual(result, 0, stderr)
+        moirae_line = next(
+            line for line in stdout.splitlines() if line.startswith("external.moirae\t")
+        )
+        # id, kind, name, short_description = 4 tab-separated columns
+        self.assertEqual(moirae_line.count("\t"), 3)
+        self.assertIn("Moirae", moirae_line)
+        self.assertIn("terminal", moirae_line.lower())
+
+    def test_executors_list_no_describe_drops_column(self) -> None:
+        result, stdout, stderr = self.capture(executors_cli.main, ["list", "--no-describe"])
+        self.assertEqual(result, 0, stderr)
+        moirae_line = next(
+            line for line in stdout.splitlines() if line.startswith("external.moirae\t")
+        )
+        self.assertEqual(moirae_line.count("\t"), 2)
+
+    def test_executors_search_ranks_terminal_video_for_moirae(self) -> None:
+        result, stdout, stderr = self.capture(
+            executors_cli.main, ["search", "terminal", "video"]
+        )
+        self.assertEqual(result, 0, stderr)
+        first_line = stdout.splitlines()[0]
+        # score \t id \t kind \t short_description
+        parts = first_line.split("\t")
+        self.assertEqual(parts[1], "external.moirae", first_line)
+
+    def test_executors_search_json_returns_hits(self) -> None:
+        result, stdout, stderr = self.capture(
+            executors_cli.main, ["search", "transcribe", "--json"]
+        )
+        self.assertEqual(result, 0, stderr)
+        payload = json.loads(stdout)
+        self.assertIn("hits", payload)
+        ids = [hit["id"] for hit in payload["hits"]]
+        self.assertIn("builtin.transcribe", ids)
+
+    def test_orchestrators_search_finds_foley_pipeline(self) -> None:
+        result, stdout, stderr = self.capture(
+            orchestrators_cli.main, ["search", "foley", "spatial"]
+        )
+        self.assertEqual(result, 0, stderr)
+        first_line = stdout.splitlines()[0]
+        self.assertIn("builtin.foley_map", first_line)
+
+    def test_elements_search_finds_fade_animation(self) -> None:
+        result, stdout, stderr = self.capture(elements_cli.main, ["search", "fade"])
+        self.assertEqual(result, 0, stderr)
+        ids = [line.split("\t")[1] for line in stdout.splitlines() if line.strip()]
+        self.assertIn("fade", ids)
+
+    def test_schema_rejects_over_cap_description(self) -> None:
+        with self.assertRaises(ExecutorValidationError) as ctx:
+            validate_executor_definition(
+                {
+                    "id": "demo.over",
+                    "name": "Demo",
+                    "kind": "built_in",
+                    "version": "1.0",
+                    "description": "x" * 501,
+                }
+            )
+        self.assertIn("description", str(ctx.exception))
+        self.assertIn("501", str(ctx.exception))
+        self.assertIn("demo.over", str(ctx.exception))
+
+    def test_schema_rejects_over_cap_short_description(self) -> None:
+        with self.assertRaises(ExecutorValidationError) as ctx:
+            validate_executor_definition(
+                {
+                    "id": "demo.over",
+                    "name": "Demo",
+                    "kind": "built_in",
+                    "version": "1.0",
+                    "short_description": "y" * 121,
+                }
+            )
+        self.assertIn("short_description", str(ctx.exception))
+
+    def test_schema_rejects_uppercase_keyword(self) -> None:
+        with self.assertRaises(ExecutorValidationError) as ctx:
+            validate_executor_definition(
+                {
+                    "id": "demo.over",
+                    "name": "Demo",
+                    "kind": "built_in",
+                    "version": "1.0",
+                    "keywords": ["Video"],
+                }
+            )
+        self.assertIn("lowercase", str(ctx.exception))
 
 
 if __name__ == "__main__":

@@ -1,24 +1,7 @@
 {
-  "id": "builtin.foley_review",
-  "name": "Foley Review",
-  "kind": "built_in",
-  "version": "1.0",
-  "description": "Build a static review.html that pairs each tile clip with its generated Foley audio for sense-checking. Reviewers can flag bad tiles; flags are written to a flagged.json sidecar.",
-  "inputs": [
-    {
-      "name": "manifest",
-      "type": "file",
-      "required": true,
-      "description": "tiles.json manifest (with foley_audio paths added)."
-    }
-  ],
-  "outputs": [
-    {
-      "name": "review_html",
-      "type": "file",
-      "path_template": "{out}/review.html"
-    }
-  ],
+  "cache": {
+    "mode": "none"
+  },
   "command": {
     "argv": [
       "{python_exec}",
@@ -26,16 +9,42 @@
       "artagents.packs.builtin.foley_review.run"
     ]
   },
-  "cache": {
-    "mode": "none"
-  },
+  "description": "Build a static review.html that pairs each tile clip with its generated Foley audio for sense-checking. Reviewers can flag bad tiles; flags are written to a flagged.json sidecar.",
+  "id": "builtin.foley_review",
+  "inputs": [
+    {
+      "description": "tiles.json manifest (with foley_audio paths added).",
+      "name": "manifest",
+      "required": true,
+      "type": "file"
+    }
+  ],
   "isolation": {
     "mode": "subprocess",
     "network": false
   },
+  "keywords": [
+    "foley",
+    "audio",
+    "review",
+    "video",
+    "html",
+    "tiles"
+  ],
+  "kind": "built_in",
   "metadata": {
-    "runtime_module": "artagents.packs.builtin.foley_review.run",
+    "runtime_entrypoint": "main",
     "runtime_file": "run.py",
-    "runtime_entrypoint": "main"
-  }
+    "runtime_module": "artagents.packs.builtin.foley_review.run"
+  },
+  "name": "Foley Review",
+  "outputs": [
+    {
+      "name": "review_html",
+      "path_template": "{out}/review.html",
+      "type": "file"
+    }
+  ],
+  "short_description": "Build a static review.html pairing each tile clip with its generated Foley audio for sense-checking.",
+  "version": "1.0"
 }

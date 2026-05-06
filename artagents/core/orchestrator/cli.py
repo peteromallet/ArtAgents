@@ -9,6 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from artagents.core._search import (
+    SearchRecord,
+    search as run_search,
+    short_description_or_truncated,
+)
 from artagents.core.executor.banodoco_catalog import BanodocoCatalogConfig
 from artagents.core.project.run import ProjectRunError
 
@@ -47,7 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="List available orchestrators.")
     list_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     list_parser.add_argument("--kind", choices=("built_in", "external"), help="Filter orchestrators by kind.")
+    list_parser.add_argument("--no-describe", action="store_true", help="Omit the short_description column for legacy parsers.")
     list_parser.set_defaults(handler=_cmd_list)
+
+    search_parser = subparsers.add_parser("search", help="Search orchestrators by id, keywords, and descriptions.")
+    search_parser.add_argument("terms", nargs="+", help="One or more search terms.")
+    search_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    search_parser.add_argument("--limit", type=int, default=25, help="Maximum number of hits (default 25).")
+    search_parser.set_defaults(handler=_cmd_search)
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one orchestrator.")
     inspect_parser.add_argument("orchestrator_id")
@@ -93,9 +105,46 @@ def _cmd_list(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
     if args.json:
         print(json.dumps({"orchestrators": [item.to_dict() for item in orchestrators]}, indent=2, sort_keys=True))
         return 0
+    no_describe = bool(getattr(args, "no_describe", False))
     for orchestrator in orchestrators:
-        print(f"{orchestrator.id}\t{orchestrator.kind}\t{orchestrator.name}")
+        if no_describe:
+            print(f"{orchestrator.id}\t{orchestrator.kind}\t{orchestrator.name}")
+        else:
+            short = short_description_or_truncated(orchestrator.short_description, orchestrator.description)
+            print(f"{orchestrator.id}\t{orchestrator.kind}\t{orchestrator.name}\t{short}")
     return 0
+
+
+def _cmd_search(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
+    records = [_orchestrator_search_record(item) for item in registry.list()]
+    hits = run_search(records, list(args.terms), limit=int(args.limit))
+    if args.json:
+        payload = [
+            {
+                "id": hit.record.id,
+                "kind": hit.record.kind,
+                "score": round(hit.score, 3),
+                "short_description": hit.record.short_description,
+            }
+            for hit in hits
+        ]
+        print(json.dumps({"hits": payload}, indent=2, sort_keys=True))
+        return 0
+    for hit in hits:
+        print(f"{hit.score:.2f}\t{hit.record.id}\t{hit.record.kind}\t{hit.record.short_description}")
+    return 0
+
+
+def _orchestrator_search_record(orchestrator: OrchestratorDefinition) -> SearchRecord:
+    short = short_description_or_truncated(orchestrator.short_description, orchestrator.description)
+    fields = {
+        "id": orchestrator.id,
+        "name": orchestrator.name,
+        "short_description": orchestrator.short_description,
+        "description": orchestrator.description,
+        "keywords": " ".join(orchestrator.keywords),
+    }
+    return SearchRecord(id=orchestrator.id, kind=orchestrator.kind, short_description=short, fields=fields)
 
 
 def _cmd_inspect(args: argparse.Namespace, registry: OrchestratorRegistry) -> int:
@@ -109,8 +158,12 @@ def _cmd_inspect(args: argparse.Namespace, registry: OrchestratorRegistry) -> in
     print(f"kind: {orchestrator.kind}")
     print(f"version: {orchestrator.version}")
     print(f"runtime: {orchestrator.runtime.kind}")
+    if orchestrator.short_description:
+        print(f"short_description: {orchestrator.short_description}")
     if orchestrator.description:
         print(f"description: {orchestrator.description}")
+    if orchestrator.keywords:
+        print(f"keywords: {', '.join(orchestrator.keywords)}")
     _print_ports("inputs", orchestrator.inputs)
     _print_outputs(orchestrator)
     if orchestrator.child_executors:

@@ -6,7 +6,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Scale-in entrance animation that grows the element to full size.",
   "id": "scale-in",
+  "keywords": [
+    "scale",
+    "animation",
+    "entrance",
+    "grow",
+    "motion"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 18,
@@ -23,5 +31,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Scale in entrance animation."
 }

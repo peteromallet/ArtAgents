@@ -16,7 +16,6 @@
       "kind": "requires_input"
     }
   ],
-  "description": "ArtAgents pipeline step: shots.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -49,6 +48,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "shots",
+    "scenes",
+    "video",
+    "slice",
+    "pipeline",
+    "clips"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -72,5 +79,6 @@
     "source_video",
     "scenes"
   ],
+  "short_description": "Slice scenes into shot windows for downstream pool building.",
   "version": "1.0"
 }

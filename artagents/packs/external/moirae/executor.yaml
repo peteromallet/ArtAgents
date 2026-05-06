@@ -47,6 +47,14 @@
       "moirae"
     ]
   },
+  "keywords": [
+    "moirae",
+    "terminal",
+    "video",
+    "screenplay",
+    "asciinema",
+    "render"
+  ],
   "kind": "external",
   "metadata": {
     "binary_requirements_enforced": "explicit_check_only",
@@ -65,5 +73,6 @@
       "type": "file"
     }
   ],
+  "short_description": "Run a Moirae screenplay through the terminal-as-cinema renderer to produce a video.",
   "version": "0.1.0"
 }

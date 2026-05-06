@@ -1,11 +1,37 @@
 {
-  "id": "builtin.logo_ideas",
-  "name": "Logo Ideas",
-  "kind": "built_in",
-  "version": "1.0",
+  "cache": {
+    "mode": "none"
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
   "description": "Generate a grid of distinct logo concepts: Kimi K2 (Fireworks) drafts N prompts, then GPT Image 2 (default) renders them as one composite grid in a single fal call. Pass --provider z-image for per-image renders + a locally-assembled contact sheet.",
+  "id": "builtin.logo_ideas",
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "keywords": [
+    "logo",
+    "image",
+    "fal",
+    "kimi",
+    "gpt-image",
+    "z-image",
+    "grid",
+    "generate"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "env": [
+      "FIREWORKS_API_KEY",
+      "FAL_KEY"
+    ],
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "artagents.packs.builtin.logo_ideas.run"
+  },
+  "name": "Logo Ideas",
   "runtime": {
-    "kind": "command",
     "command": {
       "argv": [
         "{python_exec}",
@@ -13,24 +39,9 @@
         "artagents.packs.builtin.logo_ideas.run",
         "{orchestrator_args}"
       ]
-    }
+    },
+    "kind": "command"
   },
-  "child_executors": [],
-  "child_orchestrators": [],
-  "cache": {
-    "mode": "none"
-  },
-  "isolation": {
-    "mode": "subprocess",
-    "network": true
-  },
-  "metadata": {
-    "runtime_module": "artagents.packs.builtin.logo_ideas.run",
-    "runtime_file": "run.py",
-    "runtime_entrypoint": "main",
-    "env": [
-      "FIREWORKS_API_KEY",
-      "FAL_KEY"
-    ]
-  }
+  "short_description": "Generate a grid of distinct logo concepts via Kimi K2 prompts + GPT Image 2 (or z-image) renders.",
+  "version": "1.0"
 }

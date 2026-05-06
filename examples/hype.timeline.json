@@ -2,9 +2,24 @@
   "theme": "banodoco-default",
   "tracks": [
     {
+      "id": "brand",
+      "kind": "visual",
+      "label": "Brand"
+    },
+    {
+      "id": "captions",
+      "kind": "visual",
+      "label": "Captions"
+    },
+    {
+      "id": "broll",
+      "kind": "visual",
+      "label": "B-roll"
+    },
+    {
       "id": "v1",
       "kind": "visual",
-      "label": "Video"
+      "label": "Source"
     },
     {
       "id": "a1",
@@ -14,7 +29,16 @@
   ],
   "clips": [
     {
-      "id": "clip_001",
+      "id": "audio_main",
+      "at": 0.0,
+      "track": "a1",
+      "clipType": "media",
+      "asset": "main",
+      "to": 10.0,
+      "from": 2.0
+    },
+    {
+      "id": "src_open",
       "at": 0.0,
       "track": "v1",
       "clipType": "media",
@@ -23,9 +47,29 @@
       "from": 2.0
     },
     {
-      "id": "clip_002",
+      "id": "brand_wordmark",
+      "at": 0.0,
+      "track": "brand",
+      "clipType": "text",
+      "hold": 10.0,
+      "text": {
+        "content": "ARTAGENTS",
+        "fontSize": 28,
+        "color": "#ffffff",
+        "align": "right",
+        "bold": true
+      },
+      "params": {
+        "anchor": "top-right",
+        "offsetX": 64,
+        "offsetY": 48,
+        "textShadow": "0 2px 10px rgba(0,0,0,0.75)"
+      }
+    },
+    {
+      "id": "broll_cutaway",
       "at": 4.0,
-      "track": "v1",
+      "track": "broll",
       "clipType": "media",
       "asset": "broll",
       "to": 13.0,
@@ -33,13 +77,28 @@
       "from": 10.0
     },
     {
-      "id": "clip_003",
-      "at": 7.0,
-      "track": "v1",
-      "clipType": "media",
-      "asset": "main",
-      "to": 22.0,
-      "from": 20.0
+      "id": "cap_search",
+      "at": 4.5,
+      "track": "captions",
+      "clipType": "text",
+      "hold": 3.0,
+      "effects": {
+        "fade_in": 0.25,
+        "fade_out": 0.25
+      },
+      "text": {
+        "content": "One track per concern",
+        "fontSize": 42,
+        "color": "#ffffff",
+        "align": "center",
+        "bold": true
+      },
+      "params": {
+        "anchor": "bottom",
+        "offsetY": 132,
+        "maxWidth": 920,
+        "textShadow": "0 2px 12px rgba(0,0,0,0.85)"
+      }
     }
   ]
 }

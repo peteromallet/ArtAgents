@@ -54,6 +54,14 @@
   "isolation": {
     "mode": "subprocess"
   },
+  "keywords": [
+    "youtube",
+    "upload",
+    "video",
+    "publish",
+    "social",
+    "zapier"
+  ],
   "kind": "built_in",
   "metadata": {
     "backend": "banodoco-social",
@@ -64,5 +72,6 @@
     "runtime_module": "artagents.packs.upload.youtube.run"
   },
   "name": "Upload to YouTube",
+  "short_description": "Upload a finished video to YouTube via the shared banodoco-social Zapier integration.",
   "version": "1.0"
 }

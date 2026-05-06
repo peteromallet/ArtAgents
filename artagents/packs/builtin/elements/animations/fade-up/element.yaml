@@ -6,7 +6,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Fade-up entrance animation (combined fade and upward motion).",
   "id": "fade-up",
+  "keywords": [
+    "fade",
+    "up",
+    "animation",
+    "entrance",
+    "motion"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 18,
@@ -23,5 +31,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Fade up entrance animation."
 }

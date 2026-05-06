@@ -22,6 +22,14 @@
   "isolation": {
     "mode": "subprocess"
   },
+  "keywords": [
+    "vision",
+    "image",
+    "video",
+    "understand",
+    "llm",
+    "describe"
+  ],
   "kind": "built_in",
   "metadata": {
     "runtime_entrypoint": "main",
@@ -29,5 +37,6 @@
     "runtime_module": "artagents.packs.builtin.visual_understand.run"
   },
   "name": "Visual Understand",
+  "short_description": "Inspect images or sampled video frames with a vision LLM.",
   "version": "1.0"
 }

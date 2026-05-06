@@ -12,7 +12,6 @@
     "audio"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: quote_scout.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -48,6 +47,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "transcript",
+    "quote",
+    "text",
+    "scout",
+    "audio",
+    "extract"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -71,5 +78,6 @@
     "transcript",
     "scenes"
   ],
+  "short_description": "Scan a transcript for quotable lines suitable for hype clips.",
   "version": "1.0"
 }

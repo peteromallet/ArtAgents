@@ -51,6 +51,8 @@ class OrchestratorDefinition:
     version: str
     runtime: RuntimeSpec
     description: str = ""
+    short_description: str = ""
+    keywords: tuple[str, ...] = ()
     inputs: tuple[Port, ...] = ()
     outputs: tuple[Output, ...] = ()
     child_executors: tuple[str, ...] = ()
@@ -119,6 +121,8 @@ def _parse_orchestrator(raw: Any) -> OrchestratorDefinition:
         version=data["version"],
         runtime=_parse_runtime(data["runtime"], "orchestrator.runtime"),
         description=_optional_string(data, "description", "orchestrator.description"),
+        short_description=_optional_string(data, "short_description", "orchestrator.short_description"),
+        keywords=tuple(_optional_string_list(data, "keywords", "orchestrator.keywords")),
         inputs=tuple(_parse_port(item, f"orchestrator.inputs[{index}]") for index, item in enumerate(_optional_list(data, "inputs", "orchestrator.inputs"))),
         outputs=tuple(_parse_output(item, f"orchestrator.outputs[{index}]") for index, item in enumerate(_optional_list(data, "outputs", "orchestrator.outputs"))),
         child_executors=tuple(child_executors),
@@ -231,6 +235,13 @@ def _validate_orchestrator(orchestrator: OrchestratorDefinition) -> None:
     if orchestrator.kind not in ORCHESTRATOR_KINDS:
         raise OrchestratorValidationError(f"orchestrator.kind must be one of {sorted(ORCHESTRATOR_KINDS)}")
     _validate_non_empty_string(orchestrator.version, "orchestrator.version")
+    _validate_capability_text(
+        orchestrator.description,
+        orchestrator.short_description,
+        orchestrator.keywords,
+        manifest_id=orchestrator.id,
+        error_cls=OrchestratorValidationError,
+    )
     _validate_runtime(orchestrator.runtime)
 
     input_names = _validate_unique_named(orchestrator.inputs, "input")
@@ -314,6 +325,53 @@ def _validate_command(command: CommandSpec, placeholders: set[str]) -> None:
     for key, value in command.env.items():
         _validate_non_empty_string(key, "runtime.command.env key")
         _validate_placeholders(value, placeholders, f"runtime.command.env[{key!r}]")
+
+
+SHORT_DESCRIPTION_MAX_LEN = 120
+DESCRIPTION_MAX_LEN = 500
+KEYWORD_MAX_LEN = 32
+KEYWORDS_MAX_COUNT = 12
+
+
+def _validate_capability_text(
+    description: str,
+    short_description: str,
+    keywords: tuple[str, ...],
+    *,
+    manifest_id: str,
+    error_cls: type[Exception],
+) -> None:
+    if len(description) > DESCRIPTION_MAX_LEN:
+        raise error_cls(
+            f"{manifest_id}: description is {len(description)} chars; max is {DESCRIPTION_MAX_LEN}"
+        )
+    if len(short_description) > SHORT_DESCRIPTION_MAX_LEN:
+        raise error_cls(
+            f"{manifest_id}: short_description is {len(short_description)} chars; max is {SHORT_DESCRIPTION_MAX_LEN}"
+        )
+    if len(keywords) > KEYWORDS_MAX_COUNT:
+        raise error_cls(
+            f"{manifest_id}: keywords has {len(keywords)} entries; max is {KEYWORDS_MAX_COUNT}"
+        )
+    seen: set[str] = set()
+    for index, keyword in enumerate(keywords):
+        if len(keyword) > KEYWORD_MAX_LEN:
+            raise error_cls(
+                f"{manifest_id}: keywords[{index}] is {len(keyword)} chars; max is {KEYWORD_MAX_LEN}"
+            )
+        if any(ch.isspace() for ch in keyword):
+            raise error_cls(
+                f"{manifest_id}: keywords[{index}] {keyword!r} must not contain whitespace"
+            )
+        if keyword.lower() != keyword:
+            raise error_cls(
+                f"{manifest_id}: keywords[{index}] {keyword!r} must be lowercase"
+            )
+        if keyword in seen:
+            raise error_cls(
+                f"{manifest_id}: keywords[{index}] {keyword!r} is a duplicate"
+            )
+        seen.add(keyword)
 
 
 def _validate_placeholders(value: str, allowed: set[str], path: str) -> None:
@@ -425,10 +483,14 @@ def _drop_none(value: Any) -> Any:
 
 __all__ = [
     "CACHE_MODES",
+    "DESCRIPTION_MAX_LEN",
     "ISOLATION_MODES",
+    "KEYWORDS_MAX_COUNT",
+    "KEYWORD_MAX_LEN",
     "OUTPUT_MODES",
     "ORCHESTRATOR_KINDS",
     "RUNTIME_KINDS",
+    "SHORT_DESCRIPTION_MAX_LEN",
     "TASK_STEP_KINDS",
     "CachePolicy",
     "CommandSpec",

@@ -15,7 +15,6 @@
     "effect"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: refine.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -89,6 +88,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "refine",
+    "edit",
+    "arrangement",
+    "video",
+    "review",
+    "pipeline"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -135,5 +142,6 @@
     "metadata",
     "source_audio"
   ],
+  "short_description": "Apply targeted reviewer-driven refinements to an existing arrangement.",
   "version": "1.0"
 }

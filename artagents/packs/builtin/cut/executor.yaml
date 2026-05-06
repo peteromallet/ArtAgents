@@ -88,6 +88,15 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "cut",
+    "timeline",
+    "video",
+    "edit",
+    "hype",
+    "assemble",
+    "json"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -125,5 +134,6 @@
     "arrangement",
     "pool"
   ],
+  "short_description": "Build the Reigh-compatible hype timeline + assets + metadata JSON triple from arrangement.",
   "version": "1.0"
 }

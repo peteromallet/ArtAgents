@@ -46,6 +46,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "whisper",
+    "audio",
+    "transcribe",
+    "text",
+    "speech",
+    "transcript"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -68,5 +76,6 @@
   "pipeline_requirements": [
     "source_audio"
   ],
+  "short_description": "Transcribe source audio to transcript.json via Whisper.",
   "version": "1.0"
 }

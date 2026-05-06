@@ -34,6 +34,7 @@ TOP_LEVEL_ARTAGENTS_DIRS = {
     "modalities",
     "orchestrate",
     "packs",
+    "skills",
     "threads",
     "utilities",
     "verify",

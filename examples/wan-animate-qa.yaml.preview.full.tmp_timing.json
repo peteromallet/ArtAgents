@@ -1,0 +1,166 @@
+{
+  "scenes": [
+    {
+      "index": 0,
+      "type": "action",
+      "start_t": 0.0,
+      "end_t": 0.0,
+      "action": "camera",
+      "markers": {
+        "camera": 0.0,
+        "_zoom": 1.0,
+        "_y": 0.0,
+        "_duration": 0.0
+      }
+    },
+    {
+      "index": 1,
+      "type": "action",
+      "start_t": 0.0,
+      "end_t": 0.032,
+      "action": "clear"
+    },
+    {
+      "index": 2,
+      "type": "action",
+      "start_t": 0.032,
+      "end_t": 0.042,
+      "action": "print"
+    },
+    {
+      "index": 3,
+      "type": "action",
+      "start_t": 0.042,
+      "end_t": 1.25,
+      "action": "pause"
+    },
+    {
+      "index": 4,
+      "type": "conversation",
+      "start_t": 1.25,
+      "end_t": 9.784,
+      "markers": {
+        "user_start": 1.556,
+        "_cursor_user_start": 12,
+        "user_end": 5.189,
+        "_cursor_user_end": 14,
+        "thinking_start": 5.189,
+        "_cursor_thinking_start": 14,
+        "thinking_end": 7.666,
+        "_cursor_thinking_end": 14,
+        "tools_start": 7.666,
+        "_cursor_tools_start": 14,
+        "tools_end": 8.176,
+        "_cursor_tools_end": 16,
+        "response_start": 8.176,
+        "_cursor_response_start": 16,
+        "response_end": 9.278,
+        "_cursor_response_end": 33
+      }
+    },
+    {
+      "index": 5,
+      "type": "conversation",
+      "start_t": 9.784,
+      "end_t": 17.771,
+      "markers": {
+        "user_start": 10.286,
+        "_cursor_user_start": 33,
+        "user_end": 14.868,
+        "_cursor_user_end": 35,
+        "thinking_start": 14.868,
+        "_cursor_thinking_start": 35,
+        "thinking_end": 16.392,
+        "_cursor_thinking_end": 35,
+        "tools_start": 16.392,
+        "_cursor_tools_start": 35,
+        "tools_end": 16.597,
+        "_cursor_tools_end": 36,
+        "response_start": 16.597,
+        "_cursor_response_start": 36,
+        "response_end": 17.267,
+        "_cursor_response_end": 46
+      }
+    },
+    {
+      "index": 6,
+      "type": "conversation",
+      "start_t": 17.772,
+      "end_t": 25.417,
+      "markers": {
+        "user_start": 18.279,
+        "_cursor_user_start": 46,
+        "user_end": 21.572,
+        "_cursor_user_end": 48,
+        "thinking_start": 21.572,
+        "_cursor_thinking_start": 48,
+        "thinking_end": 23.422,
+        "_cursor_thinking_end": 48,
+        "tools_start": 23.422,
+        "_cursor_tools_start": 48,
+        "tools_end": 23.831,
+        "_cursor_tools_end": 50,
+        "response_start": 23.831,
+        "_cursor_response_start": 50,
+        "response_end": 24.914,
+        "_cursor_response_end": 67
+      }
+    },
+    {
+      "index": 7,
+      "type": "conversation",
+      "start_t": 25.417,
+      "end_t": 33.335,
+      "markers": {
+        "user_start": 25.918,
+        "_cursor_user_start": 67,
+        "user_end": 30.026,
+        "_cursor_user_end": 69,
+        "thinking_start": 30.026,
+        "_cursor_thinking_start": 69,
+        "thinking_end": 31.745,
+        "_cursor_thinking_end": 69,
+        "tools_start": 31.745,
+        "_cursor_tools_start": 69,
+        "tools_end": 31.946,
+        "_cursor_tools_end": 70,
+        "response_start": 31.946,
+        "_cursor_response_start": 70,
+        "response_end": 32.833,
+        "_cursor_response_end": 80
+      }
+    },
+    {
+      "index": 8,
+      "type": "conversation",
+      "start_t": 33.335,
+      "end_t": 41.044,
+      "markers": {
+        "user_start": 33.838,
+        "_cursor_user_start": 80,
+        "user_end": 37.499,
+        "_cursor_user_end": 80,
+        "thinking_start": 37.499,
+        "_cursor_thinking_start": 80,
+        "thinking_end": 39.116,
+        "_cursor_thinking_end": 80,
+        "tools_start": 39.116,
+        "_cursor_tools_start": 80,
+        "tools_end": 39.318,
+        "_cursor_tools_end": 80,
+        "response_start": 39.318,
+        "_cursor_response_start": 80,
+        "response_end": 40.538,
+        "_cursor_response_end": 80
+      }
+    },
+    {
+      "index": 9,
+      "type": "action",
+      "start_t": 41.044,
+      "end_t": 42.657,
+      "action": "pause"
+    }
+  ],
+  "total_duration": 42.656571083003655
+}

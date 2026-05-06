@@ -6,7 +6,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Slide-left entrance animation that translates the element in from the right.",
   "id": "slide-left",
+  "keywords": [
+    "slide",
+    "left",
+    "animation",
+    "entrance",
+    "motion"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 18,
@@ -23,5 +31,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Slide left entrance animation."
 }

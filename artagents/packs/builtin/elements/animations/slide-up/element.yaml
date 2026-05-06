@@ -6,7 +6,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Slide-up exit animation that translates the element upward off-screen.",
   "id": "slide-up",
+  "keywords": [
+    "slide",
+    "up",
+    "animation",
+    "exit",
+    "motion"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 12,
@@ -23,5 +31,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Slide up exit animation."
 }

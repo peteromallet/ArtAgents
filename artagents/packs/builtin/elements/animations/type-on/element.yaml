@@ -9,7 +9,16 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Type-on text animation that reveals characters sequentially.",
   "id": "type-on",
+  "keywords": [
+    "type",
+    "typewriter",
+    "text",
+    "animation",
+    "entrance",
+    "reveal"
+  ],
   "kind": "animation",
   "metadata": {
     "defaultDurationFrames": 120,
@@ -26,5 +35,6 @@
       }
     },
     "type": "object"
-  }
+  },
+  "short_description": "Typewriter-style text reveal animation."
 }

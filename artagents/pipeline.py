@@ -25,6 +25,16 @@ def main(argv: list[str] | None = None) -> int:
     if raw and raw[0] in {"-h", "--help"}:
         _print_entrypoint_help()
         return 0
+    # Nudge runs once per CLI invocation, before the command itself, but never
+    # for the `skills` subcommand (would be silly) or help. Cheap state-file
+    # read; bails early if no harness is detected or ARTAGENTS_NO_NUDGE is set.
+    try:
+        from .skills import nudge_if_needed
+
+        nudge_if_needed(argv=raw)
+    except Exception:
+        # Never let the nudge break a real command.
+        pass
     if raw and raw[0] in LIFECYCLE_VERBS:
         return _dispatch(raw)
     project_slug = _extract_project_slug(raw)
@@ -86,6 +96,10 @@ def _dispatch(raw: list[str]) -> int:
         from .packs.upload.youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
+    if raw and raw[0] == "skills":
+        from .skills import cli as skills_cli
+
+        return skills_cli.main(raw[1:])
     if raw and raw[0] == "executors":
         from .core.executor import cli as executors_cli
 
@@ -206,6 +220,7 @@ Usage:
     python3 -m artagents next --project <slug>
     python3 -m artagents ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]
     python3 -m artagents hook stop   # Claude Code Stop-hook entry point; see docs/HOOKS.md
+  python3 -m artagents skills {list,install,uninstall,sync,doctor} ...
   python3 -m artagents executors {list,inspect,validate,install,run} ...
   python3 -m artagents elements {list,inspect,fork,install} ...
   python3 -m artagents projects {create,show,source,timeline,materialize} ...

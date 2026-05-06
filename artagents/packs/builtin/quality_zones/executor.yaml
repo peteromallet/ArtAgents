@@ -16,7 +16,6 @@
       "kind": "requires_input"
     }
   ],
-  "description": "ArtAgents pipeline step: quality_zones.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -42,6 +41,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "quality",
+    "arrangement",
+    "video",
+    "edit",
+    "tag",
+    "pipeline"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -64,5 +71,6 @@
   "pipeline_requirements": [
     "source_video"
   ],
+  "short_description": "Tag arrangement clips with per-zone quality grades for downstream picks.",
   "version": "1.0"
 }

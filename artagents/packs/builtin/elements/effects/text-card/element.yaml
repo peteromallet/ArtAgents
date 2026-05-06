@@ -7,7 +7,15 @@
     "js_packages": [],
     "python_requirements": []
   },
+  "description": "Default rendered text card effect for simple captions and titles.",
   "id": "text-card",
+  "keywords": [
+    "text",
+    "card",
+    "effect",
+    "caption",
+    "title"
+  ],
   "kind": "effect",
   "metadata": {
     "description": "Default text card effect.",
@@ -33,5 +41,6 @@
       "content"
     ],
     "type": "object"
-  }
+  },
+  "short_description": "Default text card effect for captions and titles."
 }

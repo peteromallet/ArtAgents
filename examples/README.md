@@ -26,5 +26,8 @@ Notes:
 
 - `main.mp4`, `broll.mp4`, and other generated media are not committed.
   Generate them locally when you need a real fixture render.
+- `hype.timeline.json` is the small design fixture. It intentionally uses
+  separate visual tracks for branding, captions, b-roll, and source footage;
+  visual tracks listed earlier render above tracks listed later.
 - `hype.timeline.full.json` and `hype.assets.full.json` are schema-only fixtures consumed by the smoke test and `tools/tests/test_schema_contract.py`.
 - The full fixture `file` paths point at the on-demand media names, but those files do not need to exist for bundle-only smoke checks.

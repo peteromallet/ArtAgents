@@ -13,7 +13,6 @@
     "effect"
   ],
   "conditions": [],
-  "description": "ArtAgents pipeline step: pool_merge.",
   "graph": {
     "consumes": [],
     "depends_on": [
@@ -51,6 +50,14 @@
     "network": false,
     "requirements": []
   },
+  "keywords": [
+    "pool",
+    "merge",
+    "clips",
+    "video",
+    "pipeline",
+    "arrange"
+  ],
   "kind": "built_in",
   "metadata": {
     "command_builder": "artagents.packs.builtin.hype.run.build_pool_steps",
@@ -73,5 +80,6 @@
   "pipeline_requirements": [
     "brief"
   ],
+  "short_description": "Merge multiple candidate clip pools into a unified pool for arrangement.",
   "version": "1.0"
 }
