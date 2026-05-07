@@ -264,6 +264,51 @@ The canonical small fixture is `examples/hype.timeline.json`. Read it before han
 }
 ```
 
+### Adding music or another audio track
+
+Audio is a first-class track kind — there is no separate audio pipeline and no post-render ffmpeg mux. Declare an `audio` track, register the file as an asset, and add a `media` clip on the audio track. Remotion bakes audio into the rendered MP4 directly.
+
+```jsonc
+// assets.json — add a music asset alongside your video
+{
+  "assets": {
+    "src":   {"file": "video.mp4", "type": "video/mp4", "duration": 47.6},
+    "music": {"file": "music.mp3", "type": "audio/mpeg"}
+  }
+}
+```
+
+```jsonc
+// timeline.json — add an audio track and a media clip on it
+"tracks": [
+  {"id": "source", "kind": "visual", "label": "Source"},
+  {"id": "a1",     "kind": "audio",  "label": "Music"}
+],
+"clips": [
+  {"id": "src_main", "at": 0, "track": "source", "clipType": "media", "asset": "src", "from": 0, "to": 47.6},
+  {
+    "id": "audio_music",
+    "at": 0,                 // timeline time the clip starts playing
+    "track": "a1",
+    "clipType": "media",     // audio uses the same `media` clipType as video
+    "asset": "music",
+    "from": 5,               // trim: start the source 5s in
+    "to": 52.6,              // trim end in source time (clip plays for to-from = 47.6s)
+    "volume": 1.0,           // 0..1 scalar, multiplies track volume
+    "params": {"fadeIn": 0, "fadeOut": 2.5}
+  }
+]
+```
+
+Field semantics (the parts that aren't obvious from `types.ts`):
+
+- `from` / `to` are in **source-media time, seconds** — they trim the asset, they don't move the clip on the timeline. The clip's timeline duration is `to - from`. To start the music *later* in the video, raise `clip.at`, not `from`.
+- `volume` is a scalar 0..1; track and clip volume multiply. `track.muted: true` forces silence regardless.
+- `params.fadeIn` / `params.fadeOut` are in seconds, taper at the clip's local start/end. Implemented inside `AudioTrack.tsx` as a per-frame volume function — no afade pre-bake needed.
+- Local audio paths in `assets.json` resolve like local video: the render runner picks a common parent of all asset files and serves them over `http://localhost:<port>/...`. Remotion's `<Audio src>` consumes that URL natively.
+
+You should not need ffmpeg's `atrim` / `afade` / `amix` for any normal "music under the video" use case. Reach for ffmpeg only for things Remotion genuinely doesn't model (offline loudness normalization, sample-accurate cross-fades between two music beds, etc.).
+
 ### Rendering
 
 ```bash

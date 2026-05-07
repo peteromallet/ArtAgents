@@ -10,7 +10,7 @@
     "gen-types": "python3 ../scripts/gen_remotion_types.py && python3 ../scripts/gen_effect_registry.py"
   },
   "dependencies": {
-    "@banodoco/timeline-composition": "https://github.com/banodoco/timeline-composition/archive/refs/tags/v0.0.5.tar.gz",
+    "@banodoco/timeline-composition": "https://github.com/banodoco/timeline-composition/archive/refs/tags/v0.0.6.tar.gz",
     "@banodoco/timeline-theme-2rp": "https://github.com/banodoco/timeline-theme-2rp/archive/refs/tags/v0.1.1.tar.gz",
     "@remotion/cli": "4.0.455",
     "@remotion/google-fonts": "4.0.455",
