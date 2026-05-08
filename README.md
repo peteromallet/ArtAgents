@@ -12,7 +12,7 @@ Give this to your agents to get started:
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━◇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ ·                                                                        · ┃
 ┃   ╳ ╳ ╳ ╳ ╳────────────────────────────────────────────────────╳ ╳ ╳ ╳ ╳   ┃
-┃   ╳ ╳ ╳ ╳ ╳            ═══  A R T A G E N T S  ═══             ╳ ╳ ╳ ╳ ╳   ┃
+┃   ╳ ╳ ╳ ╳ ╳               ═══  A S T R I D  ═══                ╳ ╳ ╳ ╳ ╳   ┃
 ┃   ╳ ╳ ╳ ╳ ╳────────────────────────────────────────────────────╳ ╳ ╳ ╳ ╳   ┃
 ┃                                                                            ┃
 ┃                             ◇  What This Is  ◇                             ┃
@@ -23,10 +23,10 @@ Give this to your agents to get started:
 ┃                ELEMENTS       reusable pieces used by both                 ┃
 ◇                                                                            ◇
 ┃                           ◇  Getting Started  ◇                            ┃
-┃          git clone https://github.com/peteromallet/Astrid.git           ┃
-┃        python3 -m astrid [executors|orchestrators|elements] list        ┃
-┃    python3 -m astrid [executors|orchestrators|elements] inspect <id>    ┃
-┃     python3 -m astrid [executors|orchestrators] run <id> -- <args>      ┃
+┃            git clone https://github.com/peteromallet/Astrid.git            ┃
+┃         python3 -m astrid [executors|orchestrators|elements] list          ┃
+┃     python3 -m astrid [executors|orchestrators|elements] inspect <id>      ┃
+┃       python3 -m astrid [executors|orchestrators] run <id> -- <args>       ┃
 ◇                                                                            ◇
 ┃                          ◇  Make Something New  ◇                          ┃
 ┃            copy docs/templates/{executor,orchestrator,element}/            ┃
