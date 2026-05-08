@@ -5,8 +5,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ACTIVE_THEME_DIR = path.resolve(__dirname, '_active_theme');
 const ARTAGENTS_DIR = path.resolve(__dirname, '..');
-const BUILTIN_PACK_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, 'artagents/packs/builtin/elements');
-const LOCAL_PACK_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, 'artagents/packs/local/elements');
+const BUILTIN_PACK_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, 'astrid/packs/builtin/elements');
+const LOCAL_PACK_ELEMENTS_DIR = path.resolve(ARTAGENTS_DIR, 'astrid/packs/local/elements');
 // Workspace-level effects/animations/transitions/themes/* live above the
 // Remotion project, so their nearest node_modules walks up past the
 // tools/remotion install. Add the Remotion project's node_modules to

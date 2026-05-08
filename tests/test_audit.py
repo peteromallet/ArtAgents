@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents import audit
-from artagents.audit import AuditContext
+from astrid import audit
+from astrid.audit import AuditContext
 
 
 def test_audit_registers_asset_graph_and_report(tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ def test_audit_redacts_secret_like_values(tmp_path: Path) -> None:
 
 def test_pipeline_audit_cli_json(tmp_path: Path, capsys) -> None:
     pytest.importorskip("jsonschema")
-    from artagents.pipeline import main as pipeline_main  # gateway
+    from astrid.pipeline import main as pipeline_main  # gateway
 
     ctx = AuditContext.for_run(tmp_path / "run")
     asset_id = ctx.register_asset(kind="source", label="Only source")
@@ -78,7 +78,7 @@ def test_pipeline_audit_cli_json(tmp_path: Path, capsys) -> None:
 
 def test_pipeline_audit_env_propagation_and_fallback(monkeypatch, tmp_path: Path) -> None:
     pytest.importorskip("jsonschema")
-    from artagents.packs.builtin.hype import run as pipeline
+    from astrid.packs.builtin.hype import run as pipeline
 
     script = tmp_path / "child.py"
     script.write_text(
@@ -110,7 +110,7 @@ def test_pipeline_audit_env_propagation_and_fallback(monkeypatch, tmp_path: Path
 
 
 def test_ambient_register_outputs_from_producer(monkeypatch, tmp_path: Path) -> None:
-    from artagents.packs.builtin.scenes import run as scenes
+    from astrid.packs.builtin.scenes import run as scenes
 
     run = tmp_path / "run"
     monkeypatch.setenv("ARTAGENTS_AUDIT_RUN_DIR", str(run))
@@ -125,7 +125,7 @@ def test_ambient_register_outputs_from_producer(monkeypatch, tmp_path: Path) -> 
 
 
 def test_ambient_register_outputs_inherits_parent_ids(monkeypatch, tmp_path: Path) -> None:
-    from artagents.packs.builtin.scenes import run as scenes
+    from astrid.packs.builtin.scenes import run as scenes
 
     run = tmp_path / "run"
     parent_id = "source-parent"

@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from artagents.core.task.inbox import inbox_dir, scan_inbox
+from astrid.core.task.inbox import inbox_dir, scan_inbox
 
 
 def _write(path: Path, payload: dict) -> None:
@@ -51,7 +51,7 @@ def test_scan_returns_three_valid_entries_and_logs_one_malformed(
     )
     (inbox / "broken.json").write_text("not json at all", encoding="utf-8")
 
-    with caplog.at_level(logging.WARNING, logger="artagents.core.task.inbox"):
+    with caplog.at_level(logging.WARNING, logger="astrid.core.task.inbox"):
         entries = scan_inbox(run_dir)
 
     assert len(entries) == 3

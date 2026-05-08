@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.core.element import ElementRegistryError, load_default_registry
+from astrid.core.element import ElementRegistryError, load_default_registry
 
 
 _KIND_SINGULAR = {"effects": "effect", "animations": "animation", "transitions": "transition"}
@@ -74,8 +74,8 @@ class ElementRegistryTest(unittest.TestCase):
         self.assertEqual(animation_fade.kind, "animations")
         self.assertEqual(transition_fade.kind, "transitions")
         self.assertNotEqual(animation_fade.root, transition_fade.root)
-        self.assertTrue(str(animation_fade.root).endswith("artagents/packs/builtin/elements/animations/fade"))
-        self.assertTrue(str(transition_fade.root).endswith("artagents/packs/builtin/elements/transitions/fade"))
+        self.assertTrue(str(animation_fade.root).endswith("astrid/packs/builtin/elements/animations/fade"))
+        self.assertTrue(str(transition_fade.root).endswith("astrid/packs/builtin/elements/transitions/fade"))
 
     def test_builtin_pack_defaults_are_discovered_with_pack_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -94,7 +94,7 @@ class ElementRegistryTest(unittest.TestCase):
             self.assertEqual(text_card.metadata["pack_id"], "builtin")
             self.assertEqual(
                 text_card.fork_target,
-                Path("artagents/packs/local/elements/effects/text-card"),
+                Path("astrid/packs/local/elements/effects/text-card"),
             )
 
     def test_active_theme_overrides_builtin_pack(self) -> None:
@@ -119,13 +119,13 @@ class ElementRegistryTest(unittest.TestCase):
     def test_local_pack_wins_over_builtin_and_fork_target_uses_local_pack(self) -> None:
         from unittest import mock
 
-        from artagents.core.element import registry as registry_module
-        from artagents.core.pack import discover_packs as real_discover_packs
+        from astrid.core.element import registry as registry_module
+        from astrid.core.pack import discover_packs as real_discover_packs
 
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
             project.mkdir(parents=True)
-            local_pack_root = project / "artagents" / "packs" / "local"
+            local_pack_root = project / "astrid" / "packs" / "local"
             write_pack_element(local_pack_root, "animations", "fade", pack_id="local", label="Local Fade")
 
             with mock.patch.object(
@@ -139,7 +139,7 @@ class ElementRegistryTest(unittest.TestCase):
         winner = registry.get("animations", "fade")
         self.assertEqual(winner.source, "pack:local")
         self.assertTrue(winner.editable)
-        self.assertEqual(target, project / "artagents" / "packs" / "local" / "elements" / "animations" / "fade")
+        self.assertEqual(target, project / "astrid" / "packs" / "local" / "elements" / "animations" / "fade")
 
     def test_fork_copies_default_into_local_pack_and_rewrites_pack_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -153,7 +153,7 @@ class ElementRegistryTest(unittest.TestCase):
             self.assertTrue((target / "element.yaml").is_file())
             payload = json.loads((target / "element.yaml").read_text(encoding="utf-8"))
             self.assertEqual(payload["pack_id"], "local")
-            self.assertTrue((project / "artagents" / "packs" / "local" / "pack.yaml").is_file())
+            self.assertTrue((project / "astrid" / "packs" / "local" / "pack.yaml").is_file())
             with self.assertRaisesRegex(ElementRegistryError, "already exists"):
                 registry.fork("transitions", "cross-fade", project_root=project)
 

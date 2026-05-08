@@ -1,11 +1,11 @@
 # Creating Tools
 
-Use this guide when ArtAgents is missing a capability.
+Use this guide when Astrid is missing a capability.
 
 ## Operating Level
 
 Start with the highest-level command that fits the user request. For normal
-video creation, run an orchestrator through `python3 -m artagents` instead of
+video creation, run an orchestrator through `python3 -m astrid` instead of
 chaining internal executors by hand.
 
 Do not chain pipeline internals by hand unless you are debugging one specific
@@ -19,13 +19,13 @@ Current start points:
 
 ```bash
 # Source-backed edit
-python3 -m artagents --video source.mp4 --brief brief.txt --out runs/example --render
+python3 -m astrid --video source.mp4 --brief brief.txt --out runs/example --render
 
 # Audio-backed edit
-python3 -m artagents --audio voiceover.wav --brief brief.txt --out runs/audio --render
+python3 -m astrid --audio voiceover.wav --brief brief.txt --out runs/audio --render
 
 # Pure-generative edit from an existing brief
-python3 -m artagents --brief examples/briefs/cinematic.txt --out runs/generative --render --target-duration 15
+python3 -m astrid --brief examples/briefs/cinematic.txt --out runs/generative --render --target-duration 15
 ```
 
 If the user gives a topic instead of a brief, create or use a brief-generation
@@ -37,7 +37,7 @@ to satisfy a source-video path.
 Before adding anything, follow this order. Move to the next step only when the
 previous one cannot satisfy the request.
 
-1. **Try to compose existing executors.** Run `python3 -m artagents executors
+1. **Try to compose existing executors.** Run `python3 -m astrid executors
    list` and `inspect` the likely candidates. If a workflow can be built by
    wiring existing executors together, write *only* an orchestrator that calls
    them. Do not duplicate logic that already lives in an executor.
@@ -75,8 +75,8 @@ elements. If the user needs an editable visual primitive, fork or create an
 element instead of hard-coding behavior in an executor.
 
 Create a **shared library** only when the code has no public runtime of its own.
-Shared hype/editing concepts belong under `artagents/domains/hype`. Generic
-plumbing belongs under `artagents/utilities`. Executor-specific helpers belong
+Shared hype/editing concepts belong under `astrid/domains/hype`. Generic
+plumbing belongs under `astrid/utilities`. Executor-specific helpers belong
 inside that executor's optional `src/` package.
 
 For a one-off experiment, keep outputs and scratch files under `runs/`. Do not
@@ -113,7 +113,7 @@ brief and then delegates to the existing hype or render flow.
 
 ## Required Formats
 
-All shipped content lives under packs at `artagents/packs/<pack>/`. Executor and
+All shipped content lives under packs at `astrid/packs/<pack>/`. Executor and
 orchestrator ids must be qualified — `<pack>.<name>` — and the first segment
 must equal the owning pack's id (e.g. `builtin.cut` lives in `packs/builtin/`,
 `external.vibecomfy.run` lives in `packs/external/`). Element ids stay bare and
@@ -122,7 +122,7 @@ are scoped by `kind` (`effects`, `animations`, `transitions`).
 Executor folders use:
 
 ```text
-artagents/packs/<pack>/<name>/
+astrid/packs/<pack>/<name>/
   executor.yaml      # id: "<pack>.<name>"
   run.py
   STAGE.md
@@ -132,7 +132,7 @@ artagents/packs/<pack>/<name>/
 Orchestrator folders use:
 
 ```text
-artagents/packs/<pack>/<name>/
+astrid/packs/<pack>/<name>/
   orchestrator.yaml  # id: "<pack>.<name>"
   run.py
   STAGE.md
@@ -142,19 +142,19 @@ artagents/packs/<pack>/<name>/
 Element folders use:
 
 ```text
-artagents/packs/<pack>/elements/<kind>/<id>/
+astrid/packs/<pack>/elements/<kind>/<id>/
   component.tsx
   element.yaml       # id, kind (singular: animation|effect|transition),
                      # pack_id, metadata, schema, defaults, dependencies
 ```
 
 User-editable forks land in the gitignored `local` pack at
-`artagents/packs/local/elements/<kind>/<id>/`. The first fork auto-creates
-`artagents/packs/local/pack.yaml` and rewrites the copied element's `pack_id`
+`astrid/packs/local/elements/<kind>/<id>/`. The first fork auto-creates
+`astrid/packs/local/pack.yaml` and rewrites the copied element's `pack_id`
 to `local`:
 
 ```bash
-python3 -m artagents elements fork effects text-card
+python3 -m astrid elements fork effects text-card
 ```
 
 ## Templates
@@ -168,17 +168,17 @@ Copy the closest template and replace the placeholder identifiers:
 Then run:
 
 ```bash
-python3 -m artagents doctor
-python3 -m artagents executors inspect builtin.example --json
-python3 -m artagents orchestrators inspect builtin.example --json
-python3 -m artagents elements inspect effects example-card --json
+python3 -m astrid doctor
+python3 -m astrid executors inspect builtin.example --json
+python3 -m astrid orchestrators inspect builtin.example --json
+python3 -m astrid elements inspect effects example-card --json
 ```
 
 Run only the inspect command that matches the thing you created.
 
 ## Review Checklist
 
-- The new capability is reachable through `python3 -m artagents`.
+- The new capability is reachable through `python3 -m astrid`.
 - The folder has the required manifest, `run.py`, and `STAGE.md` or element
   files.
 - The `STAGE.md` says when to use it and gives the canonical command.

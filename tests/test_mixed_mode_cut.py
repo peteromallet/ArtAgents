@@ -14,10 +14,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents import timeline as timeline_mod
-from artagents.packs.builtin.cut import run as cut
-from artagents.packs.builtin.pool_merge import run as pool_merge
-from artagents.timeline import ClipClassifiedKind, Timeline
+from astrid import timeline as timeline_mod
+from astrid.packs.builtin.cut import run as cut
+from astrid.packs.builtin.pool_merge import run as pool_merge
+from astrid.timeline import ClipClassifiedKind, Timeline
 
 
 class MixedModeCutTest(unittest.TestCase):
@@ -28,7 +28,7 @@ class MixedModeCutTest(unittest.TestCase):
 
     def test_cut_no_longer_rejects_mixed_source_plus_generative(self) -> None:
         """The pre-Phase-3 SystemExit raise is gone from cut.main."""
-        cut_source = Path("artagents/packs/builtin/cut/run.py").read_text(encoding="utf-8")
+        cut_source = Path("astrid/packs/builtin/cut/run.py").read_text(encoding="utf-8")
         # Pre-Phase-3 raise looked like:
         #   if args.video is not None and arrangement_uses_generative_visuals(...):
         #       raise SystemExit("Source-cut mode cannot materialize generative visual_source ...")

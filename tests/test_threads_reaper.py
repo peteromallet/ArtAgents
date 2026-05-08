@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from artagents.threads.attribute import _reset_reaper_for_tests, reap_orphans_once
-from artagents.threads.ids import generate_run_id, generate_thread_id
-from artagents.threads.record import build_run_record, write_run_record
+from astrid.threads.attribute import _reset_reaper_for_tests, reap_orphans_once
+from astrid.threads.ids import generate_run_id, generate_thread_id
+from astrid.threads.record import build_run_record, write_run_record
 
 
 def test_lazy_reaper_marks_abandoned_running_run_orphaned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

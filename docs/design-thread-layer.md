@@ -1,6 +1,6 @@
 # Thread / Variant / Iteration-Video Layer — Design Context
 
-This document captures the design decisions converged on for adding a creative-iteration tracking layer to ArtAgents. It is the input to a sprint plan; it is not itself the sprint plan.
+This document captures the design decisions converged on for adding a creative-iteration tracking layer to Astrid. It is the input to a sprint plan; it is not itself the sprint plan.
 
 The layer adds three things on top of the existing executor/orchestrator/elements model:
 
@@ -12,10 +12,10 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 ## Architectural premises
 
-- ArtAgents is **invoked by LLM agents** (Claude Code, etc.), not human operators. UX optimizes for an actor with no persistent memory across conversations.
+- Astrid is **invoked by LLM agents** (Claude Code, etc.), not human operators. UX optimizes for an actor with no persistent memory across conversations.
 - Every invocation produces files in `runs/<slug>/`. Today these are flat siblings; the new layer adds metadata stamping without changing the directory contract.
-- The existing chokepoints are `run_executor()` in `artagents/core/executor/runner.py:75` and the orchestrator dispatch in `artagents/core/orchestrator/runner.py`. All new behavior lives in or above these wrappers — **no executor or orchestrator implementation is modified except where it produces variant outputs.**
-- `.artagents/` is the canonical local-state root (already in `.gitignore`). New persistent state lives there.
+- The existing chokepoints are `run_executor()` in `astrid/core/executor/runner.py:75` and the orchestrator dispatch in `astrid/core/orchestrator/runner.py`. All new behavior lives in or above these wrappers — **no executor or orchestrator implementation is modified except where it produces variant outputs.**
+- `.astrid/` is the canonical local-state root (already in `.gitignore`). New persistent state lives there.
 - All path references in persisted JSON must be repo-relative or content-addressed. No absolute paths.
 
 ## Settled Decisions
@@ -26,7 +26,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
 - **SD-002** — Tags-not-folders: every run writes a `runs/<slug>/run.json` with a `thread_id` field. The `runs/` directory stays flat. Re-grouping (split/merge/attach) is a metadata edit, never a `mv` operation. _load_bearing: true_
   Rationale: coupling physical layout to logical grouping makes re-attribution destructive and breaks path references in older timelines. Identity is by ULID, never by path.
 
-- **SD-003** — A single index file `.artagents/threads.json` holds the thread map and `active_thread_id` pointer. All updates go through `fcntl.flock` on a sidecar lock file plus atomic write (tmp + fsync + `os.replace`), with a rotated `.bak`. _load_bearing: true_
+- **SD-003** — A single index file `.astrid/threads.json` holds the thread map and `active_thread_id` pointer. All updates go through `fcntl.flock` on a sidecar lock file plus atomic write (tmp + fsync + `os.replace`), with a rotated `.bak`. _load_bearing: true_
   Rationale: parallel runs must not lose updates; the index is small enough that single-file is correct.
 
 - **SD-004** — IDs are 26-char Crockford ULIDs (`run_id`, `thread_id`, `group_id`), monotonic within a process. References between records are always by ULID, never by path or label. _load_bearing: true_
@@ -72,12 +72,12 @@ The whole system exists to support one killer demo: open a finished artifact, se
 - **SD-013** — Variants primitive: extend each `output_artifact` with `role` (`variant`/`ancillary`/`manifest`/`index`), `group` (= `sha256(run_id + group_label)[:16]`), `group_index`, and a free-form `variant_meta` blob. **Default role is `ancillary`. Executors must opt in to `variant`. Fail closed.** _load_bearing: true_
   Rationale: heterogeneous outputs (4 candidates + grid + manifest) cannot accidentally poison the variant group; executors that produce siblings declare them explicitly.
 
-- **SD-014** — Selection state lives at the thread, not the artifact. An append-only `.artagents/threads/<thread-id>/selections.jsonl` records each `{ts, group, kept[], discarded[], by, note?}` event. Never mutated. Current-keepers reduces over the log. _load_bearing: true_
+- **SD-014** — Selection state lives at the thread, not the artifact. An append-only `.astrid/threads/<thread-id>/selections.jsonl` records each `{ts, group, kept[], discarded[], by, note?}` event. Never mutated. Current-keepers reduces over the log. _load_bearing: true_
   Rationale: handles partial selection, deselection, and revision without losing history; concurrent picks are safe (last write wins on read).
 
 - **SD-015** — `chosen_from_groups: [{group, sha256}]` on a consuming run is a **separate edge** from `parent_run_ids`. The DAG distinguishes "descended from X" (causal) from "picked over its siblings" (curatorial). The iteration video needs both. _load_bearing: true_
 
-- **SD-016** — Denormalized `.artagents/threads/<thread-id>/groups.json` index gives O(1) lookups for "what variants for run #N, which kept, which descended." Updated on run-write and selection-write. _load_bearing: true_
+- **SD-016** — Denormalized `.astrid/threads/<thread-id>/groups.json` index gives O(1) lookups for "what variants for run #N, which kept, which descended." Updated on run-write and selection-write. _load_bearing: true_
 
 - **SD-017** — Agent gesture surface for variants — exactly five commands, one of which is mandatory-per-attempt:
   ```
@@ -97,7 +97,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
   Plus tiered Notice / Warn lines for first-run-of-process, gap >1h, brief novelty, auto-reopen of archived thread. _load_bearing: true_
   Rationale: the agent's working memory is the previous tool's stdout; thread state must be in that stream every turn.
 
-- **SD-019** — Provenance block in `hype.metadata.json` (added to `pipeline` block by `builtin.cut`). Carries `{thread_id, thread_label (denormalized), run_id, parent_run_ids[], chosen_from_groups[], contributing_runs[{run_id, thread_id, artifact_path, sha256}], starred, agent_version}`. Denormalization of `thread_label` and `agent_version` makes the artifact self-contained after `rm -rf .artagents/`. _load_bearing: true_
+- **SD-019** — Provenance block in `hype.metadata.json` (added to `pipeline` block by `builtin.cut`). Carries `{thread_id, thread_label (denormalized), run_id, parent_run_ids[], chosen_from_groups[], contributing_runs[{run_id, thread_id, artifact_path, sha256}], starred, agent_version}`. Denormalization of `thread_label` and `agent_version` makes the artifact self-contained after `rm -rf .astrid/`. _load_bearing: true_
 
 - **SD-020** — `builtin.iteration_video` is a single orchestrator polymorphic across modalities, not per-modality orchestrators. Real threads are heterogeneous (storyboard → animation, music video) and the agent shouldn't have to pick a modality before knowing what's in the thread. _load_bearing: true_
 
@@ -118,7 +118,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
 - **SD-024** — Quality floor: `iteration.collect` computes a `data_quality` score in [0,1]. If below `quality_floor` (default 0.6), the orchestrator **refuses to render** and emits an actionable report listing the specific runs missing `parent_run_ids` with exact backfill commands. `--force` bypasses, logged into provenance. _load_bearing: true_
   Rationale: silently rendering a video that misorders or omits half the runs destroys trust permanently. Refusal must be a helpful editor, not a bureaucrat.
 
-- **SD-025** — `ModalityRenderer` registry at `artagents/modalities/` (sibling to `elements/`, `executors/`, `orchestrators/`). Each renderer is a small declarative file declaring `kinds`, `clip_modes`, `default_clip_mode_for(shape, style)`, `produces_audio`, `cost_hint`. Discoverable via `python3 -m artagents modalities {list, inspect}`. _load_bearing: true_
+- **SD-025** — `ModalityRenderer` registry at `astrid/modalities/` (sibling to `elements/`, `executors/`, `orchestrators/`). Each renderer is a small declarative file declaring `kinds`, `clip_modes`, `default_clip_mode_for(shape, style)`, `produces_audio`, `cost_hint`. Discoverable via `python3 -m astrid modalities {list, inspect}`. _load_bearing: true_
   Rationale: replaces a hardcoded global decision table that would become unmaintainable as modalities multiply. Each renderer owns its own scoped logic.
 
 - **SD-026** — Capability declarations on artifacts: extend `output_artifacts` with `preview_modes: [...]` and `duration` (where applicable). Producers declare what previews are tractable. The renderer registry resolves `(kind, preview_modes)` to a renderer at assembly time. _load_bearing: true_
@@ -138,11 +138,11 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - **SD-029** — `generic_card` renderer is always registered as a fallback. When it fires, every iteration that uses it gets a "no renderer for `kind:<X>`" annotation in the HTML report and a stdout warning. Unknown modalities degrade gracefully and **loudly**. _load_bearing: true_
 
-- **SD-030** — Single chokepoint integration: `run_executor()` at `artagents/core/executor/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ARTAGENTS_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
+- **SD-030** — Single chokepoint integration: `run_executor()` at `astrid/core/executor/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ARTAGENTS_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
 
 - **SD-031** — Existing-executor patches required by this layer:
-  - `artagents/packs/builtin/generate_image/run.py` — declare `role: variant` on the N images; emit `group` from `(run_id, prompt_index)`; populate `preview_modes` and `duration`.
-  - `artagents/packs/builtin/logo_ideas/run.py` — fold existing rich per-candidate metadata (`name`, `rationale`, `prompt`, `generated.*`) into `variant_meta` and stamp `role: variant`, `group`, `group_index`.
+  - `astrid/packs/builtin/generate_image/run.py` — declare `role: variant` on the N images; emit `group` from `(run_id, prompt_index)`; populate `preview_modes` and `duration`.
+  - `astrid/packs/builtin/logo_ideas/run.py` — fold existing rich per-candidate metadata (`name`, `rationale`, `prompt`, `generated.*`) into `variant_meta` and stamp `role: variant`, `group`, `group_index`.
   - All other executors are unmodified for v1.
   _load_bearing: true_
 
@@ -150,11 +150,11 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - **SD-033** — In-flight reaper: any run start scans `runs/*/run.json` for records with `ended_at: null` whose owning process is gone (PID stamped at begin). Marks them `returncode: -1, ended_at: <now>, status: "orphaned"`. Lazy, runs at most once per process. _load_bearing: true_
 
-- **SD-034** — Backwards compatibility is mandatory. Existing `runs/*/` directories without `run.json` continue to work unmodified. `python3 -m artagents thread backfill` scans, computes hashes, and adopts orphan dirs into auto-named threads (clustered by hash-graph connected components, not mtime). All existing tests must pass without modification. _load_bearing: true_
+- **SD-034** — Backwards compatibility is mandatory. Existing `runs/*/` directories without `run.json` continue to work unmodified. `python3 -m astrid thread backfill` scans, computes hashes, and adopts orphan dirs into auto-named threads (clustered by hash-graph connected components, not mtime). All existing tests must pass without modification. _load_bearing: true_
 
 - **SD-035** — Sprint phasing constraints (load-bearing for the planner):
   - **Week 1 (days 1–5) is the data layer.** Thread schema, locking, atomic write, `run_executor` wrapper, auto-attribute, prefix lines, `thread {new, list, show, archive, reopen}` CLI, variants (`role`/`group`/`selections.jsonl`/`groups.json`/`chosen_from_groups`), `[variants]` nag, `thread keep`, executor patches, brief snapshotting, in-flight reaper, provenance block in `hype.metadata.json`, `preview_modes`/`duration` on artifacts. **All metadata fields in SD-008 must ship by end of week 1**, because every run after sprint day 1 either has them or doesn't, forever.
-  - **Week 2 (days 6–10) is the iteration video MVP.** `iteration.collect`, `iteration.summarize`, `iteration.score`, `iteration.assemble`, `builtin.iteration_video`, HTML report, quality floor, modality registry framework with **3 renderers only** (`image_grid`, `audio_waveform`, `generic_card`), `inspect` subcommand, end-to-end demo render against an existing thread (`runs/artagents_logo_v3` is a known-good fixture).
+  - **Week 2 (days 6–10) is the iteration video MVP.** `iteration.collect`, `iteration.summarize`, `iteration.score`, `iteration.assemble`, `builtin.iteration_video`, HTML report, quality floor, modality registry framework with **3 renderers only** (`image_grid`, `audio_waveform`, `generic_card`), `inspect` subcommand, end-to-end demo render against an existing thread (`runs/astrid_logo_v3` is a known-good fixture).
   _load_bearing: true_
 
 - **SD-036** — Sprint cuts (explicitly out of scope for the 2-week sprint, deferred to follow-up):
@@ -176,7 +176,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
   - Concurrency: 8 parallel subprocess runs, all recorded, no lost updates
   - `run_executor` integration end-to-end: `run.json` written, index updated, finalization records returncode
   - Orchestrator integration: nested executor inherits parent thread via env
-  - Backwards compat: `ARTAGENTS_THREADS_OFF=1` produces no artifacts and no errors; missing `.artagents/` is auto-created; existing `runs/*/` without `run.json` work unchanged
+  - Backwards compat: `ARTAGENTS_THREADS_OFF=1` produces no artifacts and no errors; missing `.astrid/` is auto-created; existing `runs/*/` without `run.json` work unchanged
   - Variants: heterogeneous outputs (variant + ancillary + manifest) result in only the variants being grouped
   - Provenance: `hype.metadata.json` carries the block; `thread_label` survives index deletion
   - All existing pytest tests pass without modification
@@ -193,7 +193,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - **SD-042** — Concurrent variant-selection semantics. Two agents (or two terminals) may `thread keep` the same group with conflicting choices simultaneously. The append-only `selections.jsonl` makes this safe but the rule must be **explicitly documented for agents in `SKILL.md` and in the `[variants]` line help text**: "selections are append-only; the most recent write is authoritative on read; prior selections are preserved as history but do not affect current keepers." No locking on selection writes (the file is per-thread + append-only + line-buffered, so atomic appends are safe). _load_bearing: true_
 
-- **SD-043** — Iteration-video cost guardrail. A 47-iteration thread generates ~47 `builtin.understand` calls in `iteration.summarize`. At realistic per-call costs ($0.005–$0.10) this is $0.25–$5 per render, which is fine — but a thread with 500 iterations or repeated re-renders is not. The sprint must (a) cap `iteration.summarize` at `max_iterations` (default 200, configurable, with a clear refusal message above the cap); (b) cache summaries by `(run_id, summarizer_model_version)` keyed in `.artagents/iteration_cache/` so re-renders only summarize new iterations; (c) surface estimated cost in `iteration_video inspect` output **before** the agent commits to a render. _load_bearing: true_
+- **SD-043** — Iteration-video cost guardrail. A 47-iteration thread generates ~47 `builtin.understand` calls in `iteration.summarize`. At realistic per-call costs ($0.005–$0.10) this is $0.25–$5 per render, which is fine — but a thread with 500 iterations or repeated re-renders is not. The sprint must (a) cap `iteration.summarize` at `max_iterations` (default 200, configurable, with a clear refusal message above the cap); (b) cache summaries by `(run_id, summarizer_model_version)` keyed in `.astrid/iteration_cache/` so re-renders only summarize new iterations; (c) surface estimated cost in `iteration_video inspect` output **before** the agent commits to a render. _load_bearing: true_
   Rationale: silent cost blowups erode trust; the agent must see the bill before incurring it.
 
 - **SD-044** — Recorded tradeoffs (for future readers, not load-bearing). Two design choices were debated and settled but the alternatives are worth preserving so future maintainers don't relitigate:

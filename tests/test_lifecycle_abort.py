@@ -15,11 +15,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.active_run import read_active_run
-from artagents.core.task.lifecycle import cmd_abort
+from astrid.core.task.active_run import read_active_run
+from astrid.core.task.lifecycle import cmd_abort
 
 
-_BODY = '''from artagents.orchestrate import orchestrator, code
+_BODY = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.app")
 def app(): return [code("step_a", argv=["echo", "x"])]
 '''

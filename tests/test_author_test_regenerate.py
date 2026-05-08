@@ -9,10 +9,10 @@ import shutil
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-from artagents.orchestrate import cli as author_cli
+from astrid.orchestrate import cli as author_cli
 
 
-_REPO_PACKS = Path(__file__).resolve().parents[1] / "artagents" / "packs"
+_REPO_PACKS = Path(__file__).resolve().parents[1] / "astrid" / "packs"
 
 
 def test_author_test_regenerate_rewrites_golden(tmp_path: Path) -> None:

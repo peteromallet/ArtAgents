@@ -4,7 +4,7 @@ import struct
 import wave
 from pathlib import Path
 
-from artagents.verify import (
+from astrid.verify import (
     all_of,
     audio_duration_min,
     canonical_check_params,

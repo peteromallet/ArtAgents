@@ -4,10 +4,10 @@ import contextlib
 import io
 import unittest
 
-from artagents.core.executor import cli as executors_cli
-from artagents.core.executor.schema import ExecutorValidationError, validate_executor_definition
-from artagents.core.orchestrator import cli as orchestrators_cli
-from artagents.core.orchestrator.schema import OrchestratorValidationError, validate_orchestrator_definition
+from astrid.core.executor import cli as executors_cli
+from astrid.core.executor.schema import ExecutorValidationError, validate_executor_definition
+from astrid.core.orchestrator import cli as orchestrators_cli
+from astrid.core.orchestrator.schema import OrchestratorValidationError, validate_orchestrator_definition
 
 
 def _capture(fn, argv: list[str]) -> tuple[int, str, str]:

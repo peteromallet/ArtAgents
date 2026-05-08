@@ -1,6 +1,6 @@
 """T7 (Phase 6): the no-cursor-move golden run.
 
-Calling `artagents next` repeatedly without an `ack` is intended to be
+Calling `astrid next` repeatedly without an `ack` is intended to be
 purely informational: the preamble must be re-injected verbatim on each
 call (SD-023), the two outputs must be byte-identical, and the run cursor
 (events.jsonl) must NOT advance between calls.
@@ -16,11 +16,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.lifecycle import cmd_next
-from artagents.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.task.lifecycle import cmd_next
+from astrid.core.task.preamble import PROHIBITION_PREAMBLE
 
 
-_BODY_CODE = '''from artagents.orchestrate import orchestrator, code
+_BODY_CODE = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.code")
 def main(): return [code("step_a", argv=["echo", "alpha"])]
 '''

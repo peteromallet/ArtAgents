@@ -4,12 +4,12 @@ import json
 import shutil
 from pathlib import Path
 
-from artagents.packs.builtin.iteration_video import run as iteration_video
-from artagents.threads.attribute import AttributionDecision, infer_lineage_thread_id
-from artagents.threads.cli import main as thread_cli
-from artagents.threads.index import ThreadIndexStore
-from artagents.threads.prefix import format_prefix_lines
-from artagents.threads.variants import keep_selection, variant_prefix_message
+from astrid.packs.builtin.iteration_video import run as iteration_video
+from astrid.threads.attribute import AttributionDecision, infer_lineage_thread_id
+from astrid.threads.cli import main as thread_cli
+from astrid.threads.index import ThreadIndexStore
+from astrid.threads.prefix import format_prefix_lines
+from astrid.threads.variants import keep_selection, variant_prefix_message
 
 
 FIXTURE = Path("tests/fixtures/iteration_video")
@@ -29,18 +29,18 @@ def test_dogfood_fixture_backfill_active_thread_no_content_and_local_path_policy
         assert thread_cli(["backfill"]) == 0
 
     assert "backfilled run_records=4" in stdout.getvalue()
-    assert (repo / "runs" / "artagents_logo_v3_orphan" / "note.txt").is_file()
+    assert (repo / "runs" / "astrid_logo_v3_orphan" / "note.txt").is_file()
 
     index = ThreadIndexStore(repo).read()
     assert index["active_thread_id"] == THREAD_ID
-    assert index["threads"][THREAD_ID]["label"] == "artagents_logo_v3"
+    assert index["threads"][THREAD_ID]["label"] == "astrid_logo_v3"
     assert index["threads"][THREAD_ID]["run_ids"] == [ROOT_RUN_ID, VARIANT_A_RUN_ID, VARIANT_B_RUN_ID, TARGET_RUN_ID]
 
     show = io.StringIO()
     with contextlib.redirect_stdout(show):
         assert thread_cli(["show", "@active", "--no-content"]) == 0
     shown = show.getvalue()
-    assert "Thread: artagents_logo_v3" in shown
+    assert "Thread: astrid_logo_v3" in shown
     assert "output:" not in shown
     assert "Synthetic orphan note" not in shown
 
@@ -73,12 +73,12 @@ def test_dogfood_fixture_inspect_report_and_fallback_without_render_or_summarize
     assert report["cost_estimate"]["estimated_cost"] == 0.036
     assert "Estimated cost: ~$0.036" in text
     assert "content: suppressed" in text
-    assert "artagents_logo_v3" in text
+    assert "astrid_logo_v3" in text
 
 
 def test_dogfood_fixture_render_handoff_outputs_sidecar_report_and_no_cut(tmp_path: Path, monkeypatch) -> None:
     repo = _install_fixture(tmp_path)
-    out_dir = repo / "runs" / "artagents_logo_v3_iteration"
+    out_dir = repo / "runs" / "astrid_logo_v3_iteration"
     render_inputs: dict[str, Path] = {}
 
     def fake_render(brief_out: Path) -> Path:
@@ -118,14 +118,14 @@ def test_dogfood_fixture_render_handoff_outputs_sidecar_report_and_no_cut(tmp_pa
     assert manifest["assembly"]["direction_label"] == "fixture"
     assert "renderer-fallback" in (out_dir / "iteration.report.html").read_text(encoding="utf-8")
 
-    sidecar = _read_json(out_dir / ".artagents.variants.json")
+    sidecar = _read_json(out_dir / ".astrid.variants.json")
     artifacts = sidecar["artifacts"]
     assert len(artifacts) == 5
     assert {item["group"] for item in artifacts} == {f"iteration-video:{TARGET_RUN_ID}"}
     assert {item["variant_meta"]["target_run_id"] for item in artifacts} == {TARGET_RUN_ID}
     assert all(item["variant_meta"]["fallback_diagnostics"] for item in artifacts)
 
-    orchestrator = _read_json(Path("artagents/packs/builtin/iteration_video/orchestrator.yaml"))
+    orchestrator = _read_json(Path("astrid/packs/builtin/iteration_video/orchestrator.yaml"))
     assert orchestrator["child_executors"] == ["iteration.prepare", "iteration.assemble", "builtin.render"]
     assert "builtin.cut" not in json.dumps(orchestrator)
 
@@ -135,17 +135,17 @@ def test_dogfood_fixture_prefix_lineage_variant_nag_silence_and_prerender_transc
     request = type(
         "Request",
         (),
-        {"brief": None, "from_ref": None, "inputs": {"source": "runs/artagents_logo_v3_variant_a/run.json"}, "orchestrator_args": ()},
+        {"brief": None, "from_ref": None, "inputs": {"source": "runs/astrid_logo_v3_variant_a/run.json"}, "orchestrator_args": ()},
     )()
     assert infer_lineage_thread_id(repo, request) == THREAD_ID
 
     nag = variant_prefix_message(repo, THREAD_ID)
     assert nag is not None
     prefix = format_prefix_lines(
-        AttributionDecision(thread_id=THREAD_ID, label="artagents_logo_v3", source="fixture", run_number=4),
+        AttributionDecision(thread_id=THREAD_ID, label="astrid_logo_v3", source="fixture", run_number=4),
         variants_message=nag,
     )
-    assert prefix[0].startswith("[thread] artagents_logo_v3")
+    assert prefix[0].startswith("[thread] astrid_logo_v3")
     assert prefix[1].startswith("[variants] 1 unresolved variant group")
 
     keep_selection(repo, THREAD_ID, f"{VARIANT_A_RUN_ID}:1")
@@ -162,7 +162,7 @@ def _install_fixture(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
     shutil.copytree(FIXTURE / "repo_runs", repo / "runs")
-    state_dir = repo / ".artagents"
+    state_dir = repo / ".astrid"
     state_dir.mkdir()
     shutil.copyfile(FIXTURE / "state" / "threads.json", state_dir / "threads.json")
     thread_dir = state_dir / "threads" / THREAD_ID

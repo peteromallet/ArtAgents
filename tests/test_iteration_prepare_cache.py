@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.packs.iteration.prepare import run as prepare
+from astrid.packs.iteration.prepare import run as prepare
 
 
 THREAD_ID = "01ARZ3NDEKTSV4RRFFQ69G5FE0"
@@ -53,7 +53,7 @@ def test_executor_gateway_invocation_enforces_same_cap(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "artagents",
+            "astrid",
             "executors",
             "run",
             "iteration.prepare",
@@ -77,7 +77,7 @@ def test_executor_gateway_invocation_enforces_same_cap(tmp_path: Path) -> None:
 def test_summary_cache_key_hits_misses_and_cost_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _repo_with_two_run_graph(tmp_path)
     model_version = "test.model.v1"
-    cache_dir = repo / ".artagents" / "iteration_cache"
+    cache_dir = repo / ".astrid" / "iteration_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached = {
         "schema_version": 1,

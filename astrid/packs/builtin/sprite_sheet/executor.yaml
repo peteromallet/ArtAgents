@@ -1,0 +1,81 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.sprite_sheet.run",
+      "--animation",
+      "{animation}",
+      "--subject",
+      "{subject}",
+      "--out-dir",
+      "{out}"
+    ]
+  },
+  "description": "Generate, slice, and preview GPT Image sprite sheets.",
+  "id": "builtin.sprite_sheet",
+  "inputs": [
+    {
+      "description": "Animation to depict across frames.",
+      "name": "animation",
+      "type": "string"
+    },
+    {
+      "description": "Character or object being animated.",
+      "name": "subject",
+      "type": "string"
+    }
+  ],
+  "isolation": {
+    "binaries": [
+      "ffmpeg"
+    ],
+    "mode": "subprocess",
+    "network": true
+  },
+  "keywords": [
+    "image",
+    "sprite",
+    "openai",
+    "gpt-image",
+    "slice",
+    "batch"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.sprite_sheet.run"
+  },
+  "name": "Sprite Sheet",
+  "outputs": [
+    {
+      "description": "Manifest for generated sprite assets.",
+      "name": "sprite_manifest",
+      "path_template": "{out}/sprite_manifest.json",
+      "type": "file"
+    },
+    {
+      "description": "Generated sprite atlas.",
+      "name": "sprite_sheet",
+      "path_template": "{out}/sprite_sheet.png",
+      "type": "file"
+    },
+    {
+      "description": "Alpha-processed sprite atlas.",
+      "name": "sprite_sheet_alpha",
+      "path_template": "{out}/sprite_sheet_alpha.png",
+      "type": "file"
+    },
+    {
+      "description": "MP4 preview of the sliced animation.",
+      "name": "preview",
+      "path_template": "{out}/sprite_preview.mp4",
+      "type": "file"
+    }
+  ],
+  "short_description": "Generate, slice, and preview GPT Image sprite sheets for batch image work.",
+  "version": "1.0"
+}

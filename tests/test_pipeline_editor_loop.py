@@ -8,9 +8,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from artagents.packs.builtin.editor_review import run as editor_review
-from artagents.packs.builtin.hype import run as pipeline
-from artagents import timeline
+from astrid.packs.builtin.editor_review import run as editor_review
+from astrid.packs.builtin.hype import run as pipeline
+from astrid import timeline
 
 
 class PipelineEditorLoopTest(unittest.TestCase):

@@ -11,14 +11,14 @@ from unittest import mock
 
 import yaml
 
-from artagents import skills
-from artagents.skills import discovery, state
-from artagents.skills.harnesses import (
+from astrid import skills
+from astrid.skills import discovery, state
+from astrid.skills.harnesses import (
     ClaudeAdapter,
     CodexAdapter,
     HermesAdapter,
 )
-from artagents.skills.harnesses.codex import BEGIN_MARKER, END_MARKER
+from astrid.skills.harnesses.codex import BEGIN_MARKER, END_MARKER
 
 
 class _Tmp:
@@ -55,30 +55,30 @@ def _descriptors():
 
 
 class AdapterPlanTest(unittest.TestCase):
-    def test_claude_target_for_core_uses_artagents_path(self) -> None:
+    def test_claude_target_for_core_uses_astrid_path(self) -> None:
         fx = _Tmp()
         try:
             adapter = ClaudeAdapter()
             descriptor = next(d for d in _descriptors() if d.pack_id == "_core")
-            self.assertEqual(adapter.target_for(descriptor), fx.home / ".claude" / "skills" / "artagents")
+            self.assertEqual(adapter.target_for(descriptor), fx.home / ".claude" / "skills" / "astrid")
         finally:
             fx.close()
 
-    def test_codex_target_for_core_uses_artagents_path(self) -> None:
+    def test_codex_target_for_core_uses_astrid_path(self) -> None:
         fx = _Tmp()
         try:
             adapter = CodexAdapter()
             descriptor = next(d for d in _descriptors() if d.pack_id == "_core")
-            self.assertEqual(adapter.target_for(descriptor), fx.home / ".codex" / "skills" / "artagents")
+            self.assertEqual(adapter.target_for(descriptor), fx.home / ".codex" / "skills" / "astrid")
         finally:
             fx.close()
 
-    def test_hermes_target_for_core_uses_artagents_path(self) -> None:
+    def test_hermes_target_for_core_uses_astrid_path(self) -> None:
         fx = _Tmp()
         try:
             adapter = HermesAdapter()
             descriptor = next(d for d in _descriptors() if d.pack_id == "_core")
-            self.assertEqual(adapter.target_for(descriptor), fx.home / ".hermes" / "skills" / "artagents")
+            self.assertEqual(adapter.target_for(descriptor), fx.home / ".hermes" / "skills" / "astrid")
         finally:
             fx.close()
 
@@ -124,7 +124,7 @@ class ApplyTest(unittest.TestCase):
             adapter.apply("uninstall", descriptors, all_after_descriptors=[])
             text = (fx.home / ".codex" / "AGENTS.md").read_text(encoding="utf-8")
             self.assertIn(BEGIN_MARKER, text)
-            self.assertIn("_no ArtAgents skills installed_", text)
+            self.assertIn("_no Astrid skills installed_", text)
         finally:
             fx.close()
 
@@ -156,7 +156,7 @@ class HermesExternalDirTest(unittest.TestCase):
             data = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
             self.assertEqual(data["other"], {"keep": True})
             self.assertIn("/already/here", data["skills"]["external_dirs"])
-            self.assertEqual(len([entry for entry in data["skills"]["external_dirs"] if entry.endswith("/artagents/packs")]), 1)
+            self.assertEqual(len([entry for entry in data["skills"]["external_dirs"] if entry.endswith("/astrid/packs")]), 1)
         finally:
             fx.close()
 
@@ -169,7 +169,7 @@ class HermesExternalDirTest(unittest.TestCase):
             adapter.apply("uninstall", descriptors, mechanism="external-dir")
             data = yaml.safe_load((fx.home / ".hermes" / "config.yaml").read_text(encoding="utf-8"))
             external_dirs = (data.get("skills") or {}).get("external_dirs") or []
-            self.assertFalse(any(entry.endswith("/artagents/packs") for entry in external_dirs))
+            self.assertFalse(any(entry.endswith("/astrid/packs") for entry in external_dirs))
         finally:
             fx.close()
 
@@ -323,7 +323,7 @@ class NudgeTest(unittest.TestCase):
             stream = io.StringIO()
             fired = skills.nudge_if_needed(argv=["doctor"], stream=stream)
             self.assertTrue(fired)
-            self.assertIn("[artagents]", stream.getvalue())
+            self.assertIn("[astrid]", stream.getvalue())
         finally:
             fx.close()
 

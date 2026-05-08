@@ -1,0 +1,108 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.iteration.assemble.run",
+      "--prepare-dir",
+      "{prepare_dir}",
+      "--out",
+      "{out}"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "prepare_dir",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Adapt prepared iteration data into canonical iteration artifacts and render-compatible hype inputs.",
+  "graph": {
+    "consumes": [
+      "iteration_manifest",
+      "iteration_quality"
+    ],
+    "provides": [
+      "iteration_timeline",
+      "iteration_report",
+      "render_adapter"
+    ]
+  },
+  "id": "iteration.assemble",
+  "inputs": [
+    {
+      "description": "Directory containing iteration.prepare outputs.",
+      "name": "prepare_dir",
+      "required": true,
+      "type": "directory"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "keywords": [
+    "iteration",
+    "video",
+    "assemble",
+    "render",
+    "hype",
+    "adapt"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.iteration.assemble.run"
+  },
+  "name": "Iteration Assemble",
+  "outputs": [
+    {
+      "description": "Canonical iteration timeline.",
+      "mode": "create_or_replace",
+      "name": "timeline",
+      "path_template": "{out}/iteration.timeline.json",
+      "type": "file"
+    },
+    {
+      "description": "Final iteration manifest.",
+      "mode": "create_or_replace",
+      "name": "manifest",
+      "path_template": "{out}/iteration.manifest.json",
+      "type": "file"
+    },
+    {
+      "description": "Iteration HTML report.",
+      "mode": "create_or_replace",
+      "name": "report",
+      "path_template": "{out}/iteration.report.html",
+      "type": "file"
+    },
+    {
+      "description": "Copied quality report with assembly status.",
+      "mode": "create_or_replace",
+      "name": "quality",
+      "path_template": "{out}/iteration.quality.json",
+      "type": "file"
+    },
+    {
+      "description": "Render-compatible hype timeline adapter.",
+      "mode": "create_or_replace",
+      "name": "hype_timeline",
+      "path_template": "{out}/hype.timeline.json",
+      "type": "file"
+    },
+    {
+      "description": "Render-compatible hype assets adapter.",
+      "mode": "create_or_replace",
+      "name": "hype_assets",
+      "path_template": "{out}/hype.assets.json",
+      "type": "file"
+    }
+  ],
+  "short_description": "Adapt prepared iteration data into canonical iteration artifacts and render-ready hype inputs.",
+  "version": "1.0"
+}

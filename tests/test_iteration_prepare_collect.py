@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from artagents.packs.iteration.prepare import run as prepare
+from astrid.packs.iteration.prepare import run as prepare
 
 
 THREAD_ID = "01ARZ3NDEKTSV4RRFFQ69G5FA0"

@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.arrange import run as arrange
-from artagents.packs.builtin.editor_review import run as editor_review
-from artagents.packs.builtin.human_notes import run as human_notes
-from artagents import timeline
+from astrid.packs.builtin.arrange import run as arrange
+from astrid.packs.builtin.editor_review import run as editor_review
+from astrid.packs.builtin.human_notes import run as human_notes
+from astrid import timeline
 
 
 class FakeClaudeClient:
@@ -396,10 +396,10 @@ class HumanNotesTest(unittest.TestCase):
         self.assertEqual(
             [call[0][2] for call in calls],
             [
-                "artagents.packs.builtin.arrange.run",
-                "artagents.packs.builtin.cut.run",
-                "artagents.packs.builtin.refine.run",
-                "artagents.packs.builtin.render.run",
+                "astrid.packs.builtin.arrange.run",
+                "astrid.packs.builtin.cut.run",
+                "astrid.packs.builtin.refine.run",
+                "astrid.packs.builtin.render.run",
             ],
         )
         for _, kwargs in calls:

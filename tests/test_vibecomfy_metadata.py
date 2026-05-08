@@ -7,9 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.core.executor import cli as executors_cli
-from artagents.core.executor.folder import load_folder_executors
-from artagents.core.executor.registry import load_default_registry
+from astrid.core.executor import cli as executors_cli
+from astrid.core.executor.folder import load_folder_executors
+from astrid.core.executor.registry import load_default_registry
 
 
 class VibeComfyStructuredMetadataTest(unittest.TestCase):
@@ -24,7 +24,7 @@ class VibeComfyStructuredMetadataTest(unittest.TestCase):
         metadata = payload["metadata"]
 
         self.assertEqual(payload["id"], "external.vibecomfy.run")
-        self.assertEqual(payload["command"]["argv"], ["{python_exec}", "-m", "artagents.packs.external.vibecomfy.run", "run", "{workflow}"])
+        self.assertEqual(payload["command"]["argv"], ["{python_exec}", "-m", "astrid.packs.external.vibecomfy.run", "run", "{workflow}"])
         self.assertEqual(payload["isolation"]["requirements"], ["vibecomfy"])
         self.assertTrue(payload["isolation"]["network"])
         self.assertEqual(metadata["pack_id"], "vibecomfy")

@@ -6,9 +6,9 @@ import io
 import json
 import unittest
 
-from artagents.core.executor import cli as executors_cli
-from artagents.core.executor.registry import ExecutorRegistry
-from artagents.core.executor.schema import ExecutorValidationError, validate_executor_definition
+from astrid.core.executor import cli as executors_cli
+from astrid.core.executor.registry import ExecutorRegistry
+from astrid.core.executor.schema import ExecutorValidationError, validate_executor_definition
 
 
 def _manifest(**overrides):

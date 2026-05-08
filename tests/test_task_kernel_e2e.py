@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import child_subprocess_env
-from artagents.core.task.events import read_events, verify_chain
-from artagents.core.task.gate import TaskRunGateError, gate_command, record_dispatch_complete
-from artagents.core.task.plan import compute_plan_hash, load_plan
+from astrid.core.project.project import create_project
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import child_subprocess_env
+from astrid.core.task.events import read_events, verify_chain
+from astrid.core.task.gate import TaskRunGateError, gate_command, record_dispatch_complete
+from astrid.core.task.plan import compute_plan_hash, load_plan
 
 
 def test_two_step_plan_drives_kernel_end_to_end(tmp_projects_root: Path) -> None:
@@ -69,4 +69,4 @@ def test_two_step_plan_drives_kernel_end_to_end(tmp_projects_root: Path) -> None
     with pytest.raises(TaskRunGateError) as exc_info:
         gate_command("demo", plan.steps[0].command, [], root=tmp_projects_root)
     assert exc_info.value.reason == "plan is exhausted"
-    assert exc_info.value.recovery == "artagents abort --project demo"
+    assert exc_info.value.recovery == "astrid abort --project demo"

@@ -1,6 +1,6 @@
 A Cinematic Experience
 
-This is a pure-generative video using ArtAgents to create an interesting cinematic vibe. Treat the pacing as dramatic and deliberate.
+This is a pure-generative video using Astrid to create an interesting cinematic vibe. Treat the pacing as dramatic and deliberate.
 
 Tone: moody, atmospheric, mysterious, and cinematic.
 

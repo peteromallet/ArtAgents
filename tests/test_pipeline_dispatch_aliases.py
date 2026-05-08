@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest import mock
 
-from artagents import pipeline
+from astrid import pipeline
 
 
 class PipelineDispatchAliasTest(unittest.TestCase):
@@ -14,17 +14,17 @@ class PipelineDispatchAliasTest(unittest.TestCase):
             self.assertEqual(pipeline.main(["--help"]), 0)
 
         help_text = stdout.getvalue()
-        self.assertIn("ArtAgents command gateway", help_text)
-        self.assertIn("python3 -m artagents orchestrators {list,inspect,validate,run}", help_text)
-        self.assertIn("python3 -m artagents executors {list,inspect,validate,install,run}", help_text)
-        self.assertIn("python3 -m artagents elements {list,inspect,fork,install}", help_text)
-        self.assertIn("python3 -m artagents is the package entry point", help_text)
+        self.assertIn("Astrid command gateway", help_text)
+        self.assertIn("python3 -m astrid orchestrators {list,inspect,validate,run}", help_text)
+        self.assertIn("python3 -m astrid executors {list,inspect,validate,install,run}", help_text)
+        self.assertIn("python3 -m astrid elements {list,inspect,fork,install}", help_text)
+        self.assertIn("python3 -m astrid is the package entry point", help_text)
         self.assertNotIn("pipeline.py", help_text)
         self.assertNotIn("conductors", help_text)
         self.assertNotIn("performers", help_text)
 
     def test_elements_dispatches_before_pipeline_validation(self) -> None:
-        from artagents.core.element import cli as elements_cli
+        from astrid.core.element import cli as elements_cli
 
         with mock.patch.object(elements_cli, "main", return_value=31) as elements_main:
             self.assertEqual(pipeline.main(["elements", "list"]), 31)
@@ -39,7 +39,7 @@ class PipelineDispatchAliasTest(unittest.TestCase):
                 self.assertEqual(raised.exception.code, 2)
 
     def test_doctor_and_setup_dispatch_before_legacy_validation(self) -> None:
-        from artagents import doctor, setup_cli
+        from astrid import doctor, setup_cli
 
         with mock.patch.object(doctor, "main", return_value=41) as doctor_main:
             self.assertEqual(pipeline.main(["doctor", "--help"]), 41)
@@ -50,8 +50,8 @@ class PipelineDispatchAliasTest(unittest.TestCase):
             setup_main.assert_called_once_with(["--help"])
 
     def test_publish_dispatch_uses_package_relative_imports(self) -> None:
-        from artagents.packs.builtin.publish import run as publish
-        from artagents.packs.upload.youtube import run as publish_youtube
+        from astrid.packs.builtin.publish import run as publish
+        from astrid.packs.upload.youtube import run as publish_youtube
 
         with mock.patch.object(publish, "main", return_value=51) as publish_main:
             self.assertEqual(pipeline.main(["publish", "--help"]), 51)
@@ -71,10 +71,10 @@ class PipelineDispatchAliasTest(unittest.TestCase):
         old_argv = sys.argv
         stdout = io.StringIO()
         try:
-            sys.argv = ["python3 -m artagents", "elements", "list", "--kind", "effects"]
+            sys.argv = ["python3 -m astrid", "elements", "list", "--kind", "effects"]
             with contextlib.redirect_stdout(stdout):
                 with self.assertRaises(SystemExit) as raised:
-                    runpy.run_module("artagents", run_name="__main__")
+                    runpy.run_module("astrid", run_name="__main__")
         finally:
             sys.argv = old_argv
 

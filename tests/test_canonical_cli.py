@@ -4,14 +4,14 @@ import json
 import unittest
 from unittest import mock
 
-from artagents import pipeline
-from artagents.core.element import cli as elements_cli
-from artagents.core.executor import cli as executors_cli
-from artagents.core.executor.schema import (
+from astrid import pipeline
+from astrid.core.element import cli as elements_cli
+from astrid.core.executor import cli as executors_cli
+from astrid.core.executor.schema import (
     ExecutorValidationError,
     validate_executor_definition,
 )
-from artagents.core.orchestrator import cli as orchestrators_cli
+from astrid.core.orchestrator import cli as orchestrators_cli
 
 
 class CanonicalCliTest(unittest.TestCase):
@@ -36,7 +36,7 @@ class CanonicalCliTest(unittest.TestCase):
             orchestrators_cli.main(["--help"])
         self.assertEqual(raised.exception.code, 0)
         help_text = stdout.getvalue()
-        self.assertIn("ArtAgents orchestrators", help_text)
+        self.assertIn("Astrid orchestrators", help_text)
         self.assertNotIn("conductors", help_text)
         self.assertNotIn("performers", help_text)
 
@@ -54,7 +54,7 @@ class CanonicalCliTest(unittest.TestCase):
             executors_cli.main(["--help"])
         self.assertEqual(raised.exception.code, 0)
         help_text = stdout.getvalue()
-        self.assertIn("ArtAgents executors", help_text)
+        self.assertIn("Astrid executors", help_text)
         self.assertNotIn("performers", help_text)
         self.assertNotIn("instruments", help_text)
 
@@ -76,7 +76,7 @@ class CanonicalCliTest(unittest.TestCase):
             ["run", "builtin.render", "--out", "runs/example", "--brief", "brief.txt", "--dry-run"],
         )
         self.assertEqual(result, 0, stderr)
-        self.assertIn("artagents.packs.builtin.render.run", stdout)
+        self.assertIn("astrid.packs.builtin.render.run", stdout)
 
     def test_pipeline_dispatches_canonical_cli_modules(self) -> None:
         with mock.patch.object(orchestrators_cli, "main", return_value=61) as main:
@@ -91,8 +91,8 @@ class CanonicalCliTest(unittest.TestCase):
         without invoking the implicit task_gate. Existing orchestrators/
         executors paths remain unchanged.
         """
-        from artagents.core.task import gate as task_gate
-        from artagents.core.task import lifecycle as lifecycle_module
+        from astrid.core.task import gate as task_gate
+        from astrid.core.task import lifecycle as lifecycle_module
 
         with (
             mock.patch.object(lifecycle_module, "cmd_start", return_value=71) as cmd_start_mock,

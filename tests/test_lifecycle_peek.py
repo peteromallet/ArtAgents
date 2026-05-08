@@ -14,26 +14,26 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import (
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import (
     TASK_ITEM_ID_ENV,
     TASK_ITERATION_ENV,
     TASK_PROJECT_ENV,
     TASK_RUN_ID_ENV,
     TASK_STEP_ID_ENV,
 )
-from artagents.core.task.events import (
+from astrid.core.task.events import (
     append_event,
     make_iteration_failed_event,
     make_iteration_started_event,
     make_run_started_event,
 )
-from artagents.core.task.gate import (
+from astrid.core.task.gate import (
     PeekResult,
     gate_command,
     peek_current_step,
 )
-from artagents.core.task.plan import (
+from astrid.core.task.plan import (
     AckRule,
     AttestedStep,
     CodeStep,
@@ -186,7 +186,7 @@ def test_peek_exhausted_returns_step_none(tmp_projects_root: Path) -> None:
     ))
     events_path = _stage_run(tmp_projects_root, plan, "demo", "r6")
     # Mark solo step complete via a step_completed event so cursor advances past root.
-    from artagents.core.task.events import make_step_completed_event
+    from astrid.core.task.events import make_step_completed_event
     append_event(events_path, make_step_completed_event("solo", 0))
     events = [json.loads(line) for line in events_path.read_text().splitlines()]
     peek = peek_current_step(plan, events, "demo", project_root=tmp_projects_root/"demo", run_id="r6")

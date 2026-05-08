@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from artagents.core.task.cas import cas_dir, cas_path, intern
+from astrid.core.task.cas import cas_dir, cas_path, intern
 
 
 def _sha256(data: bytes) -> str:

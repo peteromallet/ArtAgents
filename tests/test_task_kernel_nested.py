@@ -5,21 +5,21 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.events import (
+from astrid.core.project.project import create_project
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.events import (
     append_event,
     make_run_started_event,
     read_events,
     verify_chain,
 )
-from artagents.core.task.gate import (
+from astrid.core.task.gate import (
     TaskRunGateError,
     derive_cursor,
     gate_command,
     record_dispatch_complete,
 )
-from artagents.core.task.plan import compute_plan_hash, load_plan
+from astrid.core.task.plan import compute_plan_hash, load_plan
 
 
 def _write_nested_plan(tmp_projects_root: Path, plan_payload: dict) -> Path:
@@ -265,4 +265,4 @@ def test_plan_exhausted_at_root_after_nested_walk_rejects(tmp_projects_root: Pat
 
     with pytest.raises(TaskRunGateError) as exc:
         gate_command("demo", "echo anything", [], root=tmp_projects_root)
-    assert exc.value.recovery == "artagents abort --project demo"
+    assert exc.value.recovery == "astrid abort --project demo"

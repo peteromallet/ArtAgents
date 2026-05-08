@@ -3,9 +3,9 @@ import path from 'node:path';
 
 const projectDir = process.cwd();
 const activeThemeDir = path.resolve(projectDir, '_active_theme');
-const artagentsDir = path.resolve(projectDir, '..');
-const builtinPackElementsDir = path.resolve(artagentsDir, 'artagents/packs/builtin/elements');
-const localPackElementsDir = path.resolve(artagentsDir, 'artagents/packs/local/elements');
+const astridDir = path.resolve(projectDir, '..');
+const builtinPackElementsDir = path.resolve(astridDir, 'astrid/packs/builtin/elements');
+const localPackElementsDir = path.resolve(astridDir, 'astrid/packs/local/elements');
 
 Config.setVideoImageFormat('jpeg');
 Config.setOverwriteOutput(true);

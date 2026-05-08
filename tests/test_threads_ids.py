@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from artagents.threads.ids import CROCKFORD_ALPHABET, generate_group_id, generate_run_id, generate_thread_id, is_ulid
+from astrid.threads.ids import CROCKFORD_ALPHABET, generate_group_id, generate_run_id, generate_thread_id, is_ulid
 
 
 def test_thread_run_and_group_ids_are_crockford_ulids() -> None:

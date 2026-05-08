@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.task.plan import load_plan
-from artagents.orchestrate import OrchestrateDefinitionError
-from artagents.orchestrate import cli as author_cli
-from artagents.orchestrate.compile import compile_to_path
+from astrid.core.task.plan import load_plan
+from astrid.orchestrate import OrchestrateDefinitionError
+from astrid.orchestrate import cli as author_cli
+from astrid.orchestrate.compile import compile_to_path
 
 
-_VALID_FOO = '''from artagents.orchestrate import (
+_VALID_FOO = '''from astrid.orchestrate import (
     code,
     json_file,
     orchestrator,
@@ -24,7 +24,7 @@ _VALID_FOO = '''from artagents.orchestrate import (
 def foo():
     transcribe = code(
         "transcribe",
-        argv=["python3", "-m", "artagents", "executors", "run", "x"],
+        argv=["python3", "-m", "astrid", "executors", "run", "x"],
         produces={"transcript": json_file()},
     )
     process = code(
@@ -80,7 +80,7 @@ class TestCheckFailures:
         _write(
             packs_root,
             "sample.bad_attested",
-            '''from artagents.orchestrate import attested, file_nonempty, orchestrator
+            '''from astrid.orchestrate import attested, file_nonempty, orchestrator
 
 @orchestrator("sample.bad_attested")
 def bad():
@@ -104,7 +104,7 @@ def bad():
         _write(
             packs_root,
             "sample.bad_foreach",
-            '''from artagents.orchestrate import code, orchestrator, repeat_for_each
+            '''from astrid.orchestrate import code, orchestrator, repeat_for_each
 
 @orchestrator("sample.bad_foreach")
 def bad():
@@ -126,7 +126,7 @@ def bad():
         _write(
             packs_root,
             "sample.bad_nested",
-            '''from artagents.orchestrate import nested, orchestrator
+            '''from astrid.orchestrate import nested, orchestrator
 
 @orchestrator("sample.bad_nested")
 def bad():
@@ -143,14 +143,14 @@ def bad():
         _write(
             packs_root,
             "sample.bad_argv",
-            '''from artagents.orchestrate import code, orchestrator
+            '''from astrid.orchestrate import code, orchestrator
 
 @orchestrator("sample.bad_argv")
 def bad():
     return [
         code(
             "delegate",
-            argv=["python3", "-m", "artagents", "orchestrators", "run", "builtin.hype"],
+            argv=["python3", "-m", "astrid", "orchestrators", "run", "builtin.hype"],
         ),
     ]
 ''',
@@ -222,7 +222,7 @@ class TestNestedCycle:
         _write(
             packs_root,
             "sample.cyc",
-            '''from artagents.orchestrate import nested, orchestrator
+            '''from astrid.orchestrate import nested, orchestrator
 
 @orchestrator("sample.cyc")
 def cyc():

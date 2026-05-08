@@ -4,8 +4,8 @@ import tempfile
 from argparse import Namespace
 from pathlib import Path
 
-from artagents.packs.builtin.cut import run as cut
-from artagents import timeline
+from astrid.packs.builtin.cut import run as cut
+from astrid import timeline
 
 
 def make_brief_case(testcase, *, quality_zones=None, refine_report=None):

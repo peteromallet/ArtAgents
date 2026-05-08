@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from artagents.contracts.schema import CommandSpec, Port
-from artagents.core.executor.registry import ExecutorRegistry
-from artagents.core.executor.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
-from artagents.core.executor.schema import ConditionSpec, ExecutorDefinition
-from artagents.core.orchestrator.registry import OrchestratorRegistry
-from artagents.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
-from artagents.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
-from artagents.core.project import paths
-from artagents.core.project.project import create_project
-from artagents.packs.builtin.hype import run as hype
+from astrid.contracts.schema import CommandSpec, Port
+from astrid.core.executor.registry import ExecutorRegistry
+from astrid.core.executor.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
+from astrid.core.executor.schema import ConditionSpec, ExecutorDefinition
+from astrid.core.orchestrator.registry import OrchestratorRegistry
+from astrid.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
+from astrid.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
+from astrid.core.project import paths
+from astrid.core.project.project import create_project
+from astrid.packs.builtin.hype import run as hype
 
 
 def test_executor_project_runs_finalize_success_error_skip_and_avoid_thread_collision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -40,7 +40,7 @@ def test_executor_project_runs_finalize_success_error_skip_and_avoid_thread_coll
     writer_out = Path(records[0]["out"])
     assert (writer_out / "env.txt").read_text(encoding="utf-8") == "1"
     assert (writer_out / "run.json").exists()
-    assert not (repo / ".artagents" / "threads.json").exists()
+    assert not (repo / ".astrid" / "threads.json").exists()
 
 
 def test_executor_legacy_out_still_writes_thread_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -58,7 +58,7 @@ def test_executor_legacy_out_still_writes_thread_record(tmp_path: Path, monkeypa
     record = _read_json(out / "run.json")
     assert record["kind"] == "executor"
     assert record["status"] == "succeeded"
-    assert (repo / ".artagents" / "threads.json").exists()
+    assert (repo / ".astrid" / "threads.json").exists()
     assert not (tmp_path / "projects").exists()
 
 
@@ -140,7 +140,7 @@ def test_run_record_baseline_snapshot_is_sha256_hex_at_canonical_path(
 
     import hashlib
 
-    from artagents.core.project.run import write_run_record
+    from astrid.core.project.run import write_run_record
 
     projects_root = tmp_path / "projects"
     monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(projects_root))
@@ -153,7 +153,7 @@ def test_run_record_baseline_snapshot_is_sha256_hex_at_canonical_path(
     record = write_run_record(
         "demo",
         "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-        tool_id="artagents.core.worker.banodoco_worker",
+        tool_id="astrid.core.worker.banodoco_worker",
         kind="banodoco_timeline_generate",
         metadata={"baseline_snapshot": expected_digest},
     )
@@ -237,7 +237,7 @@ def _hype_command_orchestrator() -> OrchestratorDefinition:
         version="1.0",
         runtime=RuntimeSpec(
             kind="command",
-            command=CommandSpec(argv=(sys.executable, "-m", "artagents.packs.builtin.hype.run", "{orchestrator_args}")),
+            command=CommandSpec(argv=(sys.executable, "-m", "astrid.packs.builtin.hype.run", "{orchestrator_args}")),
         ),
         metadata={"requires_output_path": True},
     )

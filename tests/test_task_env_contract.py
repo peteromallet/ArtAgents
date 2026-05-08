@@ -5,14 +5,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from artagents.core.executor import runner as executor_runner
-from artagents.core.executor.runner import ExecutorRunRequest
-from artagents.core.orchestrator import runner as orchestrator_runner
-from artagents.core.orchestrator.runner import OrchestratorRunRequest
-from artagents.core.project.project import create_project
-from artagents.core.project.run import ProjectRunContext, ProjectRunError, finalize_project_run, prepare_project_run
-from artagents.core.task.env import TASK_PROJECT_ENV, TASK_RUN_ID_ENV, TASK_STEP_ID_ENV
-from artagents.packs.builtin.hype import run as hype_run
+from astrid.core.executor import runner as executor_runner
+from astrid.core.executor.runner import ExecutorRunRequest
+from astrid.core.orchestrator import runner as orchestrator_runner
+from astrid.core.orchestrator.runner import OrchestratorRunRequest
+from astrid.core.project.project import create_project
+from astrid.core.project.run import ProjectRunContext, ProjectRunError, finalize_project_run, prepare_project_run
+from astrid.core.task.env import TASK_PROJECT_ENV, TASK_RUN_ID_ENV, TASK_STEP_ID_ENV
+from astrid.packs.builtin.hype import run as hype_run
 
 
 def test_task_env_prepare_project_run_attaches_to_step_dir_without_run_json(

@@ -5,22 +5,22 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import ARTAGENTS_ACTOR
-from artagents.core.task.events import (
+from astrid.core.project.project import create_project
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import ARTAGENTS_ACTOR
+from astrid.core.task.events import (
     append_event,
     make_run_started_event,
     read_events,
     verify_chain,
 )
-from artagents.core.task.gate import (
+from astrid.core.task.gate import (
     AttestedArgs,
     TaskRunGateError,
     gate_command,
     match_attested_command,
 )
-from artagents.core.task.plan import compute_plan_hash
+from astrid.core.task.plan import compute_plan_hash
 
 
 _ATTESTED_COMMAND = "ack --project demo --step s1"
@@ -81,7 +81,7 @@ def test_attested_rejects_when_neither_agent_nor_actor(tmp_projects_root: Path) 
     with pytest.raises(TaskRunGateError) as exc:
         gate_command("demo", _ATTESTED_COMMAND, [], root=tmp_projects_root)
     assert "--agent" in exc.value.reason or "--actor" in exc.value.reason
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_rejects_when_both_agent_and_actor(
@@ -96,7 +96,7 @@ def test_attested_rejects_when_both_agent_and_actor(
             [],
             root=tmp_projects_root,
         )
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_kind_mismatch_agent_step_with_actor_only_rejects(
@@ -108,7 +108,7 @@ def test_attested_kind_mismatch_agent_step_with_actor_only_rejects(
         gate_command(
             "demo", f"{_ATTESTED_COMMAND} --actor alice", [], root=tmp_projects_root
         )
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_kind_mismatch_actor_step_with_agent_only_rejects(
@@ -119,7 +119,7 @@ def test_attested_kind_mismatch_actor_step_with_agent_only_rejects(
         gate_command(
             "demo", f"{_ATTESTED_COMMAND} --agent claude", [], root=tmp_projects_root
         )
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_agent_success_emits_step_attested_with_path_qualified_id(
@@ -170,7 +170,7 @@ def test_attested_actor_env_mismatch_rejects(
         gate_command(
             "demo", f"{_ATTESTED_COMMAND} --actor alice", [], root=tmp_projects_root
         )
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_self_ack_rejected_when_run_started_actor_matches(
@@ -183,7 +183,7 @@ def test_attested_self_ack_rejected_when_run_started_actor_matches(
             "demo", f"{_ATTESTED_COMMAND} --actor alice", [], root=tmp_projects_root
         )
     assert "self-ack" in exc.value.reason
-    assert exc.value.recovery == "artagents next --project demo"
+    assert exc.value.recovery == "astrid next --project demo"
 
 
 def test_attested_evidence_flags_recorded_and_canonical_match_succeeds(
@@ -208,7 +208,7 @@ def test_attested_event_advances_cursor_no_double_emission(
 ) -> None:
     """FLAG-007: step_attested advances the cursor inline; record_dispatch_complete
     must NOT emit a companion step_completed event for attested steps."""
-    from artagents.core.task.gate import record_dispatch_complete
+    from astrid.core.task.gate import record_dispatch_complete
 
     events_path = _activate_attested_plan(tmp_projects_root, ack_kind="agent")
     decision = gate_command(

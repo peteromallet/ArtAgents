@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from artagents.packs.builtin.open_in_reigh import run as open_in_reigh
+from astrid.packs.builtin.open_in_reigh import run as open_in_reigh
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -195,9 +195,9 @@ class OpenInReighTest(unittest.TestCase):
 
         with patch.object(open_in_reigh, "load_timeline_blob", side_effect=open_in_reigh.load_timeline_blob):
             with patch(
-                "artagents.core.reigh.data_provider.SupabaseDataProvider.from_env",
+                "astrid.core.reigh.data_provider.SupabaseDataProvider.from_env",
                 return_value=FakeProvider(),
-            ), patch("artagents.core.reigh.env.resolve_pat", return_value="pat-token"):
+            ), patch("astrid.core.reigh.env.resolve_pat", return_value="pat-token"):
                 code, stdout, stderr, error = self.run_main(
                     [
                         "--out",
@@ -253,7 +253,7 @@ class OpenInReighTest(unittest.TestCase):
         ).encode("utf-8")
         self.write_outputs(out_dir, timeline_bytes=placement_blob)
 
-        # Patch load_timeline_blob to bypass artagents.timeline schema validation
+        # Patch load_timeline_blob to bypass astrid.timeline schema validation
         # (which would itself reject placement-shaped timelines for unrelated
         # reasons); we want to assert open_in_reigh's own placement-shape guard.
         with patch.object(open_in_reigh, "load_timeline_blob", return_value=json.loads(placement_blob)):
@@ -290,10 +290,10 @@ class OpenInReighTest(unittest.TestCase):
                 return Result()
 
         with patch(
-            "artagents.core.reigh.data_provider.SupabaseDataProvider.from_env",
+            "astrid.core.reigh.data_provider.SupabaseDataProvider.from_env",
             return_value=FakeProvider(),
         ), patch(
-            "artagents.core.reigh.env.resolve_service_role_key", return_value="srv-key"
+            "astrid.core.reigh.env.resolve_service_role_key", return_value="srv-key"
         ):
             code, _, stderr, error = self.run_main(
                 [

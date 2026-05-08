@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.hype import run as pipeline
+from astrid.packs.builtin.hype import run as pipeline
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -228,7 +228,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.transcribe.run",
+                f"astrid.packs.builtin.transcribe.run",
                 "--audio",
                 str((root / "audio.wav").resolve()),
                 "--out",
@@ -240,7 +240,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.scenes.run",
+                f"astrid.packs.builtin.scenes.run",
                 "--video",
                 str((root / "main.mp4").resolve()),
                 "--out",
@@ -252,7 +252,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.quality_zones.run",
+                f"astrid.packs.builtin.quality_zones.run",
                 str((root / "main.mp4").resolve()),
                 "--out",
                 str((out_dir / "quality_zones.json").resolve()),
@@ -264,7 +264,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.render.run",
+                f"astrid.packs.builtin.render.run",
                 "--timeline",
                 str((out_dir / "briefs" / "out" / "hype.timeline.json").resolve()),
                 "--assets",
@@ -278,16 +278,16 @@ class PipelineCachingTest(unittest.TestCase):
 
     def test_pipeline_invocation_uses_ordered_steps_without_executor_cli(self) -> None:
         root = self.make_workspace()
-        with mock.patch("artagents.core.executor.cli.main", side_effect=AssertionError("executor CLI should not run")):
+        with mock.patch("astrid.core.executor.cli.main", side_effect=AssertionError("executor CLI should not run")):
             result, calls, _, _, _ = self.invoke(root, [])
 
         self.assertEqual(result, 0)
         self.assertEqual([name for name, _ in calls], POOL_NO_RENDER_STEPS)
 
     def test_executors_list_dispatches_before_required_arguments(self) -> None:
-        from artagents import pipeline as gateway
+        from astrid import pipeline as gateway
 
-        with mock.patch("artagents.core.executor.cli.main", return_value=0) as executors_main:
+        with mock.patch("astrid.core.executor.cli.main", return_value=0) as executors_main:
             result = gateway.main(["executors", "list"])
 
         self.assertEqual(result, 0)
@@ -444,7 +444,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.arrange.run",
+                f"astrid.packs.builtin.arrange.run",
                 "--pool",
                 str((out_dir / "pool.json").resolve()),
                 "--brief",
@@ -463,7 +463,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.refine.run",
+                f"astrid.packs.builtin.refine.run",
                 "--arrangement",
                 str((second_dir / "arrangement.json").resolve()),
                 "--pool",
@@ -487,7 +487,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.render.run",
+                f"astrid.packs.builtin.render.run",
                 "--timeline",
                 str((second_dir / "hype.timeline.json").resolve()),
                 "--assets",
@@ -503,7 +503,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"artagents.packs.builtin.validate.run",
+                f"astrid.packs.builtin.validate.run",
                 "--video",
                 str((second_dir / "hype.mp4").resolve()),
                 "--timeline",

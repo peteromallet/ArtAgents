@@ -1,8 +1,8 @@
 import unittest
 from unittest import mock
 
-from artagents.packs.builtin.arrange import run as arrange
-from artagents import timeline
+from astrid.packs.builtin.arrange import run as arrange
+from astrid import timeline
 
 
 class StubClaudeClient:
@@ -66,7 +66,7 @@ class ArrangeVoiceInjectionTest(unittest.TestCase):
         }
         client = StubClaudeClient()
 
-        with mock.patch("artagents.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
+        with mock.patch("astrid.domains.hype.arrangement_rules.compile_arrangement_plan", return_value=[]):
             arrange.build_arrangement(
                 fixture_pool(),
                 "Use the first quote.",

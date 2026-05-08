@@ -1,4 +1,4 @@
-"""Unit tests for artagents.core.reigh.task_client."""
+"""Unit tests for astrid.core.reigh.task_client."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import urllib.error
 from typing import Any
 from unittest.mock import patch
 
-from artagents.core.reigh import task_client
-from artagents.core.reigh.task_client import (
+from astrid.core.reigh import task_client
+from astrid.core.reigh.task_client import (
     ALLOWED_STATUSES,
     ClaimResult,
     claim_next_task,
@@ -133,13 +133,13 @@ class NoCompleteTaskNoTaskStatusTest(unittest.TestCase):
 
     def test_repo_grep_finds_no_complete_task_or_task_status_callers(self) -> None:
         # AA must NEVER call /functions/v1/complete-task or /functions/v1/task-status.
-        # Existing references in artagents/ are docstrings explicitly stating the
+        # Existing references in astrid/ are docstrings explicitly stating the
         # negative invariant — assert each occurrence sits within ~120 chars of a
         # 'NEVER' marker, which catches accidental new callers introduced in
         # actual code paths.
         import pathlib
 
-        root = pathlib.Path(__file__).resolve().parents[1] / "artagents"
+        root = pathlib.Path(__file__).resolve().parents[1] / "astrid"
         forbidden_substrings = ("/functions/v1/complete-task", "/functions/v1/task-status")
         offenders: list[str] = []
         for path in root.rglob("*.py"):

@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from artagents import pipeline
-from artagents.threads import cli
-from artagents.threads.ids import generate_run_id, generate_thread_id
-from artagents.threads.index import ThreadIndexStore
-from artagents.threads.record import build_run_record, finalize_run_record, write_run_record
+from astrid import pipeline
+from astrid.threads import cli
+from astrid.threads.ids import generate_run_id, generate_thread_id
+from astrid.threads.index import ThreadIndexStore
+from astrid.threads.record import build_run_record, finalize_run_record, write_run_record
 
 
 def test_thread_cli_lifecycle_show_no_content_and_route(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -50,7 +50,7 @@ def test_backfill_records_existing_runs_without_moving_files(tmp_path: Path, mon
 
     assert original.is_file()
     assert "backfilled run_records=1" in capsys.readouterr().out
-    index = json.loads((repo / ".artagents" / "threads.json").read_text(encoding="utf-8"))
+    index = json.loads((repo / ".astrid" / "threads.json").read_text(encoding="utf-8"))
     assert thread_id in index["threads"]
 
 
@@ -92,6 +92,6 @@ def _write_run(repo: Path, thread_id: str, *, out: Path | None = None) -> str:
         if thread_id in index.get("threads", {}):
             index["threads"][thread_id].setdefault("run_ids", []).append(run_id)
 
-    if (repo / ".artagents" / "threads.json").exists():
+    if (repo / ".astrid" / "threads.json").exists():
         store.update(mutate)
     return run_id

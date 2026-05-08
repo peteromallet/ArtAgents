@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.packs.iteration.assemble import run as assemble
+from astrid.packs.iteration.assemble import run as assemble
 
 
 UNRESOLVED_RUN_ID = "01ARZ3NDEKTSV4RRFFQ69G5FH0"
@@ -21,7 +21,7 @@ def test_quality_floor_refuses_before_adapter_files_and_names_only_unresolved(tm
     assert "data_quality 0.500" in message
     assert UNRESOLVED_RUN_ID in message
     assert VALID_ROOT_ID not in message
-    assert "python3 -m artagents thread backfill" in message
+    assert "python3 -m astrid thread backfill" in message
     assert not (out_dir / "hype.timeline.json").exists()
     assert not (out_dir / "hype.assets.json").exists()
     assert not (out_dir / "iteration.timeline.json").exists()

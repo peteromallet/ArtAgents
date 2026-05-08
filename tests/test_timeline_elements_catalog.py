@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.core.element import catalog as effects_catalog
-from artagents import timeline
+from astrid.core.element import catalog as effects_catalog
+from astrid import timeline
 
 
 class TimelineElementsCatalogTest(unittest.TestCase):

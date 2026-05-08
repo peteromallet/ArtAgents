@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.core.element import cli
-from artagents.core.element.install import build_element_install_plan
-from artagents.core.element.registry import load_default_registry
+from astrid.core.element import cli
+from astrid.core.element.install import build_element_install_plan
+from astrid.core.element.registry import load_default_registry
 
 
 class ElementsCliTest(unittest.TestCase):
@@ -39,11 +39,11 @@ class ElementsCliTest(unittest.TestCase):
             with mock.patch.object(cli, "REPO_ROOT", project):
                 result, stdout, stderr = self.capture(["fork", "effects", "text-card"])
                 self.assertEqual(result, 0, stderr)
-                forked = project / "artagents" / "packs" / "local" / "elements" / "effects" / "text-card"
+                forked = project / "astrid" / "packs" / "local" / "elements" / "effects" / "text-card"
                 self.assertTrue((forked / "component.tsx").is_file())
                 payload = json.loads((forked / "element.yaml").read_text(encoding="utf-8"))
                 self.assertEqual(payload["pack_id"], "local")
-                self.assertTrue((project / "artagents" / "packs" / "local" / "pack.yaml").is_file())
+                self.assertTrue((project / "astrid" / "packs" / "local" / "pack.yaml").is_file())
 
                 result, stdout, stderr = self.capture(["fork", "effects", "text-card"])
                 self.assertEqual(result, 2)
@@ -75,7 +75,7 @@ class ElementsCliTest(unittest.TestCase):
         self.assertTrue(any("uv venv" in line for line in lines))
         self.assertTrue(any("uv pip install --python" in line for line in lines))
         self.assertTrue(any("npm install --prefix" in line for line in lines))
-        self.assertIn(".artagents/elements/effects-text-card", str(plan.root))
+        self.assertIn(".astrid/elements/effects-text-card", str(plan.root))
 
     def test_install_cli_prints_dry_run_without_running_package_managers(self) -> None:
         result, stdout, stderr = self.capture(["install", "effects", "text-card"])

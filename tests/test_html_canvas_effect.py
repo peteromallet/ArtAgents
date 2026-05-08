@@ -5,10 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.core.element.schema import load_element_definition
-from artagents.core.executor import cli as executors_cli
-from artagents.core.executor.registry import load_default_registry as load_executor_registry
-from artagents.packs.builtin.html_canvas_effect.run import main, scaffold
+from astrid.core.element.schema import load_element_definition
+from astrid.core.executor import cli as executors_cli
+from astrid.core.executor.registry import load_default_registry as load_executor_registry
+from astrid.packs.builtin.html_canvas_effect.run import main, scaffold
 
 
 class HtmlCanvasEffectExecutorTest(unittest.TestCase):
@@ -16,7 +16,7 @@ class HtmlCanvasEffectExecutorTest(unittest.TestCase):
         registry = load_executor_registry()
         executor = registry.get("builtin.html_canvas_effect")
 
-        self.assertEqual(executor.metadata["runtime_module"], "artagents.packs.builtin.html_canvas_effect.run")
+        self.assertEqual(executor.metadata["runtime_module"], "astrid.packs.builtin.html_canvas_effect.run")
         self.assertIn("HtmlInCanvas", executor.description)
 
     def test_scaffold_writes_local_effect_and_report(self) -> None:
@@ -32,7 +32,7 @@ class HtmlCanvasEffectExecutorTest(unittest.TestCase):
                 out_path=report_path,
             )
 
-            element_root = project / "artagents" / "packs" / "local" / "elements" / "effects" / "glass-product-card"
+            element_root = project / "astrid" / "packs" / "local" / "elements" / "effects" / "glass-product-card"
             self.assertEqual(Path(report["element_root"]), element_root)
             self.assertTrue((element_root / "component.tsx").is_file())
             self.assertTrue((element_root / "element.yaml").is_file())
@@ -89,7 +89,7 @@ class HtmlCanvasEffectExecutorTest(unittest.TestCase):
             )
 
         self.assertEqual(result, 0, stderr.getvalue())
-        self.assertIn("artagents.packs.builtin.html_canvas_effect.run", stdout.getvalue())
+        self.assertIn("astrid.packs.builtin.html_canvas_effect.run", stdout.getvalue())
 
 
 if __name__ == "__main__":

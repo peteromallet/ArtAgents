@@ -1,0 +1,78 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.external.moirae.run",
+      "{screenplay}",
+      "-o",
+      "{output}"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "screenplay",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Curated metadata for running Moirae against a screenplay to create a video. The MVP manifest does not install Moirae or its external binaries.",
+  "graph": {
+    "consumes": [
+      "screenplay"
+    ],
+    "provides": [
+      "video"
+    ]
+  },
+  "id": "external.moirae",
+  "inputs": [
+    {
+      "description": "Screenplay file consumed by Moirae.",
+      "name": "screenplay",
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [
+      "asciinema",
+      "agg",
+      "ffmpeg"
+    ],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": [
+      "moirae"
+    ]
+  },
+  "keywords": [
+    "moirae",
+    "terminal",
+    "video",
+    "screenplay",
+    "asciinema",
+    "render"
+  ],
+  "kind": "external",
+  "metadata": {
+    "binary_requirements_enforced": "explicit_check_only",
+    "homepage": "https://github.com/peteromallet/Moirae",
+    "manifest_only": true,
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.external.moirae.run"
+  },
+  "name": "Moirae",
+  "outputs": [
+    {
+      "description": "Rendered video path produced by Moirae.",
+      "mode": "create_or_replace",
+      "name": "video",
+      "placeholder": "output",
+      "type": "file"
+    }
+  ],
+  "short_description": "Run a Moirae screenplay through the terminal-as-cinema renderer to produce a video.",
+  "version": "0.1.0"
+}

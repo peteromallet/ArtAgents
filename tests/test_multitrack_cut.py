@@ -6,10 +6,10 @@ from argparse import Namespace
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.cut import run as cut
-from artagents import timeline
-from artagents.packs.builtin.validate import run as validate
-from artagents.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS
+from astrid.packs.builtin.cut import run as cut
+from astrid import timeline
+from astrid.packs.builtin.validate import run as validate
+from astrid.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS
 
 
 ROOT = Path(__file__).resolve().parents[1]

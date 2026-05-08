@@ -7,11 +7,11 @@ import wave
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.arrange import run as arrange
-from artagents.packs.builtin.cut import run as cut
-from artagents.packs.builtin.hype import run as pipeline
-from artagents.packs.builtin.pool_merge import run as pool_merge
-from artagents import timeline
+from astrid.packs.builtin.arrange import run as arrange
+from astrid.packs.builtin.cut import run as cut
+from astrid.packs.builtin.hype import run as pipeline
+from astrid.packs.builtin.pool_merge import run as pool_merge
+from astrid import timeline
 
 
 class PureGenerativePipelineTest(unittest.TestCase):

@@ -1,0 +1,58 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.boundary_candidates.run",
+      "--video",
+      "{video}",
+      "--manifest",
+      "{manifest}",
+      "--out",
+      "{out}/boundary_candidates.json"
+    ]
+  },
+  "description": "Package candidate video frames for visual boundary review.",
+  "id": "builtin.boundary_candidates",
+  "inputs": [
+    {
+      "description": "Source video.",
+      "name": "video",
+      "type": "file"
+    },
+    {
+      "description": "Boundary manifest input.",
+      "name": "manifest",
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess"
+  },
+  "keywords": [
+    "video",
+    "scenes",
+    "boundary",
+    "frames",
+    "analyze",
+    "review"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.boundary_candidates.run"
+  },
+  "name": "Boundary Candidates",
+  "outputs": [
+    {
+      "name": "boundaries",
+      "path_template": "{out}/boundary_candidates.json",
+      "type": "file"
+    }
+  ],
+  "short_description": "Package candidate video frames for visual scene-boundary review.",
+  "version": "1.0"
+}

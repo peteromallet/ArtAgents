@@ -1,0 +1,79 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.iteration.prepare.run",
+      "--target-run-id",
+      "{target_run_id}",
+      "--out",
+      "{out}"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "target_run_id",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Collect thread provenance, compute quality, summarize candidate runs, and emit iteration prepare artifacts.",
+  "graph": {
+    "consumes": [
+      "thread_runs",
+      "provenance"
+    ],
+    "provides": [
+      "iteration_manifest",
+      "iteration_quality"
+    ]
+  },
+  "id": "iteration.prepare",
+  "inputs": [
+    {
+      "description": "Run id to use as the target/root for iteration video preparation.",
+      "name": "target_run_id",
+      "required": true,
+      "type": "string"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess",
+    "network": false
+  },
+  "keywords": [
+    "iteration",
+    "video",
+    "prepare",
+    "thread",
+    "quality",
+    "provenance"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.iteration.prepare.run"
+  },
+  "name": "Iteration Prepare",
+  "outputs": [
+    {
+      "description": "Prepared iteration manifest for assembly.",
+      "mode": "create_or_replace",
+      "name": "manifest",
+      "path_template": "{out}/iteration.manifest.json",
+      "type": "file"
+    },
+    {
+      "description": "OQ-6 quality report for the prepared provenance graph.",
+      "mode": "create_or_replace",
+      "name": "quality",
+      "path_template": "{out}/iteration.quality.json",
+      "type": "file"
+    }
+  ],
+  "short_description": "Collect thread provenance, quality scores, and candidate runs into iteration prepare artifacts.",
+  "version": "1.0"
+}

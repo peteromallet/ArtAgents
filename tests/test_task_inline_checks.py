@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task import gate as task_gate
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.events import canonical_event_json, read_events
-from artagents.core.task.plan import (
+from astrid.core.project.project import create_project
+from astrid.core.task import gate as task_gate
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.events import canonical_event_json, read_events
+from astrid.core.task.plan import (
     TaskPlanError,
     compute_plan_hash,
     load_plan,

@@ -12,11 +12,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.events import read_events, verify_chain
-from artagents.core.task.lifecycle import cmd_next
+from astrid.core.task.events import read_events, verify_chain
+from astrid.core.task.lifecycle import cmd_next
 
 
-_BODY_AGENT = '''from artagents.orchestrate import orchestrator, attested
+_BODY_AGENT = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review_agent")
 def main(): return [attested("review", command="review.sh", instructions="please review", ack="agent")]
 '''

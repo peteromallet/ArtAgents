@@ -1,0 +1,81 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": false,
+    "sentinels": [
+      "transcript.json"
+    ]
+  },
+  "clip_kinds_supported": [
+    "video",
+    "audio"
+  ],
+  "conditions": [
+    {
+      "input": "audio",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Transcribe source audio into transcript.json.",
+  "graph": {
+    "consumes": [],
+    "depends_on": [],
+    "provides": [
+      "transcript"
+    ]
+  },
+  "id": "builtin.transcribe",
+  "inputs": [
+    {
+      "description": "Audio or video-derived audio to transcribe.",
+      "name": "audio",
+      "required": true,
+      "type": "file"
+    },
+    {
+      "description": "Optional environment file for API credentials.",
+      "name": "env_file",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "keywords": [
+    "whisper",
+    "audio",
+    "transcribe",
+    "text",
+    "speech",
+    "transcript"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "astrid.packs.builtin.hype.run.build_pool_steps",
+    "pipeline_step": "transcribe",
+    "pipeline_step_order": 0,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.transcribe.run"
+  },
+  "name": "Transcribe",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "transcript",
+      "path_template": "{out}/transcript.json",
+      "type": "file"
+    }
+  ],
+  "pipeline_requirements": [
+    "source_audio"
+  ],
+  "short_description": "Transcribe source audio to transcript.json via Whisper.",
+  "version": "1.0"
+}

@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.executor.registry import ExecutorRegistry
-from artagents.core.executor.runner import ExecutorRunRequest, run_executor
-from artagents.core.executor.schema import ExecutorDefinition
-from artagents.contracts.schema import CommandSpec, Output
-from artagents.threads.ids import generate_run_id, generate_thread_id
-from artagents.threads.index import ThreadIndexStore
-from artagents.threads.record import build_run_record, finalize_run_record, write_run_record
-from artagents.threads.schema import make_thread_record
-from artagents.threads.variants import (
+from astrid.core.executor.registry import ExecutorRegistry
+from astrid.core.executor.runner import ExecutorRunRequest, run_executor
+from astrid.core.executor.schema import ExecutorDefinition
+from astrid.contracts.schema import CommandSpec, Output
+from astrid.threads.ids import generate_run_id, generate_thread_id
+from astrid.threads.index import ThreadIndexStore
+from astrid.threads.record import build_run_record, finalize_run_record, write_run_record
+from astrid.threads.schema import make_thread_record
+from astrid.threads.variants import (
     VariantState,
     keep_selection,
     read_current_keepers,

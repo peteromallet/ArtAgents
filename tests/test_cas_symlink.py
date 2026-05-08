@@ -5,18 +5,18 @@ import json
 import os
 from pathlib import Path
 
-from artagents.core.project.project import create_project
-from artagents.core.task import gate as task_gate
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import (
+from astrid.core.project.project import create_project
+from astrid.core.task import gate as task_gate
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import (
     TASK_ITEM_ID_ENV,
     TASK_ITERATION_ENV,
     TASK_PROJECT_ENV,
     TASK_RUN_ID_ENV,
     TASK_STEP_ID_ENV,
 )
-from artagents.core.task.events import read_events
-from artagents.core.task.plan import compute_plan_hash, step_dir_for_path
+from astrid.core.task.events import read_events
+from astrid.core.task.plan import compute_plan_hash, step_dir_for_path
 
 
 def _clear_task_env() -> None:

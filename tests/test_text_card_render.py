@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents.packs.builtin.render import run as render_remotion
-from artagents import timeline
+from astrid.packs.builtin.render import run as render_remotion
+from astrid import timeline
 
 
 @pytest.mark.slow

@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.packs.builtin.render import run as render_remotion
-from artagents import timeline
+from astrid.packs.builtin.render import run as render_remotion
+from astrid import timeline
 
 
 ROOT = Path(__file__).resolve().parents[1]

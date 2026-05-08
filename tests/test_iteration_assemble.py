@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from artagents.packs.iteration.assemble import run as assemble
+from astrid.packs.iteration.assemble import run as assemble
 
 
 RUN_ID = "01ARZ3NDEKTSV4RRFFQ69G5FG0"

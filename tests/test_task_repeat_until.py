@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task import gate as task_gate
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import ARTAGENTS_ACTOR, TASK_ITERATION_ENV, child_subprocess_env
-from artagents.core.task.events import read_events
-from artagents.core.task.plan import compute_plan_hash, step_dir_for_path
+from astrid.core.project.project import create_project
+from astrid.core.task import gate as task_gate
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import ARTAGENTS_ACTOR, TASK_ITERATION_ENV, child_subprocess_env
+from astrid.core.task.events import read_events
+from astrid.core.task.plan import compute_plan_hash, step_dir_for_path
 
 
 def _setup(tmp_projects_root: Path, plan: dict, *, slug: str = "demo", run_id: str = "run-1") -> Path:
@@ -135,7 +135,7 @@ def test_repeat_until_max_exhaust_fail_raises(tmp_projects_root: Path) -> None:
     with pytest.raises(task_gate.TaskRunGateError) as excinfo:
         task_gate.gate_command("demo", "echo go", ["echo", "go"], root=tmp_projects_root)
     assert "max_iterations exhausted" in excinfo.value.reason
-    assert excinfo.value.recovery == "artagents abort --project demo"
+    assert excinfo.value.recovery == "astrid abort --project demo"
 
     # Subsequent gate call should re-raise
     with pytest.raises(task_gate.TaskRunGateError) as excinfo2:

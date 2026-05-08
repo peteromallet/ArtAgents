@@ -9,7 +9,7 @@ import importlib.util
 from unittest import mock
 from pathlib import Path
 
-from artagents.core.element import catalog as effects_catalog
+from astrid.core.element import catalog as effects_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -286,7 +286,7 @@ class EffectsCatalogTest(unittest.TestCase):
                 )
 
             project = workspace / "project"
-            local_pack = project / "artagents" / "packs" / "local"
+            local_pack = project / "astrid" / "packs" / "local"
             local_pack.mkdir(parents=True)
             (local_pack / "pack.yaml").write_text("id: local\nname: Local\nversion: 0.1.0\n", encoding="utf-8")
 
@@ -304,8 +304,8 @@ class EffectsCatalogTest(unittest.TestCase):
             write_local_plugin("transitions", "crossfade")
             write_plugin("transitions", "crossfade", root=theme)
 
-            from artagents.core.element import registry as element_registry
-            from artagents.core.pack import discover_packs as real_discover_packs
+            from astrid.core.element import registry as element_registry
+            from astrid.core.pack import discover_packs as real_discover_packs
 
             old_tools_dir = gen_effect_registry.TOOLS_DIR
             old_themes_root = gen_effect_registry.THEMES_ROOT

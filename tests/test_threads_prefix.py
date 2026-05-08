@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import io
 
-from artagents.threads.attribute import AttributionDecision
-from artagents.threads.prefix import emit_prefix, format_prefix_lines
+from astrid.threads.attribute import AttributionDecision
+from astrid.threads.prefix import emit_prefix, format_prefix_lines
 
 
 def test_prefix_order_thread_variants_notice_blank_line() -> None:

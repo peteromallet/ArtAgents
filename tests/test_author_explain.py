@@ -1,4 +1,4 @@
-"""T19: artagents author explain produces a natural-language description that
+"""T19: astrid author explain produces a natural-language description that
 mentions step ids, kinds (code/attested/nested), repeat semantics
 (repeat.until.condition / max_iterations / on_exhaust), and rewind-on-failure
 language. Useful for LLMs verifying their compiled plan matches a request.
@@ -12,15 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from artagents.orchestrate import cli as author_cli
+from astrid.orchestrate import cli as author_cli
 
 
-_INNER = '''from artagents.orchestrate import orchestrator, code
+_INNER = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.inner")
 def inner(): return [code("inner_step", argv=["echo","x"])]
 '''
 
-_APP = '''from artagents.orchestrate import orchestrator, code, attested, repeat_until, nested
+_APP = '''from astrid.orchestrate import orchestrator, code, attested, repeat_until, nested
 @orchestrator("demo.app")
 def app(): return [
     code("transcribe", argv=["echo","t"]),

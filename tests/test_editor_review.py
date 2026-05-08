@@ -6,8 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from artagents.packs.builtin.editor_review import run as editor_review
-from artagents import timeline
+from astrid.packs.builtin.editor_review import run as editor_review
+from astrid import timeline
 
 
 class EditorReviewTest(unittest.TestCase):

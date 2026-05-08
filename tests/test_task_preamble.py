@@ -8,7 +8,7 @@ and this snapshot must be updated alongside it.
 
 from __future__ import annotations
 
-from artagents.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.task.preamble import PROHIBITION_PREAMBLE
 
 
 _EXPECTED_PREAMBLE = (
@@ -17,9 +17,9 @@ _EXPECTED_PREAMBLE = (
     "from the printed step is rejected at the gate.\n"
     "- Do not edit plan.json or events.jsonl by hand. Both are append-only / "
     "immutable; tampering breaks the hash chain and aborts the run.\n"
-    "- Advance only via `artagents ack` or by running the printed argv. No "
+    "- Advance only via `astrid ack` or by running the printed argv. No "
     "freelancing, no parallel commands, no re-ordering steps.\n"
-    "- Use `artagents abort --project <slug>` to leave the run cleanly. Do not "
+    "- Use `astrid abort --project <slug>` to leave the run cleanly. Do not "
     "delete active_run.json or run directories to escape."
 )
 

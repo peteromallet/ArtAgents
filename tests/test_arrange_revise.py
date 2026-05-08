@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.arrange import run as arrange
-from artagents import timeline
+from astrid.packs.builtin.arrange import run as arrange
+from astrid import timeline
 
 
 class StubClaudeClient:

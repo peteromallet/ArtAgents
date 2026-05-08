@@ -13,16 +13,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.events import read_events
-from artagents.core.task.lifecycle import cmd_next
+from astrid.core.task.events import read_events
+from astrid.core.task.lifecycle import cmd_next
 
 
-_BODY_AGENT = '''from artagents.orchestrate import orchestrator, attested
+_BODY_AGENT = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review_agent")
 def main(): return [attested("review", command="review.sh", instructions="please review", ack="agent")]
 '''
 
-_BODY_ACTOR = '''from artagents.orchestrate import orchestrator, attested
+_BODY_ACTOR = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review_actor")
 def main(): return [attested("review", command="ok.sh", instructions="confirm", ack="actor")]
 '''
@@ -99,7 +99,7 @@ def test_approve_on_actor_step_quarantined_to_rejected(
     )
 
     os.environ["ARTAGENTS_ACTOR"] = "bob"
-    with caplog.at_level(logging.WARNING, logger="artagents.core.task.inbox"):
+    with caplog.at_level(logging.WARNING, logger="astrid.core.task.inbox"):
         rc = _run_next(projects)
     assert rc == 0
 
@@ -127,7 +127,7 @@ def test_malformed_json_skipped_and_logged(tmp_path: Path, caplog) -> None:
     inbox_file = _drop(run_dir, "broken.json", "not valid json {")
 
     os.environ["ARTAGENTS_ACTOR"] = "bob"
-    with caplog.at_level(logging.WARNING, logger="artagents.core.task.inbox"):
+    with caplog.at_level(logging.WARNING, logger="astrid.core.task.inbox"):
         rc = _run_next(projects)
     assert rc == 0
 

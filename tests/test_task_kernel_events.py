@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from artagents.core.task.events import (
+from astrid.core.task.events import (
     append_event,
     canonical_event_json,
     make_run_started_event,

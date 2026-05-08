@@ -9,4 +9,4 @@ def test_xxhash_dependency_declared_and_importable() -> None:
 
     import xxhash
 
-    assert xxhash.xxh64_hexdigest(b"artagents")
+    assert xxhash.xxh64_hexdigest(b"astrid")

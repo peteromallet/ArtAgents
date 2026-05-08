@@ -6,7 +6,7 @@ The regression gate for the `Timeline` domain class. Three assertions:
    byte-for-byte (covers tracks, theme_overrides, generation_defaults,
    per-clip animation/transition/effects, mixed clipTypes).
 2. Unknown top-level fields survive load/dump via the passthrough bag.
-3. ArtAgents' Python allowlists (`_TIMELINE_TOP_ALLOWED`,
+3. Astrid' Python allowlists (`_TIMELINE_TOP_ALLOWED`,
    `_CLIP_ALLOWED`, `_TRACK_ALLOWED`) match the field set declared in
    the canonical `@banodoco/timeline-schema` JSON Schema. The shared
    schema is the source of truth.
@@ -45,12 +45,12 @@ def _load_shared_schema() -> dict | None:
     return None
 
 
-# Make the in-tree artagents package importable when running pytest from
+# Make the in-tree astrid package importable when running pytest from
 # the repo root (it already is) — defensive, costs nothing.
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from artagents.timeline import (  # noqa: E402
+from astrid.timeline import (  # noqa: E402
     _CLIP_ALLOWED,
     _TIMELINE_TOP_ALLOWED,
     _TRACK_ALLOWED,
@@ -169,31 +169,31 @@ class TimelineRoundTripFixtureTest(unittest.TestCase):
         track_items = tracks_node.get("items") or {}
         shared_track = set((track_items.get("properties") or {}).keys())
 
-        # The shared schema is the source of truth (per artagents/timeline.py
+        # The shared schema is the source of truth (per astrid/timeline.py
         # docstring: "the JSON-Schema validator there is the canonical shape
-        # check"). ArtAgents' frozensets must match exactly.
+        # check"). Astrid' frozensets must match exactly.
         self.assertEqual(
             set(_TIMELINE_TOP_ALLOWED),
             shared_top,
-            "Timeline top-level allowlist drift between ArtAgents "
+            "Timeline top-level allowlist drift between Astrid "
             "(_TIMELINE_TOP_ALLOWED) and shared schema (TimelineConfig). "
-            f"only-in-artagents={set(_TIMELINE_TOP_ALLOWED) - shared_top}, "
+            f"only-in-astrid={set(_TIMELINE_TOP_ALLOWED) - shared_top}, "
             f"only-in-schema={shared_top - set(_TIMELINE_TOP_ALLOWED)}",
         )
         self.assertEqual(
             set(_CLIP_ALLOWED),
             shared_clip,
-            "Clip allowlist drift between ArtAgents (_CLIP_ALLOWED) and "
+            "Clip allowlist drift between Astrid (_CLIP_ALLOWED) and "
             "shared schema (TimelineClip). "
-            f"only-in-artagents={set(_CLIP_ALLOWED) - shared_clip}, "
+            f"only-in-astrid={set(_CLIP_ALLOWED) - shared_clip}, "
             f"only-in-schema={shared_clip - set(_CLIP_ALLOWED)}",
         )
         self.assertEqual(
             set(_TRACK_ALLOWED),
             shared_track,
-            "Track allowlist drift between ArtAgents (_TRACK_ALLOWED) and "
+            "Track allowlist drift between Astrid (_TRACK_ALLOWED) and "
             "shared schema (TimelineConfig.tracks[]). "
-            f"only-in-artagents={set(_TRACK_ALLOWED) - shared_track}, "
+            f"only-in-astrid={set(_TRACK_ALLOWED) - shared_track}, "
             f"only-in-schema={shared_track - set(_TRACK_ALLOWED)}",
         )
 

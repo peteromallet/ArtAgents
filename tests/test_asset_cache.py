@@ -15,8 +15,8 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.asset_cache import run as asset_cache
-from artagents.packs.builtin.render.run import _RangeHTTPRequestHandler
+from astrid.packs.builtin.asset_cache import run as asset_cache
+from astrid.packs.builtin.render.run import _RangeHTTPRequestHandler
 
 
 class CountingRangeHandler(_RangeHTTPRequestHandler):

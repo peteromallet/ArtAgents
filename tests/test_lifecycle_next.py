@@ -17,39 +17,39 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task import write_iteration_feedback
-from artagents.core.task.events import (
+from astrid.core.task import write_iteration_feedback
+from astrid.core.task.events import (
     append_event,
     make_iteration_failed_event,
 )
-from artagents.core.task.events import make_iteration_started_event
-from artagents.core.task.gate import GateDecision
-from artagents.core.task.lifecycle import cmd_next
-from artagents.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.task.events import make_iteration_started_event
+from astrid.core.task.gate import GateDecision
+from astrid.core.task.lifecycle import cmd_next
+from astrid.core.task.preamble import PROHIBITION_PREAMBLE
 
 
-_BODY_CODE = '''from artagents.orchestrate import orchestrator, code
+_BODY_CODE = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.code")
 def main(): return [code("step_a", argv=["echo", "alpha"])]
 '''
 
-_BODY_AGENT = '''from artagents.orchestrate import orchestrator, attested
+_BODY_AGENT = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review_agent")
 def main(): return [attested("review", command="review.sh", instructions="please review", ack="agent")]
 '''
 
-_BODY_ACTOR = '''from artagents.orchestrate import orchestrator, attested
+_BODY_ACTOR = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review_actor")
 def main(): return [attested("review", command="ok.sh", instructions="confirm", ack="actor")]
 '''
 
-_BODY_ITER = '''from artagents.orchestrate import orchestrator, attested, repeat_until
+_BODY_ITER = '''from astrid.orchestrate import orchestrator, attested, repeat_until
 @orchestrator("demo.iter")
 def main(): return [attested("review", command="r.sh", instructions="ok", ack="actor",
     repeat=repeat_until(condition="user_approves", max_iterations=3, on_exhaust="fail"))]
 '''
 
-_BODY_FE = '''from artagents.orchestrate import orchestrator, attested, repeat_for_each
+_BODY_FE = '''from astrid.orchestrate import orchestrator, attested, repeat_for_each
 @orchestrator("demo.fe")
 def main(): return [attested("review_each", command="r.sh", instructions="check", ack="actor",
     repeat=repeat_for_each(items=["a","b","c"]))]
@@ -88,7 +88,7 @@ def test_attested_agent_template(tmp_path: Path) -> None:
     assert "please review" in out
     assert "--decision approve --agent <id>" in out
     # No --actor token in template since ack.kind=agent
-    template_line = next(line for line in out.splitlines() if "artagents ack review" in line)
+    template_line = next(line for line in out.splitlines() if "astrid ack review" in line)
     assert "--actor" not in template_line
 
 

@@ -7,14 +7,14 @@ from unittest import mock
 
 import pytest
 
-from artagents.contracts.schema import CommandSpec, Output, Port
-from artagents.core.executor.registry import ExecutorRegistry
-from artagents.core.executor.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
-from artagents.core.executor.schema import ExecutorDefinition
-from artagents.core.orchestrator.registry import OrchestratorRegistry
-from artagents.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
-from artagents.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
-from artagents.threads.ids import is_ulid
+from astrid.contracts.schema import CommandSpec, Output, Port
+from astrid.core.executor.registry import ExecutorRegistry
+from astrid.core.executor.runner import ExecutorRunRequest, ExecutorRunnerError, run_executor
+from astrid.core.executor.schema import ExecutorDefinition
+from astrid.core.orchestrator.registry import OrchestratorRegistry
+from astrid.core.orchestrator.runner import OrchestratorRunRequest, run_orchestrator
+from astrid.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
+from astrid.threads.ids import is_ulid
 
 
 def test_executor_success_writes_run_json_index_and_output_integrity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -46,7 +46,7 @@ def test_executor_success_writes_run_json_index_and_output_integrity(tmp_path: P
     assert "preview_modes" not in json.dumps(record)
     assert (out / "result.txt").read_text(encoding="utf-8").startswith("1:")
 
-    index = _read_json(repo / ".artagents" / "threads.json")
+    index = _read_json(repo / ".astrid" / "threads.json")
     assert index["active_thread_id"] == record["thread_id"]
     assert record["run_id"] in index["threads"][record["thread_id"]]["run_ids"]
 
@@ -101,7 +101,7 @@ def test_noop_gates_skip_run_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_upload_youtube_is_zero_artifact_noop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _repo(tmp_path, monkeypatch)
     with mock.patch(
-        "artagents.packs.upload.youtube.src.social_publish.publish_youtube_video",
+        "astrid.packs.upload.youtube.src.social_publish.publish_youtube_video",
         return_value={"url": "https://youtube.example/video"},
     ):
         result = run_executor(
@@ -116,7 +116,7 @@ def test_upload_youtube_is_zero_artifact_noop(tmp_path: Path, monkeypatch: pytes
             )
         )
     assert result.payload["url"] == "https://youtube.example/video"
-    assert not (repo / ".artagents").exists()
+    assert not (repo / ".astrid").exists()
 
 
 def test_redaction_private_brief_and_external_service_trim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

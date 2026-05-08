@@ -19,13 +19,13 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.task.env import ARTAGENTS_ACTOR, ARTAGENTS_AUTHOR_TEST
-from artagents.core.task.events import read_events
-from artagents.core.task.lifecycle import cmd_start
-from artagents.core.task.lifecycle_ack import cmd_ack
+from astrid.core.task.env import ARTAGENTS_ACTOR, ARTAGENTS_AUTHOR_TEST
+from astrid.core.task.events import read_events
+from astrid.core.task.lifecycle import cmd_start
+from astrid.core.task.lifecycle_ack import cmd_ack
 
 
-_DEMO_PACK_BODY = '''from artagents.orchestrate import attested, orchestrator
+_DEMO_PACK_BODY = '''from astrid.orchestrate import attested, orchestrator
 
 
 @orchestrator("demo.app")
@@ -59,7 +59,7 @@ def test_author_test_env_var_unlocks_attested_auto_approval(
 
     # FLAG-P9-001: cmd_start must succeed even when ARTAGENTS_AUTHOR_TEST=1.
     # Compile the demo pack first (cmd_start expects build/<orch>.json).
-    from artagents.orchestrate.compile import compile_to_path
+    from astrid.orchestrate.compile import compile_to_path
     compile_to_path("demo.app", packs_root=packs)
 
     monkeypatch.setenv(ARTAGENTS_ACTOR, "alice")

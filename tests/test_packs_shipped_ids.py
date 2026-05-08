@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from artagents.core.executor.registry import load_default_registry as load_executor_registry
-from artagents.core.orchestrator.registry import load_default_registry as load_orchestrator_registry
-from artagents.core.pack import qualified_id_pack_id
+from astrid.core.executor.registry import load_default_registry as load_executor_registry
+from astrid.core.orchestrator.registry import load_default_registry as load_orchestrator_registry
+from astrid.core.pack import qualified_id_pack_id
 
 
 class ShippedPackAlignmentTest(unittest.TestCase):
@@ -56,10 +56,10 @@ class ShippedPackAlignmentTest(unittest.TestCase):
                 self.assertEqual(executor.metadata["source_pack"], pack)
                 self.assertTrue(
                     str(executor.metadata["executor_root"]).rstrip("/").endswith(
-                        f"artagents/packs/{pack}/{executor_id.split('.', 1)[1].split('.')[0]}"
+                        f"astrid/packs/{pack}/{executor_id.split('.', 1)[1].split('.')[0]}"
                     )
                     or str(executor.metadata["executor_root"]).rstrip("/").endswith(
-                        f"artagents/packs/{pack}/{executor_id.split('.', 1)[1]}"
+                        f"astrid/packs/{pack}/{executor_id.split('.', 1)[1]}"
                     ),
                     f"executor_root for {executor_id} did not land under packs/{pack}/",
                 )

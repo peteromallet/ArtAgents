@@ -88,7 +88,7 @@ gate rather than create a parallel ingestion path.
 
 ### Phase 9 — author test + goldens (commit `53fdd68`)
 
-What shipped: `artagents author test --pack <p> --orchestrator <o> --fixture
+What shipped: `astrid author test --pack <p> --orchestrator <o> --fixture
 <f>`; runs a compiled plan in a scratch dir with auto-approval gated on
 `ARTAGENTS_AUTHOR_TEST=1`, normalizes `events.jsonl`, diffs against committed
 golden, `--regenerate` to rewrite. Adjacent `_ack_approve` shlex-split bug also
@@ -232,7 +232,7 @@ the failure pattern obvious.
 ### 5.2 `a0ed9f51` — Tool-layer sandbox enforcement
 
 The Phase 6 misdirected-write incident: the idea brief contained an absolute
-path line `Project: /Users/.../ArtAgents` that competed with megaplan's
+path line `Project: /Users/.../Astrid` that competed with megaplan's
 injected `Project directory: <worktree>` line. Both `dkd` and `ckd-or`
 followed the brief's path and wrote their changes to the main repo rather
 than their respective worktrees. Fix is two-part:

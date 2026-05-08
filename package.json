@@ -1,7 +1,7 @@
 {
-  "name": "artagents-workspace",
+  "name": "astrid-workspace",
   "private": true,
-  "description": "Workspace marker for the ArtAgents repository. Not a real npm package.",
+  "description": "Workspace marker for the Astrid repository. Not a real npm package.",
   "type": "module",
   "scripts": {
     "ops": "node scripts/node/ops_helper.mjs",

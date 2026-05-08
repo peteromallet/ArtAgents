@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from artagents.packs.builtin.generate_image.run import _variant_artifacts_for_generated_images
-from artagents.packs.builtin.logo_ideas.run import _variant_artifacts_for_logo_ideas
+from astrid.packs.builtin.generate_image.run import _variant_artifacts_for_generated_images
+from astrid.packs.builtin.logo_ideas.run import _variant_artifacts_for_logo_ideas
 
 
 def test_generate_image_variant_artifact_metadata() -> None:
@@ -45,11 +45,11 @@ def test_logo_ideas_variant_artifact_metadata() -> None:
 def test_only_allowed_run_py_files_opt_into_variants() -> None:
     repo = Path(__file__).resolve().parents[1]
     allowed = {
-        repo / "artagents" / "executors" / "generate_image" / "run.py",
-        repo / "artagents" / "orchestrators" / "logo_ideas" / "run.py",
+        repo / "astrid" / "executors" / "generate_image" / "run.py",
+        repo / "astrid" / "orchestrators" / "logo_ideas" / "run.py",
     }
     offenders = []
-    for run_py in list((repo / "artagents" / "executors").glob("*/run.py")) + list((repo / "artagents" / "orchestrators").glob("*/run.py")):
+    for run_py in list((repo / "astrid" / "executors").glob("*/run.py")) + list((repo / "astrid" / "orchestrators").glob("*/run.py")):
         text = run_py.read_text(encoding="utf-8")
         if "write_variant_sidecar" in text or "variant_meta" in text:
             if run_py not in allowed:

@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.orchestrator.schema import (
+from astrid.core.orchestrator.schema import (
     OrchestratorValidationError,
     validate_orchestrator_definition,
 )
-from artagents.core.task.plan import (
+from astrid.core.task.plan import (
     AttestedStep,
     CodeStep,
     NestedStep,
@@ -79,7 +79,7 @@ def test_code_step_with_orchestrators_run_is_rejected_at_load(tmp_path: Path) ->
                 {
                     "id": "s1",
                     "kind": "code",
-                    "command": "python3 -m artagents orchestrators run hype",
+                    "command": "python3 -m astrid orchestrators run hype",
                 }
             ],
         },
@@ -90,14 +90,14 @@ def test_code_step_with_orchestrators_run_is_rejected_at_load(tmp_path: Path) ->
     assert "nested" in str(exc.value)
 
 
-def test_code_step_with_artagents_orchestrators_run_is_rejected(tmp_path: Path) -> None:
+def test_code_step_with_astrid_orchestrators_run_is_rejected(tmp_path: Path) -> None:
     plan_path = _write(
         tmp_path,
         {
             "plan_id": "p1",
             "version": 1,
             "steps": [
-                {"id": "s1", "kind": "code", "command": "artagents orchestrators run hype"}
+                {"id": "s1", "kind": "code", "command": "astrid orchestrators run hype"}
             ],
         },
     )
@@ -273,7 +273,7 @@ def test_orchestrator_definition_legacy_python_runtime_validates() -> None:
         "name": "Hype",
         "kind": "built_in",
         "version": "1.0",
-        "runtime": {"kind": "python", "module": "artagents.packs.builtin.hype", "function": "run"},
+        "runtime": {"kind": "python", "module": "astrid.packs.builtin.hype", "function": "run"},
     }
     orchestrator = validate_orchestrator_definition(raw)
     assert orchestrator.runtime.kind == "python"

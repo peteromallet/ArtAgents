@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.core.element.install import build_element_install_plan, install_element
-from artagents.core.element.registry import load_default_registry
-from artagents.core.executor.install import build_executor_install_plan, executor_environment_path, executor_python_path
-from artagents.core.executor.registry import load_default_registry as load_executor_registry
+from astrid.core.element.install import build_element_install_plan, install_element
+from astrid.core.element.registry import load_default_registry
+from astrid.core.executor.install import build_executor_install_plan, executor_environment_path, executor_python_path
+from astrid.core.executor.registry import load_default_registry as load_executor_registry
 
 
 class ElementInstallTest(unittest.TestCase):
@@ -37,7 +37,7 @@ class ElementInstallTest(unittest.TestCase):
             project_root = Path(tmp)
             plan = build_element_install_plan(element, project_root=project_root)
 
-        install_root = project_root / ".artagents" / "elements" / "effects-text-card"
+        install_root = project_root / ".astrid" / "elements" / "effects-text-card"
         venv = install_root / "venv"
         node = install_root / "node"
         python = venv / "bin" / "python"
@@ -60,7 +60,7 @@ class ElementInstallTest(unittest.TestCase):
         element = self.element_with_dependencies()
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp)
-            with mock.patch("artagents.core.element.install.subprocess.run") as run:
+            with mock.patch("astrid.core.element.install.subprocess.run") as run:
                 result = install_element(element, project_root=project_root, dry_run=True)
 
             self.assertEqual(result.returncode, 0)
@@ -72,7 +72,7 @@ class ElementInstallTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project_root = Path(tmp)
             completed = mock.Mock(returncode=0)
-            with mock.patch("artagents.core.element.install.subprocess.run", return_value=completed) as run:
+            with mock.patch("astrid.core.element.install.subprocess.run", return_value=completed) as run:
                 result = install_element(element, project_root=project_root, dry_run=False)
 
             self.assertEqual(result.returncode, 0)
@@ -87,8 +87,8 @@ class ElementInstallTest(unittest.TestCase):
 
         self.assertEqual(executor_environment_path(vibe_run), executor_environment_path(vibe_validate))
         self.assertEqual(executor_python_path(vibe_run), executor_python_path(vibe_validate))
-        self.assertTrue(str(executor_environment_path(vibe_run)).endswith(".artagents/venvs/vibecomfy/venv"))
-        self.assertTrue(str(executor_environment_path(moirae)).endswith(".artagents/venvs/external.moirae/venv"))
+        self.assertTrue(str(executor_environment_path(vibe_run)).endswith(".astrid/venvs/vibecomfy/venv"))
+        self.assertTrue(str(executor_environment_path(moirae)).endswith(".astrid/venvs/external.moirae/venv"))
 
         vibe_plan = build_executor_install_plan(vibe_run)
         moirae_plan = build_executor_install_plan(moirae)

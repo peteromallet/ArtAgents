@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-from artagents.domains.hype import enriched_arrangement
-from artagents.packs.builtin.quality_zones import run as quality_zones
+from astrid.domains.hype import enriched_arrangement
+from astrid.packs.builtin.quality_zones import run as quality_zones
 
 
 class QualityZonesTest(unittest.TestCase):

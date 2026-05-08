@@ -23,11 +23,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.hook import cmd_hook_stop
-from artagents.core.task.lifecycle import cmd_next
+from astrid.core.task.hook import cmd_hook_stop
+from astrid.core.task.lifecycle import cmd_next
 
 
-_BODY_CODE = '''from artagents.orchestrate import orchestrator, code
+_BODY_CODE = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.code")
 def main(): return [code("step_a", argv=["echo", "alpha"])]
 '''

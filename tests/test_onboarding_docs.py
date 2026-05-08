@@ -22,9 +22,9 @@ class OnboardingDocsTest(unittest.TestCase):
             )
         )
 
-    def run_artagents(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_astrid(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, "-m", "artagents", *args],
+            [sys.executable, "-m", "astrid", *args],
             cwd=ROOT,
             text=True,
             stdout=subprocess.PIPE,
@@ -39,18 +39,18 @@ class OnboardingDocsTest(unittest.TestCase):
             "executors",
             "elements",
             "git status --short",
-            "python3 -m artagents doctor",
-            "python3 -m artagents --help",
-            "python3 -m artagents",
+            "python3 -m astrid doctor",
+            "python3 -m astrid --help",
+            "python3 -m astrid",
             "executable package gateway",
-            "python3 -m artagents setup",
-            "artagents/packs/local/elements",
+            "python3 -m astrid setup",
+            "astrid/packs/local/elements",
             "python3 scripts/gen_effect_registry.py",
-            "artagents/packs/external/moirae/STAGE.md",
-            "artagents/packs/external/vibecomfy/STAGE.md",
-            "artagents/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}",
-            "artagents/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}",
-            "Top-level `artagents/*.py`",
+            "astrid/packs/external/moirae/STAGE.md",
+            "astrid/packs/external/vibecomfy/STAGE.md",
+            "astrid/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}",
+            "astrid/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}",
+            "Top-level `astrid/*.py`",
             "examples/briefs/",
             "docs/creating-tools.md",
             "docs/templates/executor/",
@@ -69,18 +69,18 @@ class OnboardingDocsTest(unittest.TestCase):
         forbidden = (
             "python3 pipeline.py",
             "pipeline.py remains",
-            "python3 -m artagents conductors list",
-            "python3 -m artagents performers list",
-            "python3 -m artagents instruments list",
-            "python3 -m artagents primitives list",
-            "artagents/performers/curated",
-            "artagents/conductors/curated",
+            "python3 -m astrid conductors list",
+            "python3 -m astrid performers list",
+            "python3 -m astrid instruments list",
+            "python3 -m astrid primitives list",
+            "astrid/performers/curated",
+            "astrid/conductors/curated",
             "Legacy public alias",
             "Compatibility aliases",
-            "artagents/event_talks.py",
-            "artagents/thumbnail_maker.py",
-            "artagents/understand.py",
-            "artagents/skills/reigh-data",
+            "astrid/event_talks.py",
+            "astrid/thumbnail_maker.py",
+            "astrid/understand.py",
+            "astrid/skills/reigh-data",
         )
         for phrase in forbidden:
             with self.subTest(forbidden=phrase):
@@ -96,7 +96,7 @@ class OnboardingDocsTest(unittest.TestCase):
         )
         for command in commands:
             with self.subTest(command=command):
-                result = self.run_artagents(*command)
+                result = self.run_astrid(*command)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertTrue(result.stdout.strip())
 

@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from artagents.audit import AuditContext
-from artagents.threads.ids import generate_run_id, generate_thread_id
-from artagents.threads.index import ThreadIndexStore
-from artagents.threads.record import build_run_record, finalize_run_record, write_run_record
-from artagents.threads.schema import make_thread_record
+from astrid.audit import AuditContext
+from astrid.threads.ids import generate_run_id, generate_thread_id
+from astrid.threads.index import ThreadIndexStore
+from astrid.threads.record import build_run_record, finalize_run_record, write_run_record
+from astrid.threads.schema import make_thread_record
 
 
 def test_provenance_bridges_audit_ledger_and_hash_ancestry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,7 +81,7 @@ def test_hype_metadata_gets_denormalized_pipeline_provenance_and_survives_index_
         returncode=0,
     )
     write_run_record(record, out / "run.json")
-    (repo / ".artagents" / "threads.json").unlink()
+    (repo / ".astrid" / "threads.json").unlink()
 
     metadata = json.loads((out / "hype.metadata.json").read_text(encoding="utf-8"))
     provenance = metadata["pipeline"]["provenance"]

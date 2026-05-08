@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project import paths
-from artagents.core.project.project import create_project, show_project
-from artagents.core.project.schema import (
+from astrid.core.project import paths
+from astrid.core.project.project import create_project, show_project
+from astrid.core.project.schema import (
     PROJECT_SCHEMA_VERSION,
     ProjectValidationError,
     SOURCE_KINDS,
@@ -28,7 +28,7 @@ from artagents.core.project.schema import (
     validate_run_record,
     validate_source,
 )
-from artagents.core.project.source import add_source, require_source
+from astrid.core.project.source import add_source, require_source
 
 
 def test_project_helpers_resolve_env_root_and_write_deterministic_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

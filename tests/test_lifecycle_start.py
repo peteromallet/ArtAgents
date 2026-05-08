@@ -15,13 +15,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import make_pack, setup_packs_and_compile  # noqa: E402
 
-from artagents.core.task.active_run import read_active_run
-from artagents.core.task.lifecycle import cmd_start
-from artagents.core.task.plan import compute_plan_hash
-from artagents.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.task.active_run import read_active_run
+from astrid.core.task.lifecycle import cmd_start
+from astrid.core.task.plan import compute_plan_hash
+from astrid.core.task.preamble import PROHIBITION_PREAMBLE
 
 
-_BODY_CODE = '''from artagents.orchestrate import orchestrator, code
+_BODY_CODE = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.app")
 def app(): return [code("step_a", argv=["echo", "x"])]
 '''
@@ -75,7 +75,7 @@ def test_second_start_rejected_with_recovery(tmp_path: Path) -> None:
     assert rc == 1
     msg = err.getvalue()
     assert "active run already exists" in msg
-    assert "artagents abort --project p" in msg
+    assert "astrid abort --project p" in msg
 
 
 def test_missing_build_json_prints_compile_recovery(tmp_path: Path) -> None:
@@ -93,4 +93,4 @@ def test_missing_build_json_prints_compile_recovery(tmp_path: Path) -> None:
             projects_root=projects,
         )
     assert rc == 1
-    assert "artagents author compile demo.uncompiled" in err.getvalue()
+    assert "astrid author compile demo.uncompiled" in err.getvalue()

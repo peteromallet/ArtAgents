@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from artagents.threads.ids import generate_run_id, generate_thread_id
-from artagents.threads.index import ThreadIndexLockTimeout, ThreadIndexStore
-from artagents.threads.schema import (
+from astrid.threads.ids import generate_run_id, generate_thread_id
+from astrid.threads.index import ThreadIndexLockTimeout, ThreadIndexStore
+from astrid.threads.schema import (
     SCHEMA_VERSION,
     ThreadSchemaError,
     empty_threads_index,
@@ -30,8 +30,8 @@ def test_index_created_on_first_write_with_schema_version(tmp_path: Path) -> Non
     written = store.write(index)
 
     assert written["schema_version"] == SCHEMA_VERSION
-    assert (tmp_path / ".artagents" / "threads.json").is_file()
-    on_disk = json.loads((tmp_path / ".artagents" / "threads.json").read_text(encoding="utf-8"))
+    assert (tmp_path / ".astrid" / "threads.json").is_file()
+    on_disk = json.loads((tmp_path / ".astrid" / "threads.json").read_text(encoding="utf-8"))
     assert on_disk["active_thread_id"] == thread_id
     assert on_disk["threads"][thread_id]["label"] == "Logo sprint"
 

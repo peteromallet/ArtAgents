@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.events import (
+from astrid.core.project.project import create_project
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.events import (
     append_event,
     make_run_started_event,
     make_step_completed_event,
@@ -15,8 +15,8 @@ from artagents.core.task.events import (
     read_events,
     verify_chain,
 )
-from artagents.core.task.gate import TaskRunGateError, gate_command, record_dispatch_complete
-from artagents.core.task.plan import compute_plan_hash
+from astrid.core.task.gate import TaskRunGateError, gate_command, record_dispatch_complete
+from astrid.core.task.plan import compute_plan_hash
 
 
 def test_five_event_hash_chain_append_verify_round_trip(tmp_path: Path) -> None:
@@ -38,7 +38,7 @@ def test_plan_hash_mismatch_rejects_with_abort_recovery(tmp_projects_root: Path)
         gate_command("demo", command, [], root=tmp_projects_root)
 
     assert exc_info.value.reason == "plan.json hash does not match active_run.json pin"
-    assert exc_info.value.recovery == "artagents abort --project demo"
+    assert exc_info.value.recovery == "astrid abort --project demo"
 
 
 def test_chain_integrity_failure_rejects_with_abort_recovery(tmp_projects_root: Path) -> None:
@@ -54,7 +54,7 @@ def test_chain_integrity_failure_rejects_with_abort_recovery(tmp_projects_root: 
     with pytest.raises(TaskRunGateError) as exc_info:
         gate_command("demo", command, [], root=tmp_projects_root)
 
-    assert exc_info.value.recovery == "artagents abort --project demo"
+    assert exc_info.value.recovery == "astrid abort --project demo"
 
 
 def test_non_canonical_command_rejects_with_next_recovery(tmp_projects_root: Path) -> None:
@@ -65,7 +65,7 @@ def test_non_canonical_command_rejects_with_next_recovery(tmp_projects_root: Pat
         gate_command("demo", "echo edited", [], root=tmp_projects_root)
 
     assert exc_info.value.reason == "incoming command does not match plan[cursor]"
-    assert exc_info.value.recovery == "artagents next --project demo"
+    assert exc_info.value.recovery == "astrid next --project demo"
 
 
 def test_inactive_gate_is_transparent_and_writes_no_events(tmp_projects_root: Path) -> None:
@@ -103,7 +103,7 @@ def test_plan_exhausted_rejects_with_abort_recovery(tmp_projects_root: Path) -> 
     with pytest.raises(TaskRunGateError) as exc_info:
         gate_command("demo", command, [], root=tmp_projects_root)
 
-    assert exc_info.value.recovery == "artagents abort --project demo"
+    assert exc_info.value.recovery == "astrid abort --project demo"
 
 
 def test_reentry_after_fresh_dispatch_does_not_double_append(tmp_projects_root: Path) -> None:

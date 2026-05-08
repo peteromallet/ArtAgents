@@ -1,4 +1,4 @@
-"""DSL unit tests for artagents.orchestrate (Phase 4)."""
+"""DSL unit tests for astrid.orchestrate (Phase 4)."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.task.plan import load_plan
-from artagents.orchestrate import (
+from astrid.core.task.plan import load_plan
+from astrid.orchestrate import (
     OrchestrateDefinitionError,
     attested,
     code,
@@ -20,7 +20,7 @@ from artagents.orchestrate import (
 
 
 def _valid_argv() -> list:
-    return ["python3", "-m", "artagents", "executors", "run", "builtin.transcribe", "--project", "demo"]
+    return ["python3", "-m", "astrid", "executors", "run", "builtin.transcribe", "--project", "demo"]
 
 
 class TestTypedHandle:
@@ -43,13 +43,13 @@ class TestArgvGuards:
         with pytest.raises(OrchestrateDefinitionError) as excinfo:
             code(
                 "bad",
-                argv=["python3", "-m", "artagents", "orchestrators", "run", "builtin.hype"],
+                argv=["python3", "-m", "astrid", "orchestrators", "run", "builtin.hype"],
             )
         assert "orchestrators" in str(excinfo.value).lower()
 
-    def test_orchestrators_run_via_artagents_binary_rejected(self) -> None:
+    def test_orchestrators_run_via_astrid_binary_rejected(self) -> None:
         with pytest.raises(OrchestrateDefinitionError):
-            code("bad", argv=["artagents", "orchestrators", "run", "x"])
+            code("bad", argv=["astrid", "orchestrators", "run", "x"])
 
     def test_argv_accepts_produces_handles_and_stringifies(self) -> None:
         # FLAG-006: argv may carry _ProducesHandle entries; they stringify

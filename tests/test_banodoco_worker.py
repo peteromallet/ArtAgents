@@ -1,4 +1,4 @@
-"""Unit tests for artagents.core.worker.banodoco_worker.
+"""Unit tests for astrid.core.worker.banodoco_worker.
 
 Cover the per-task pipeline: task-type guard, JWKS verify, FLAG-013 project-
 ownership read, snapshot fast-path, intent dispatch, carry-fields enforcement,
@@ -16,10 +16,10 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from artagents.core.reigh.task_client import ClaimResult
-from artagents.core.reigh.worker_jwt import VerifiedJwt
-from artagents.core.worker import banodoco_worker as bw_mod
-from artagents.core.worker.banodoco_worker import (
+from astrid.core.reigh.task_client import ClaimResult
+from astrid.core.reigh.worker_jwt import VerifiedJwt
+from astrid.core.worker import banodoco_worker as bw_mod
+from astrid.core.worker.banodoco_worker import (
     BanodocoWorker,
     DispatchError,
     WorkerConfig,
@@ -145,7 +145,7 @@ class BanodocoWorkerTest(unittest.TestCase):
         self.assertEqual(self.provider.save_calls, [])
 
     def test_invalid_jwt_yields_failed(self) -> None:
-        from artagents.core.reigh.worker_jwt import JwtVerificationError
+        from astrid.core.reigh.worker_jwt import JwtVerificationError
 
         patches = [
             patch.object(bw_mod, "update_task_status", side_effect=self.recorder),
@@ -159,7 +159,7 @@ class BanodocoWorkerTest(unittest.TestCase):
         self.assertEqual(self.provider.save_calls, [])
 
     def test_project_ownership_mismatch_yields_failed(self) -> None:
-        from artagents.core.worker.banodoco_worker import ProjectOwnershipError
+        from astrid.core.worker.banodoco_worker import ProjectOwnershipError
 
         patches = [
             patch.object(bw_mod, "update_task_status", side_effect=self.recorder),
@@ -246,8 +246,8 @@ class BanodocoWorkerTest(unittest.TestCase):
         # Use a real project_slug + temp projects root; mock the rest.
         tmp_root = Path(tempfile.mkdtemp(prefix="bw-baseline-test-", dir=ROOT))
         self.addCleanup(shutil.rmtree, tmp_root, ignore_errors=True)
-        from artagents.core.project import paths as project_paths
-        from artagents.core.project.project import create_project
+        from astrid.core.project import paths as project_paths
+        from astrid.core.project.project import create_project
 
         with patch.dict("os.environ", {project_paths.PROJECTS_ROOT_ENV: str(tmp_root)}):
             create_project("baseline-demo")

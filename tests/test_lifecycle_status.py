@@ -15,15 +15,15 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.events import (
+from astrid.core.task.events import (
     append_event,
     make_step_completed_event,
     make_step_dispatched_event,
 )
-from artagents.core.task.lifecycle import cmd_status
+from astrid.core.task.lifecycle import cmd_status
 
 
-_BODY = '''from artagents.orchestrate import orchestrator, code
+_BODY = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.app")
 def app(): return [
     code("step_a", argv=["echo","a"]),
@@ -62,7 +62,7 @@ def test_status_no_active_run_prints_recovery(tmp_path: Path) -> None:
         rc = cmd_status(["--project", "missing"], projects_root=projects)
     assert rc == 1
     assert "no active run" in err.getvalue()
-    assert "artagents start" in err.getvalue()
+    assert "astrid start" in err.getvalue()
 
 
 def test_status_does_not_mutate_events_jsonl(tmp_path: Path) -> None:

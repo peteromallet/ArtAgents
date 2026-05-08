@@ -3,8 +3,8 @@ import sys
 import unittest
 from pathlib import Path
 
-from artagents.core.element import catalog as effects_catalog
-from artagents import timeline
+from astrid.core.element import catalog as effects_catalog
+from astrid import timeline
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +21,7 @@ _GENERATOR_SPEC.loader.exec_module(gen_effect_registry)
 
 class CompositionElementTest(unittest.TestCase):
     def _assert_animation_plugin(self, animation_id: str, kind: str) -> None:
-        root = ROOT / "artagents" / "packs" / "builtin" / "elements" / "animations" / animation_id
+        root = ROOT / "astrid" / "packs" / "builtin" / "elements" / "animations" / animation_id
         for filename in ("component.tsx", "element.yaml"):
             self.assertTrue((root / filename).is_file(), f"{root / filename} missing")
         self.assertEqual(effects_catalog.read_animation_meta(animation_id)["kind"], kind)
@@ -56,7 +56,7 @@ class CompositionElementTest(unittest.TestCase):
         }
         self.assertEqual(set(expected), set(effects_catalog.list_animation_ids()))
         for animation_id, kind in expected.items():
-            root = ROOT / "artagents" / "packs" / "builtin" / "elements" / "animations" / animation_id
+            root = ROOT / "astrid" / "packs" / "builtin" / "elements" / "animations" / animation_id
             for filename in ("component.tsx", "element.yaml"):
                 self.assertTrue((root / filename).is_file(), f"{root / filename} missing")
             self.assertEqual(effects_catalog.read_animation_meta(animation_id)["kind"], kind)

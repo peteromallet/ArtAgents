@@ -1,6 +1,6 @@
-# ArtAgents
+# Astrid
 
-ArtAgents is a harness toolkit for agents and humans to make art.
+Astrid is a harness toolkit for agents and humans to make art.
 
 ## How it works
 
@@ -23,10 +23,10 @@ Give this to your agents to get started:
 ┃                ELEMENTS       reusable pieces used by both                 ┃
 ◇                                                                            ◇
 ┃                           ◇  Getting Started  ◇                            ┃
-┃          git clone https://github.com/peteromallet/ArtAgents.git           ┃
-┃        python3 -m artagents [executors|orchestrators|elements] list        ┃
-┃    python3 -m artagents [executors|orchestrators|elements] inspect <id>    ┃
-┃     python3 -m artagents [executors|orchestrators] run <id> -- <args>      ┃
+┃          git clone https://github.com/peteromallet/Astrid.git           ┃
+┃        python3 -m astrid [executors|orchestrators|elements] list        ┃
+┃    python3 -m astrid [executors|orchestrators|elements] inspect <id>    ┃
+┃     python3 -m astrid [executors|orchestrators] run <id> -- <args>      ┃
 ◇                                                                            ◇
 ┃                          ◇  Make Something New  ◇                          ┃
 ┃            copy docs/templates/{executor,orchestrator,element}/            ┃

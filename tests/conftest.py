@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project import paths
-from artagents.core.task.env import (
+from astrid.core.project import paths
+from astrid.core.task.env import (
     TASK_ITEM_ID_ENV,
     TASK_ITERATION_ENV,
     TASK_PROJECT_ENV,
@@ -19,7 +19,7 @@ from artagents.core.task.env import (
 
 
 if "ARTAGENTS_TIMELINE_COMPOSITION_SRC" not in os.environ:
-    _package_src = Path(tempfile.mkdtemp(prefix="artagents-timeline-composition-src-"))
+    _package_src = Path(tempfile.mkdtemp(prefix="astrid-timeline-composition-src-"))
     os.environ["ARTAGENTS_TIMELINE_COMPOSITION_SRC"] = str(_package_src)
     atexit.register(lambda: shutil.rmtree(_package_src, ignore_errors=True))
 

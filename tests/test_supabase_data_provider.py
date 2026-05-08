@@ -1,4 +1,4 @@
-"""Unit tests for artagents.core.reigh.data_provider.SupabaseDataProvider."""
+"""Unit tests for astrid.core.reigh.data_provider.SupabaseDataProvider."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ import unittest
 from typing import Any
 from unittest.mock import patch
 
-from artagents.core.reigh import data_provider as dp_mod
-from artagents.core.reigh import timeline_io as tio
-from artagents.core.reigh.data_provider import SupabaseDataProvider
-from artagents.core.reigh.errors import TimelineVersionConflictError
-from artagents.core.reigh.supabase_client import SupabaseHTTPError
-from artagents.core.reigh.timeline_io import save_timeline
+from astrid.core.reigh import data_provider as dp_mod
+from astrid.core.reigh import timeline_io as tio
+from astrid.core.reigh.data_provider import SupabaseDataProvider
+from astrid.core.reigh.errors import TimelineVersionConflictError
+from astrid.core.reigh.supabase_client import SupabaseHTTPError
+from astrid.core.reigh.timeline_io import save_timeline
 
 
 def _canonical_timeline() -> dict[str, Any]:
@@ -64,7 +64,7 @@ class LoadTimelineTest(unittest.TestCase):
                 )
                 config, version = provider.load_timeline("proj-1", "tl-1")
         self.assertEqual(version, 7)
-        # Round-trip through artagents.timeline preserves the canonical clip shape.
+        # Round-trip through astrid.timeline preserves the canonical clip shape.
         self.assertEqual(config["clips"][0]["id"], "c1")
         self.assertEqual(fake.calls[0]["auth"], ("pat", "pat-token"))
 

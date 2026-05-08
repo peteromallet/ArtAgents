@@ -9,9 +9,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from artagents import doctor, setup_cli
-from artagents.core.element.registry import load_default_registry as load_element_registry
-from artagents.structure import TOP_LEVEL_ARTAGENTS_DIRS, validate_repo_structure
+from astrid import doctor, setup_cli
+from astrid.core.element.registry import load_default_registry as load_element_registry
+from astrid.structure import TOP_LEVEL_ARTAGENTS_DIRS, validate_repo_structure
 
 
 class DoctorSetupTest(unittest.TestCase):
@@ -26,7 +26,7 @@ class DoctorSetupTest(unittest.TestCase):
         result, stdout, stderr = self.capture(doctor.main, [])
 
         self.assertEqual(result, 0, stderr)
-        self.assertIn("ArtAgents doctor", stdout)
+        self.assertIn("Astrid doctor", stdout)
         self.assertIn("[ok] python:", stdout)
         self.assertIn("[ok] executor registry:", stdout)
         self.assertIn("[ok] orchestrator registry:", stdout)
@@ -68,11 +68,11 @@ class DoctorSetupTest(unittest.TestCase):
                 result, stdout, stderr = self.capture(setup_cli.main, [])
 
             self.assertEqual(result, 0, stderr)
-            self.assertIn("ArtAgents setup", stdout)
+            self.assertIn("Astrid setup", stdout)
             self.assertIn("dry-run: pass --apply", stdout)
             self.assertNotIn("elements sync", stdout)
-            self.assertFalse((project_root / ".artagents" / "elements" / "managed").exists())
-            self.assertFalse((project_root / "artagents" / "packs" / "local").exists())
+            self.assertFalse((project_root / ".astrid" / "elements" / "managed").exists())
+            self.assertFalse((project_root / "astrid" / "packs" / "local").exists())
 
     def test_setup_json_dry_run_is_machine_readable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -110,9 +110,9 @@ class DoctorSetupTest(unittest.TestCase):
     def test_repo_structure_guard_rejects_legacy_and_misplaced_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "artagents" / "conductors").mkdir(parents=True)
-            (root / "artagents" / "tools" / "reigh-data").mkdir(parents=True)
-            external_pack_dir = root / "artagents" / "packs" / "external"
+            (root / "astrid" / "conductors").mkdir(parents=True)
+            (root / "astrid" / "tools" / "reigh-data").mkdir(parents=True)
+            external_pack_dir = root / "astrid" / "packs" / "external"
             external_pack_dir.mkdir(parents=True)
             (external_pack_dir / "pack.yaml").write_text("id: external\n", encoding="utf-8")
             mixed_orchestrator = external_pack_dir / "vibecomfy"
@@ -169,10 +169,10 @@ class DoctorSetupTest(unittest.TestCase):
 
         self.assertFalse(report.ok)
         detail = "\n".join(report.errors)
-        self.assertIn("legacy public package must not exist: artagents/conductors", detail)
-        self.assertIn("top-level artagents directory is not a canonical concept: artagents/tools", detail)
+        self.assertIn("legacy public package must not exist: astrid/conductors", detail)
+        self.assertIn("top-level astrid directory is not a canonical concept: astrid/tools", detail)
         self.assertIn(
-            "orchestrator folder contains executor metadata: artagents/packs/external/vibecomfy",
+            "orchestrator folder contains executor metadata: astrid/packs/external/vibecomfy",
             detail,
         )
         self.assertIn("executor 'builtin.render' must live in pack 'builtin' but was found in pack 'external'", detail)

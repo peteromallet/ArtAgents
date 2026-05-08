@@ -3,7 +3,7 @@ import io
 import json
 import pkgutil
 
-from artagents import modalities, pipeline
+from astrid import modalities, pipeline
 
 
 def capture(argv: list[str]) -> tuple[int, str, str]:

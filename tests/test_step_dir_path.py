@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.paths import ProjectPathError
-from artagents.core.task.plan import TaskPlanError, step_dir_for, step_dir_for_path
+from astrid.core.project.paths import ProjectPathError
+from astrid.core.task.plan import TaskPlanError, step_dir_for, step_dir_for_path
 
 
 def test_step_dir_for_path_nested_tuple(tmp_path: Path) -> None:

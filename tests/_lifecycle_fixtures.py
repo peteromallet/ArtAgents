@@ -13,8 +13,8 @@ import os
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from artagents.core.task.lifecycle import cmd_start
-from artagents.orchestrate.compile import compile_to_path
+from astrid.core.task.lifecycle import cmd_start
+from astrid.orchestrate.compile import compile_to_path
 
 
 def make_pack(packs_root: Path, pack: str, module_name: str, body: str) -> Path:

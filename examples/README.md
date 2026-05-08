@@ -9,8 +9,8 @@ briefs. Generated media does not belong here.
 to commit and useful for manual smoke runs:
 
 ```bash
-python3 -m artagents --brief examples/briefs/cinematic.txt --out runs/cinematic --render --target-duration 15
-python3 -m artagents --brief examples/briefs/surreal.txt --out runs/surreal --render --target-duration 15
+python3 -m astrid --brief examples/briefs/cinematic.txt --out runs/cinematic --render --target-duration 15
+python3 -m astrid --brief examples/briefs/surreal.txt --out runs/surreal --render --target-duration 15
 ```
 
 ## Media Fixtures

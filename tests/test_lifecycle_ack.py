@@ -16,39 +16,39 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent))
 from _lifecycle_fixtures import setup_run  # noqa: E402
 
-from artagents.core.task.active_run import read_active_run
-from artagents.core.task.events import (
+from astrid.core.task.active_run import read_active_run
+from astrid.core.task.events import (
     append_event,
     make_produces_check_failed_event,
     make_step_attested_event,
 )
-from artagents.core.task.lifecycle import cmd_ack
+from astrid.core.task.lifecycle import cmd_ack
 
 
-_ATTESTED_REVIEW = '''from artagents.orchestrate import orchestrator, attested
+_ATTESTED_REVIEW = '''from astrid.orchestrate import orchestrator, attested
 @orchestrator("demo.review")
 def main(): return [attested("review", command="review.sh", instructions="please review", ack="actor")]
 '''
 
-_ATTESTED_PRODUCES = '''from artagents.orchestrate import orchestrator, attested
-from artagents.verify import json_file
+_ATTESTED_PRODUCES = '''from astrid.orchestrate import orchestrator, attested
+from astrid.verify import json_file
 @orchestrator("demo.with_produces")
 def main(): return [attested("review", command="review.sh", instructions="check", ack="actor", produces={"out": json_file()})]
 '''
 
-_ITER = '''from artagents.orchestrate import orchestrator, attested, repeat_until
+_ITER = '''from astrid.orchestrate import orchestrator, attested, repeat_until
 @orchestrator("demo.iter")
 def main(): return [attested("review", command="r.sh", instructions="ok", ack="actor",
     repeat=repeat_until(condition="user_approves", max_iterations=3, on_exhaust="fail"))]
 '''
 
-_NON_USER_APPROVES = '''from artagents.orchestrate import orchestrator, attested, repeat_until
+_NON_USER_APPROVES = '''from astrid.orchestrate import orchestrator, attested, repeat_until
 @orchestrator("demo.va")
 def main(): return [attested("review", command="r.sh", instructions="ok", ack="actor",
     repeat=repeat_until(condition="verifier_passes", max_iterations=3, on_exhaust="fail"))]
 '''
 
-_CODE = '''from artagents.orchestrate import orchestrator, code
+_CODE = '''from astrid.orchestrate import orchestrator, code
 @orchestrator("demo.code")
 def main(): return [code("step_a", argv=["echo","x"])]
 '''
@@ -91,7 +91,7 @@ def test_c_approve_both_flags_argparse_rejects(tmp_path: Path) -> None:
     assert rc != 0
 
 
-def test_d_approve_actor_not_matching_artagents_actor_rejected(tmp_path: Path) -> None:
+def test_d_approve_actor_not_matching_astrid_actor_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rd")
     os.environ["ARTAGENTS_ACTOR"] = "alice"
     rc, _, err = _ack(packs, projects, "review", "--project", "p", "--decision", "approve", "--actor", "carol")

@@ -6,7 +6,7 @@ from __future__ import annotations
 import io
 from contextlib import redirect_stderr, redirect_stdout
 
-from artagents.orchestrate import cli as author_cli
+from astrid.orchestrate import cli as author_cli
 
 
 def test_author_test_passes_against_committed_golden() -> None:

@@ -1,15 +1,15 @@
 import importlib.util
 import unittest
 
-from artagents.core.executor import ExecutorDefinition, ExecutorRegistry, load_default_registry as load_executor_registry
-from artagents.core.orchestrator import OrchestratorDefinition, OrchestratorRegistry, load_default_registry as load_orchestrator_registry
-import artagents.elements as legacy_elements
+from astrid.core.executor import ExecutorDefinition, ExecutorRegistry, load_default_registry as load_executor_registry
+from astrid.core.orchestrator import OrchestratorDefinition, OrchestratorRegistry, load_default_registry as load_orchestrator_registry
+import astrid.elements as legacy_elements
 
 
 class CanonicalAliasTest(unittest.TestCase):
     def test_orchestrator_api_uses_canonical_implementation(self) -> None:
-        self.assertEqual(OrchestratorDefinition.__module__, "artagents.core.orchestrator.schema")
-        self.assertEqual(OrchestratorRegistry.__module__, "artagents.core.orchestrator.registry")
+        self.assertEqual(OrchestratorDefinition.__module__, "astrid.core.orchestrator.schema")
+        self.assertEqual(OrchestratorRegistry.__module__, "astrid.core.orchestrator.registry")
 
         registry = load_orchestrator_registry()
 
@@ -17,8 +17,8 @@ class CanonicalAliasTest(unittest.TestCase):
         self.assertIsInstance(registry, OrchestratorRegistry)
 
     def test_executor_api_uses_canonical_implementation(self) -> None:
-        self.assertEqual(ExecutorDefinition.__module__, "artagents.core.executor.schema")
-        self.assertEqual(ExecutorRegistry.__module__, "artagents.core.executor.registry")
+        self.assertEqual(ExecutorDefinition.__module__, "astrid.core.executor.schema")
+        self.assertEqual(ExecutorRegistry.__module__, "astrid.core.executor.registry")
 
         registry = load_executor_registry()
 
@@ -27,19 +27,19 @@ class CanonicalAliasTest(unittest.TestCase):
         self.assertIsInstance(registry, ExecutorRegistry)
 
     def test_legacy_public_packages_are_absent(self) -> None:
-        self.assertIsNone(importlib.util.find_spec("artagents.performers"))
-        self.assertIsNone(importlib.util.find_spec("artagents.conductors"))
-        self.assertIsNone(importlib.util.find_spec("artagents.executors"))
-        self.assertIsNone(importlib.util.find_spec("artagents.orchestrators"))
+        self.assertIsNone(importlib.util.find_spec("astrid.performers"))
+        self.assertIsNone(importlib.util.find_spec("astrid.conductors"))
+        self.assertIsNone(importlib.util.find_spec("astrid.executors"))
+        self.assertIsNone(importlib.util.find_spec("astrid.orchestrators"))
 
     def test_element_framework_api_exports(self) -> None:
-        self.assertEqual(legacy_elements.ElementRegistry.__module__, "artagents.core.element.registry")
-        self.assertEqual(legacy_elements.ElementDefinition.__module__, "artagents.core.element.schema")
+        self.assertEqual(legacy_elements.ElementRegistry.__module__, "astrid.core.element.registry")
+        self.assertEqual(legacy_elements.ElementDefinition.__module__, "astrid.core.element.schema")
 
     def test_top_level_orchestrator_modules_are_absent(self) -> None:
-        self.assertIsNone(importlib.util.find_spec("artagents.event_talks"))
-        self.assertIsNone(importlib.util.find_spec("artagents.thumbnail_maker"))
-        self.assertIsNone(importlib.util.find_spec("artagents.understand"))
+        self.assertIsNone(importlib.util.find_spec("astrid.event_talks"))
+        self.assertIsNone(importlib.util.find_spec("astrid.thumbnail_maker"))
+        self.assertIsNone(importlib.util.find_spec("astrid.understand"))
 
 
 if __name__ == "__main__":

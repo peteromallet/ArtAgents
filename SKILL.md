@@ -1,1 +1,1 @@
-artagents/packs/_core/skill/SKILL.md
+astrid/packs/_core/skill/SKILL.md

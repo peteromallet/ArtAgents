@@ -9,9 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from artagents import pipeline
-from artagents.packs.upload.youtube.src import social_publish  # noqa: E402
-from artagents.packs.upload.youtube import run as publish_youtube  # noqa: E402
+from astrid import pipeline
+from astrid.packs.upload.youtube.src import social_publish  # noqa: E402
+from astrid.packs.upload.youtube import run as publish_youtube  # noqa: E402
 
 
 def test_publish_youtube_video_forwards_metadata(monkeypatch):

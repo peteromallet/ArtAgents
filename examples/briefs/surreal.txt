@@ -1,6 +1,6 @@
 A Surreal Mind-Bender
 
-This is a pure-generative video using ArtAgents to create a highly engaging, surreal, and unconventional sequence. Treat the pacing as erratic, dreamlike, and unpredictable.
+This is a pure-generative video using Astrid to create a highly engaging, surreal, and unconventional sequence. Treat the pacing as erratic, dreamlike, and unpredictable.
 
 Tone: trippy, disjointed, avant-garde, hyper-stimulating, and deeply surreal.
 

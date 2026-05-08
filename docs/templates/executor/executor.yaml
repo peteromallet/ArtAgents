@@ -24,7 +24,7 @@
     "argv": [
       "{python_exec}",
       "-m",
-      "artagents.packs.builtin.example.run",
+      "astrid.packs.builtin.example.run",
       "--input",
       "{input}",
       "--out",
@@ -39,7 +39,7 @@
     "network": false
   },
   "metadata": {
-    "runtime_module": "artagents.packs.builtin.example.run",
+    "runtime_module": "astrid.packs.builtin.example.run",
     "runtime_file": "run.py"
   }
 }

@@ -1,6 +1,6 @@
-# ArtAgents <-> Reigh Sprint 08 Integration Contracts
+# Astrid <-> Reigh Sprint 08 Integration Contracts
 
-This document pins the cross-repo contracts ArtAgents must follow while wiring
+This document pins the cross-repo contracts Astrid must follow while wiring
 into Reigh's bidirectional timeline editing platform. Paths are local sibling
 checkout paths as verified for this execution.
 
@@ -26,7 +26,7 @@ checkout paths as verified for this execution.
   - Claim POST uses service-role auth and body fields `worker_id`, `run_type`,
     `worker_pool`, and `task_types`: lines 88-110.
   - The current reference claims both `banodoco_timeline_generate` and
-    `banodoco_render_timeline`; ArtAgents' Sprint 08 worker side is scoped to
+    `banodoco_render_timeline`; Astrid' Sprint 08 worker side is scoped to
     `banodoco_timeline_generate`: lines 93-103 and 177-202.
   - Claimed tasks return `task_id`, `params`, `task_type`, and `project_id`:
     lines 181-200.
@@ -48,7 +48,7 @@ checkout paths as verified for this execution.
   - Production RPC params are exactly `p_timeline_id`, `p_expected_version`,
     and `p_config` in the Reigh migration. The reference also contains an
     optional `p_audited_user_id` path at lines 211-214, but the current Reigh
-    RPC signature does not accept that fourth arg, so ArtAgents must not send it.
+    RPC signature does not accept that fourth arg, so Astrid must not send it.
     See lines 199-218 here and the migration lines 4-25 below.
 
 - `/Users/peteromalley/Documents/banodoco-workspace/banodoco-worker/worker_jwt.py`
@@ -211,7 +211,7 @@ those paths do not exist.
 
 ### 1. Worker Reception Model
 
-ArtAgents implements the worker side of Reigh's existing banodoco worker pool.
+Astrid implements the worker side of Reigh's existing banodoco worker pool.
 It should poll `POST /functions/v1/claim-next-task` with:
 
 ```json
@@ -307,7 +307,7 @@ consumable by AA.
 
 ## Shared Package Version Strategy
 
-Use root `file:` dependencies in ArtAgents' root `package.json`:
+Use root `file:` dependencies in Astrid' root `package.json`:
 
 ```json
 {

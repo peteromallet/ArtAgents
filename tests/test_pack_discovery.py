@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.core.element.registry import load_pack_elements
-from artagents.core.executor.registry import ExecutorRegistry, load_default_registry as load_executor_registry, load_pack_executors
-from artagents.core.orchestrator.registry import load_default_registry as load_orchestrator_registry, load_pack_orchestrators
-from artagents.core.pack import PackValidationError, discover_packs, qualified_id_pack_id
+from astrid.core.element.registry import load_pack_elements
+from astrid.core.executor.registry import ExecutorRegistry, load_default_registry as load_executor_registry, load_pack_executors
+from astrid.core.orchestrator.registry import load_default_registry as load_orchestrator_registry, load_pack_orchestrators
+from astrid.core.pack import PackValidationError, discover_packs, qualified_id_pack_id
 
 
 def write_pack(root: Path, pack_id: str, *, folder: str | None = None) -> Path:
@@ -105,11 +105,11 @@ class PackDiscoveryTest(unittest.TestCase):
             packs = discover_packs(packs_root)
             self.assertEqual([pack.id for pack in packs], ["builtin"])
 
-            with mock.patch("artagents.core.executor.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.executor.registry.discover_packs", return_value=packs):
                 executors = load_pack_executors()
-            with mock.patch("artagents.core.orchestrator.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.orchestrator.registry.discover_packs", return_value=packs):
                 orchestrators = load_pack_orchestrators()
-            with mock.patch("artagents.core.element.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.element.registry.discover_packs", return_value=packs):
                 elements = load_pack_elements()
 
         self.assertEqual([executor.id for executor in executors], ["builtin.sample_executor"])
@@ -136,7 +136,7 @@ class PackDiscoveryTest(unittest.TestCase):
             write_executor(pack_root, "second", "builtin.duplicate")
             packs = discover_packs(Path(tmp) / "packs")
 
-            with mock.patch("artagents.core.executor.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.executor.registry.discover_packs", return_value=packs):
                 with self.assertRaisesRegex(Exception, "duplicate executor id"):
                     ExecutorRegistry(load_pack_executors())
 
@@ -154,7 +154,7 @@ class PackDiscoveryTest(unittest.TestCase):
             write_executor(pack_root, "moirae", "external.moirae")
             packs = discover_packs(Path(tmp) / "packs")
 
-            with mock.patch("artagents.core.executor.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.executor.registry.discover_packs", return_value=packs):
                 with self.assertRaisesRegex(PackValidationError, "found in pack 'builtin'"):
                     load_pack_executors()
 
@@ -164,7 +164,7 @@ class PackDiscoveryTest(unittest.TestCase):
             write_orchestrator(pack_root, "hype", "builtin.hype")
             packs = discover_packs(Path(tmp) / "packs")
 
-            with mock.patch("artagents.core.orchestrator.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.orchestrator.registry.discover_packs", return_value=packs):
                 with self.assertRaisesRegex(PackValidationError, "found in pack 'external'"):
                     load_pack_orchestrators()
 
@@ -174,7 +174,7 @@ class PackDiscoveryTest(unittest.TestCase):
             write_element(pack_root, "effects", "stamp", pack_id="external")
             packs = discover_packs(Path(tmp) / "packs")
 
-            with mock.patch("artagents.core.element.registry.discover_packs", return_value=packs):
+            with mock.patch("astrid.core.element.registry.discover_packs", return_value=packs):
                 with self.assertRaisesRegex(PackValidationError, "declares pack_id 'external'"):
                     load_pack_elements()
 

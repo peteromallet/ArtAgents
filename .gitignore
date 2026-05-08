@@ -33,7 +33,7 @@ remotion/out/
 # Generated runtime artifacts
 runs/
 cache/
-.artagents/
+.astrid/
 **/.cas/
 */cache/
 */out/
@@ -54,7 +54,7 @@ cache/
 .megaplan-worktrees/
 
 # Local scratch pack (gitignored)
-/artagents/packs/local/
+/astrid/packs/local/
 
 # Generated orchestrator build artifacts (compiled DSL JSON)
-artagents/packs/*/build/
+astrid/packs/*/build/

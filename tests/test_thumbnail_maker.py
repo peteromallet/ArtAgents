@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from artagents.packs.builtin.thumbnail_maker import run as thumbnail_maker
+from astrid.packs.builtin.thumbnail_maker import run as thumbnail_maker
 
 
 class ThumbnailMakerTest(unittest.TestCase):
@@ -154,10 +154,10 @@ class ThumbnailMakerTest(unittest.TestCase):
 
             with (
                 mock.patch.object(thumbnail_maker.asset_cache, "resolve_input", side_effect=fake_resolve),
-                mock.patch("artagents.packs.builtin.scenes.run.detect_scenes", side_effect=fake_detect),
-                mock.patch("artagents.packs.builtin.scenes.run.write_outputs"),
-                mock.patch("artagents.packs.builtin.shots.run.build_shots", side_effect=fake_build_shots),
-                mock.patch("artagents.packs.builtin.generate_image.run.main", side_effect=fake_generate),
+                mock.patch("astrid.packs.builtin.scenes.run.detect_scenes", side_effect=fake_detect),
+                mock.patch("astrid.packs.builtin.scenes.run.write_outputs"),
+                mock.patch("astrid.packs.builtin.shots.run.build_shots", side_effect=fake_build_shots),
+                mock.patch("astrid.packs.builtin.generate_image.run.main", side_effect=fake_generate),
             ):
                 result = thumbnail_maker.main(
                     [
@@ -227,7 +227,7 @@ class ThumbnailMakerTest(unittest.TestCase):
                 )
                 return 0
 
-            with mock.patch("artagents.packs.builtin.generate_image.run.main", side_effect=fake_generate) as generate_main:
+            with mock.patch("astrid.packs.builtin.generate_image.run.main", side_effect=fake_generate) as generate_main:
                 manifest = thumbnail_maker.generate_thumbnail_outputs(args, layout, plan, reference_pack)
 
         generate_main.assert_called_once()

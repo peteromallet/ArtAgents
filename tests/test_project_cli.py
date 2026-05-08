@@ -26,12 +26,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from artagents.core.project import paths
-from artagents.core.project import cli as project_cli
-from artagents.core.reigh import data_provider as dp_mod
-from artagents.core.reigh import timeline_io as tio
-from artagents.core.reigh.errors import TimelineVersionConflictError
-from artagents.core.reigh.supabase_client import SupabaseHTTPError
+from astrid.core.project import paths
+from astrid.core.project import cli as project_cli
+from astrid.core.reigh import data_provider as dp_mod
+from astrid.core.reigh import timeline_io as tio
+from astrid.core.reigh.errors import TimelineVersionConflictError
+from astrid.core.reigh.supabase_client import SupabaseHTTPError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,9 +111,9 @@ class ListCLITest(unittest.TestCase):
             }
 
         with patch(
-            "artagents.core.reigh.supabase_client.post_json", side_effect=fake_post
-        ), patch("artagents.core.reigh.env.resolve_pat", return_value="pat-token"), patch(
-            "artagents.core.reigh.env.resolve_api_url",
+            "astrid.core.reigh.supabase_client.post_json", side_effect=fake_post
+        ), patch("astrid.core.reigh.env.resolve_pat", return_value="pat-token"), patch(
+            "astrid.core.reigh.env.resolve_api_url",
             return_value="https://x/functions/v1/reigh-data-fetch",
         ):
             rc = project_cli.main(["list", "proj-1", "--json"])
@@ -182,18 +182,18 @@ class EditCLITest(unittest.TestCase):
             return FakeCompleted(stdout=json.dumps(ops_helper_result) + "\n")
 
         with patch(
-            "artagents.core.reigh.env.resolve_supabase_url", return_value="https://x"
+            "astrid.core.reigh.env.resolve_supabase_url", return_value="https://x"
         ), patch(
-            "artagents.core.reigh.env.resolve_api_url",
+            "astrid.core.reigh.env.resolve_api_url",
             return_value="https://x/functions/v1/reigh-data-fetch",
-        ), patch("artagents.core.reigh.env.resolve_pat", return_value="pat-token"), patch(
-            "artagents.core.reigh.env.resolve_service_role_key", return_value="srv-key"
+        ), patch("astrid.core.reigh.env.resolve_pat", return_value="pat-token"), patch(
+            "astrid.core.reigh.env.resolve_service_role_key", return_value="srv-key"
         ), patch.object(dp_mod, "post_json", side_effect=fake_post_json), patch.object(
             tio, "post_json", side_effect=fake_post_json
         ), patch.object(tio, "rpc", side_effect=fake_rpc), patch.object(
             project_cli, "OPS_HELPER", ROOT / "scripts" / "node" / "ops_helper.mjs"
         ), patch("shutil.which", return_value="/usr/bin/node"), patch(
-            "artagents.core.project.cli.subprocess.run", side_effect=fake_subprocess_run
+            "astrid.core.project.cli.subprocess.run", side_effect=fake_subprocess_run
         ):
             rc = project_cli.main(argv)
         return rc, fetch_calls, ops_calls, rpc_calls

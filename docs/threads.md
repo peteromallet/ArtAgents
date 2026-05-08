@@ -1,10 +1,10 @@
 # Threads
 
-Threads are the local continuity layer for ArtAgents runs. Each eligible executor
-or orchestrator run writes `runs/<slug>/run.json`, and `.artagents/threads.json`
+Threads are the local continuity layer for Astrid runs. Each eligible executor
+or orchestrator run writes `runs/<slug>/run.json`, and `.astrid/threads.json`
 keeps the active thread plus ordered run ids. The index is schema version 1,
 locked with `fcntl.flock`, written atomically, and rotated through
-`.artagents/threads.json.bak`.
+`.astrid/threads.json.bak`.
 
 ## Model
 
@@ -17,7 +17,7 @@ locked with `fcntl.flock`, written atomically, and rotated through
   previous run; `chosen` means it consumed a selected variant.
 - Output paths are repo-relative. Private content under `runs/<slug>/private/`
   is represented by hashes and labels only.
-- `.artagents/iteration_cache/` stores per-run summaries for iteration videos;
+- `.astrid/iteration_cache/` stores per-run summaries for iteration videos;
   it is cache state, not thread identity.
 
 ## Prefixes
@@ -33,7 +33,7 @@ Notice: <lifecycle notice>
 ```
 
 The stable order is `[thread]`, optional `[variants]`, optional `Notice:`, then a
-blank line. `python3 -m artagents thread show @active` is the source of truth if
+blank line. `python3 -m astrid thread show @active` is the source of truth if
 the prefix is surprising.
 
 ## Privacy & Redaction
@@ -48,7 +48,7 @@ private directory. To opt into path-based privacy, put sensitive inputs under
 the private path or plaintext. Use:
 
 ```bash
-python3 -m artagents thread show @active --no-content
+python3 -m astrid thread show @active --no-content
 ```
 
 `--no-content` keeps ids, labels, hashes, status, and structural provenance while
@@ -58,8 +58,8 @@ privacy flag in v1.
 ## Concurrent Variant Selection
 
 Variant producers write append-only selection events under
-`.artagents/threads/<thread-id>/selections.jsonl` and lock-protected group state
-under `.artagents/threads/<thread-id>/groups.json`.
+`.astrid/threads/<thread-id>/selections.jsonl` and lock-protected group state
+under `.astrid/threads/<thread-id>/groups.json`.
 
 Selections are append-only; the most recent write is authoritative on read;
 prior selections are preserved as history but do not affect current keepers.
@@ -68,8 +68,8 @@ That rule makes concurrent `thread keep` or `thread dismiss` writes safe. Review
 history when two terminals disagree, then write the current keeper explicitly:
 
 ```bash
-python3 -m artagents thread keep <run-id>:<n>[,<n>]
-python3 -m artagents thread dismiss <run-id>:none
+python3 -m astrid thread keep <run-id>:<n>[,<n>]
+python3 -m astrid thread dismiss <run-id>:none
 ```
 
 ## Tier Firing Rules
@@ -88,7 +88,7 @@ are not v1 behavior.
 Before rendering an iteration video, inspect the thread:
 
 ```bash
-python3 -m artagents.packs.builtin.iteration_video.run inspect <thread>
+python3 -m astrid.packs.builtin.iteration_video.run inspect <thread>
 ```
 
 Inspect does not render and does not dispatch summarization. It reports detected
@@ -109,8 +109,8 @@ records `iteration.mp4` with the other four SD-022 outputs.
 
 ## Stale Locks
 
-If a command times out waiting for `.artagents/threads.json.lock`, first verify
-that no ArtAgents process is still running or writing thread state. After that
+If a command times out waiting for `.astrid/threads.json.lock`, first verify
+that no Astrid process is still running or writing thread state. After that
 process check, remove the stale lock file manually and rerun the command. The
 index keeps a `.bak` copy for recovery if a previous write was interrupted.
 

@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from artagents.core.project.project import create_project
-from artagents.core.task import gate as task_gate
-from artagents.core.task.active_run import write_active_run
-from artagents.core.task.env import (
+from astrid.core.project.project import create_project
+from astrid.core.task import gate as task_gate
+from astrid.core.task.active_run import write_active_run
+from astrid.core.task.env import (
     ARTAGENTS_ACTOR,
     TASK_ITEM_ID_ENV,
     child_subprocess_env,
 )
-from artagents.core.task.events import (
+from astrid.core.task.events import (
     append_event,
     make_for_each_expanded_event,
     make_item_completed_event,
@@ -21,7 +21,7 @@ from artagents.core.task.events import (
     make_run_started_event,
     read_events,
 )
-from artagents.core.task.plan import compute_plan_hash, load_plan, step_dir_for_path
+from astrid.core.task.plan import compute_plan_hash, load_plan, step_dir_for_path
 
 
 def _setup(tmp_projects_root: Path, plan: dict, *, slug: str = "demo", run_id: str = "run-1") -> Path:

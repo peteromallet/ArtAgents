@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from artagents.core.executor.registry import load_default_registry as load_executor_registry
-from artagents.core.orchestrator.registry import load_default_registry as load_orchestrator_registry
+from astrid.core.executor.registry import load_default_registry as load_executor_registry
+from astrid.core.orchestrator.registry import load_default_registry as load_orchestrator_registry
 
 
 class DefaultRegistryScopeTest(unittest.TestCase):
@@ -21,8 +21,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
         self.assertEqual(youtube.metadata["source"], "pack")
         self.assertEqual(youtube.metadata["source_pack"], "upload")
         self.assertNotIn("pack_id", youtube.metadata)
-        self.assertTrue(youtube.metadata["executor_root"].endswith("artagents/packs/upload/youtube"))
-        self.assertTrue(youtube.metadata["manifest_file"].endswith("artagents/packs/upload/youtube/executor.yaml"))
+        self.assertTrue(youtube.metadata["executor_root"].endswith("astrid/packs/upload/youtube"))
+        self.assertTrue(youtube.metadata["manifest_file"].endswith("astrid/packs/upload/youtube/executor.yaml"))
 
         for executor_id, folder in (
             ("builtin.audio_understand", "audio_understand"),
@@ -34,15 +34,15 @@ class DefaultRegistryScopeTest(unittest.TestCase):
                 self.assertEqual(action.metadata["source"], "pack")
                 self.assertEqual(action.metadata["source_pack"], "builtin")
                 self.assertNotIn("pack_id", action.metadata)
-                self.assertTrue(action.metadata["executor_root"].endswith(f"artagents/packs/builtin/{folder}"))
-                self.assertTrue(action.metadata["manifest_file"].endswith(f"artagents/packs/builtin/{folder}/executor.yaml"))
+                self.assertTrue(action.metadata["executor_root"].endswith(f"astrid/packs/builtin/{folder}"))
+                self.assertTrue(action.metadata["manifest_file"].endswith(f"astrid/packs/builtin/{folder}/executor.yaml"))
 
         vibecomfy = canonical.get("external.vibecomfy.run")
         self.assertEqual(vibecomfy.kind, "external")
         self.assertEqual(vibecomfy.metadata["pack_id"], "vibecomfy")
         self.assertEqual(vibecomfy.metadata["source_pack"], "external")
         self.assertEqual(vibecomfy.metadata["source"], "pack")
-        self.assertTrue(vibecomfy.metadata["executor_root"].endswith("artagents/packs/external/vibecomfy"))
+        self.assertTrue(vibecomfy.metadata["executor_root"].endswith("astrid/packs/external/vibecomfy"))
 
     def test_default_orchestrator_registries_do_not_classify_vibecomfy_as_orchestrator(self) -> None:
         canonical = load_orchestrator_registry(executor_registry=load_executor_registry())
@@ -59,14 +59,14 @@ class DefaultRegistryScopeTest(unittest.TestCase):
     def test_canonical_builtin_executor_runtime_module(self) -> None:
         canonical = load_executor_registry()
         render = canonical.get("builtin.render")
-        self.assertEqual(render.metadata["runtime_module"], "artagents.packs.builtin.render.run")
+        self.assertEqual(render.metadata["runtime_module"], "astrid.packs.builtin.render.run")
 
     def test_external_executor_roots_are_pack_native(self) -> None:
         registry = load_executor_registry()
 
-        self.assertTrue(registry.get("external.moirae").metadata["executor_root"].endswith("artagents/packs/external/moirae"))
+        self.assertTrue(registry.get("external.moirae").metadata["executor_root"].endswith("astrid/packs/external/moirae"))
         self.assertTrue(
-            registry.get("external.vibecomfy.run").metadata["executor_root"].endswith("artagents/packs/external/vibecomfy")
+            registry.get("external.vibecomfy.run").metadata["executor_root"].endswith("astrid/packs/external/vibecomfy")
         )
 
 

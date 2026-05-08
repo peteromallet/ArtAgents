@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from artagents.core.pack import (
+from astrid.core.pack import (
     PackValidationError,
     load_pack_manifest,
     pack_manifest_path,
