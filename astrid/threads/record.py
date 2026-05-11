@@ -36,6 +36,7 @@ def build_run_record(
     cli_args: list[str] | None = None,
     parent_run_ids: list[dict[str, Any]] | None = None,
     external_service_calls: list[dict[str, str]] | None = None,
+    timeline_id: str | None = None,
 ) -> dict[str, Any]:
     inputs = dict(inputs or {})
     out_path.mkdir(parents=True, exist_ok=True)
@@ -66,6 +67,8 @@ def build_run_record(
         "external_service_calls": normalize_external_service_calls(external_service_calls or _calls_from_inputs(inputs)),
         "starred": False,
     }
+    if timeline_id is not None:
+        payload["timeline_id"] = timeline_id
     return validate_run_record(payload)
 
 

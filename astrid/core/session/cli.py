@@ -19,6 +19,9 @@ from typing import Any
 
 from astrid.core.project.current_run import read_current_run
 from astrid.core.project.paths import project_dir, resolve_projects_root
+from astrid.core.timeline import crud as timeline_crud
+from astrid.core.timeline.defaults import read_project_default
+from astrid.core.timeline.paths import find_timeline_by_slug, find_timeline_slug_for_ulid
 from astrid.core.session.binding import (
     ASTRID_SESSION_ID_ENV,
     SessionBindingError,
@@ -165,9 +168,81 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
         session.to_json(session_path(session.id))
         sid = session.id
         slug = session.project
+        # Resumed sessions: use the stored timeline info; do NOT backfill.
+        resolved_timeline_slug = session.timeline
+        resolved_timeline_id = session.timeline_id
     else:
         slug = args.project
         sid = generate_ulid()
+        # Resolve timeline: explicit flag → project default → prompt / error.
+        resolved_timeline_id: str | None = None
+        if args.timeline:
+            found = find_timeline_by_slug(slug, args.timeline)
+            if found is None:
+                print(
+                    f"attach: timeline '{args.timeline}' not found in project '{slug}'",
+                    file=sys.stderr,
+                )
+                return 2
+            resolved_timeline_id = found[0]
+            resolved_timeline_slug = args.timeline
+        else:
+            default_ulid = read_project_default(slug)
+            if default_ulid is not None:
+                default_slug = find_timeline_slug_for_ulid(slug, default_ulid)
+                if default_slug is not None:
+                    resolved_timeline_id = default_ulid
+                    resolved_timeline_slug = default_slug
+                    print(
+                        f"Using default timeline: {default_slug}. "
+                        f"Use --timeline to override.",
+                        file=sys.stderr,
+                    )
+                else:
+                    resolved_timeline_slug = None
+            else:
+                resolved_timeline_slug = None
+
+            if resolved_timeline_id is None:
+                # No explicit flag, no default → prompt or error.
+                from astrid.core.timeline.crud import list_timelines
+
+                available = list_timelines(slug)
+                if not available:
+                    # Bootstrap case: no timelines at all.  Proceed without one;
+                    # the user can create timelines once attached.
+                    print(
+                        f"attach: no timelines exist for project '{slug}' yet; "
+                        "session bound without a timeline. "
+                        "Run `astrid timelines create <slug>` to make one.",
+                        file=sys.stderr,
+                    )
+                    resolved_timeline_slug = None
+                elif sys.stdin.isatty():
+                    print("Available timelines:", file=sys.stderr)
+                    for t in available:
+                        print(f"  {t.slug}  ({t.name})", file=sys.stderr)
+                    try:
+                        choice = input("Choose a timeline slug: ").strip()
+                    except (EOFError, KeyboardInterrupt):
+                        print("", file=sys.stderr)
+                        print("attach: cancelled", file=sys.stderr)
+                        return 2
+                    found = find_timeline_by_slug(slug, choice)
+                    if found is None:
+                        print(
+                            f"attach: timeline '{choice}' not found",
+                            file=sys.stderr,
+                        )
+                        return 2
+                    resolved_timeline_id = found[0]
+                    resolved_timeline_slug = choice
+                else:
+                    print(
+                        "no default timeline; pass --timeline <slug>",
+                        file=sys.stderr,
+                    )
+                    return 2
 
     # Determine the role from current_run.json + lease.
     on_disk_run_id = read_current_run(slug)
@@ -191,7 +266,8 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
         session = Session(
             id=sid,
             project=slug,
-            timeline=args.timeline,
+            timeline=resolved_timeline_slug,
+            timeline_id=resolved_timeline_id,
             run_id=on_disk_run_id,
             agent_id=agent_id,
             attached_at=_now_iso(),
@@ -203,7 +279,7 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
     print(ATTACH_HEADER, file=out)
     print(EXPORT_LINE_TEMPLATE.format(sid=sid), file=out)
     print(f"project: {slug}", file=out)
-    print(f"timeline: {args.timeline or NONE_PLACEHOLDER}", file=out)
+    print(f"timeline: {resolved_timeline_slug or NONE_PLACEHOLDER}", file=out)
     print(f"run: {on_disk_run_id or NONE_PLACEHOLDER}", file=out)
     print(f"role: {role}", file=out)
     if takeover_hint is not None:
@@ -222,8 +298,14 @@ def cmd_sessions_ls(args: argparse.Namespace, *, out: Any = None) -> int:
         print("no sessions", file=out)
         return 0
     for s in sessions:
+        timeline_display = s.timeline
+        if timeline_display is None and s.timeline_id is not None:
+            timeline_display = find_timeline_slug_for_ulid(
+                s.project, s.timeline_id
+            )
         print(
-            f"{s.id}  project={s.project}  timeline={s.timeline or NONE_PLACEHOLDER}  "
+            f"{s.id}  project={s.project}  "
+            f"timeline={timeline_display or NONE_PLACEHOLDER}  "
             f"run={s.run_id or NONE_PLACEHOLDER}  last_used={s.last_used_at}",
             file=out,
         )
@@ -390,10 +472,41 @@ def _render_bound_status(session: Session, *, out: Any) -> int:
     on_disk_run_id = read_current_run(session.project)
     run_id = on_disk_run_id or session.run_id
 
+    # Resolve timeline slug from timeline_id when needed.
+    timeline_slug = session.timeline
+    timeline_final_count = 0
+    # Also fall back to project default when session has no timeline binding.
+    if timeline_slug is None and session.timeline_id is None:
+        from astrid.core.timeline.defaults import read_project_default
+
+        default_ulid = read_project_default(session.project)
+        if default_ulid is not None:
+            default_slug = find_timeline_slug_for_ulid(
+                session.project, default_ulid
+            )
+            if default_slug is not None:
+                timeline_slug = default_slug
+    if timeline_slug is not None or session.timeline_id is not None:
+        if timeline_slug is None and session.timeline_id is not None:
+            timeline_slug = find_timeline_slug_for_ulid(
+                session.project, session.timeline_id
+            )
+        if timeline_slug is not None:
+            try:
+                data = timeline_crud.show_timeline(session.project, timeline_slug)
+                if data is not None:
+                    timeline_final_count = len(data["manifest"].final_outputs)
+            except Exception:
+                pass  # best-effort; don't break status for a corrupt timeline
+
+    timeline_line = f"timeline: {timeline_slug or NONE_PLACEHOLDER}"
+    if timeline_final_count > 0:
+        timeline_line += f" ({timeline_final_count} final output{'s' if timeline_final_count != 1 else ''})"
+
     print(f"session: {session.id}", file=out)
     print(f"agent: {agent_id}", file=out)
     print(f"project: {session.project}", file=out)
-    print(f"timeline: {session.timeline or NONE_PLACEHOLDER}", file=out)
+    print(timeline_line, file=out)
     print(f"run: {run_id or NONE_PLACEHOLDER}", file=out)
 
     current_step = NONE_PLACEHOLDER

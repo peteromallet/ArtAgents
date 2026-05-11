@@ -89,6 +89,7 @@ def _seed_identity_and_session(
                 "schema_version": 1,
                 "slug": project,
                 "updated_at": "2026-05-11T00:00:00Z",
+                "default_timeline_id": None,
             }
         ),
         encoding="utf-8",
@@ -108,12 +109,12 @@ def _seed_identity_and_session(
     sess = Session(
         id=sid,
         project=project,
-        timeline=None,
-        run_id=run_id,
         agent_id="claude-1",
         attached_at="2026-05-11T00:00:00Z",
         last_used_at="2026-05-11T00:00:00Z",
         role="writer",
+        timeline=None,
+        run_id=run_id,
     )
     sess.to_json(session_path(sid))
     return sess, proj_root

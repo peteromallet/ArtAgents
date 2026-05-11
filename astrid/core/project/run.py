@@ -66,6 +66,7 @@ def prepare_project_run(
     metadata: Mapping[str, Any] | None = None,
     root: str | Path | None = None,
     run_id: str | None = None,
+    timeline_id: str | None = None,
 ) -> ProjectRunContext:
     require_project(project_slug, root=root)
     projects_root = paths.resolve_projects_root(root)
@@ -99,6 +100,8 @@ def prepare_project_run(
             record["kind"] = kind
         if argv is not None:
             record["argv"] = redact_cli_args(list(argv))
+        if timeline_id is not None:
+            record["timeline_id"] = timeline_id
         return ProjectRunContext(
             project_slug=project_slug,
             run_id=parent_run_id,
@@ -121,6 +124,7 @@ def prepare_project_run(
         out=run_root,
         argv=redact_cli_args(list(argv or ())),
         metadata=dict(metadata or {}),
+        timeline_id=timeline_id,
     )
     run_json_path = paths.run_json_path(project_slug, effective_run_id, root=projects_root)
     write_json_atomic(run_json_path, record)

@@ -328,9 +328,21 @@ def _print_project_tree(payload: dict[str, Any]) -> None:
     for run_id in payload.get("runs", []):
         print(f"    {run_id}/")
         print("      run.json")
-        print("      timeline.json")
         print("      assets.json")
         print("      metadata.json")
+    # Sprint 2: timelines as first-class containers.
+    try:
+        from astrid.core.timeline import crud as timeline_crud
+        summaries = timeline_crud.list_timelines(payload["project"]["slug"])
+    except Exception:
+        summaries = []
+    if summaries:
+        print("  timelines/")
+        for t in summaries:
+            print(f"    {t.ulid}/  (slug: {t.slug}, name: {t.name})")
+            print("      assembly.json")
+            print("      manifest.json")
+            print("      display.json")
     if payload.get("project_id"):
         print(f"reigh project_id: {payload['project_id']}")
 

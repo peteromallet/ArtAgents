@@ -32,6 +32,38 @@ from astrid.core.session.identity import Identity, write_identity
 def _seed_project(projects_root: Path, slug: str) -> Path:
     pdir = projects_root / slug
     pdir.mkdir(parents=True, exist_ok=True)
+
+    # Seed a default timeline so Sprint 2 resolution works.
+    from astrid.core.session.ulid import generate_ulid
+
+    timeline_ulid = generate_ulid()
+    tdir = pdir / "timelines" / timeline_ulid
+    tdir.mkdir(parents=True, exist_ok=True)
+    (tdir / "assembly.json").write_text(
+        json.dumps({"schema_version": 1, "assembly": {}}), encoding="utf-8"
+    )
+    (tdir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "contributing_runs": [],
+                "final_outputs": [],
+                "tombstoned_at": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tdir / "display.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "slug": "primary",
+                "name": "Primary",
+                "is_default": True,
+            }
+        ),
+        encoding="utf-8",
+    )
     (pdir / "project.json").write_text(
         json.dumps(
             {
@@ -40,6 +72,7 @@ def _seed_project(projects_root: Path, slug: str) -> Path:
                 "schema_version": 1,
                 "slug": slug,
                 "updated_at": "2026-05-11T00:00:00Z",
+                "default_timeline_id": timeline_ulid,
             }
         ),
         encoding="utf-8",

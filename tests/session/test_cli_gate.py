@@ -94,6 +94,47 @@ def test_allowlist_attach_runs_without_session(
 ) -> None:
     monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
     create_project("demo")
+
+    # Seed a default timeline so Sprint 2 resolution works.
+    from astrid.core.session.ulid import generate_ulid
+
+    timeline_ulid = generate_ulid()
+    pdir = env["projects"] / "demo"
+    tdir = pdir / "timelines" / timeline_ulid
+    tdir.mkdir(parents=True)
+    (tdir / "assembly.json").write_text(
+        json.dumps({"schema_version": 1, "assembly": {}}), encoding="utf-8"
+    )
+    (tdir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "contributing_runs": [],
+                "final_outputs": [],
+                "tombstoned_at": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tdir / "display.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "slug": "primary",
+                "name": "Primary",
+                "is_default": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Update project.json with the default timeline id.
+    from astrid.core.project.jsonio import read_json, write_json_atomic
+
+    pp = pdir / "project.json"
+    proj = read_json(pp)
+    proj["default_timeline_id"] = timeline_ulid
+    write_json_atomic(pp, proj)
+
     rc, stdout, _stderr = _run_pipeline(["attach", "demo"])
     assert rc == 0
     assert "export ASTRID_SESSION_ID=" in stdout

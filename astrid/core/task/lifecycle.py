@@ -63,12 +63,15 @@ from astrid.core.task.plan import (
     step_dir_for_path,
 )
 from astrid.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.timeline.defaults import read_project_default
+from astrid.core.timeline.paths import find_timeline_by_slug, find_timeline_slug_for_ulid
 
 
 _AGENT_MD_TEMPLATE = """{preamble}
 
 QUALIFIED ORCHESTRATOR: {qualified_id}
 RUN ID: {run_id}
+TIMELINE ID: {timeline_id}
 
 FIRST COMMAND (Sprint 1 / T15)
 - astrid status                    # session breadcrumb; ALWAYS run first
@@ -153,6 +156,7 @@ def cmd_start(
     parser.add_argument("orchestrator_id", help="qualified id <pack>.<name>")
     parser.add_argument("--project", required=True, help="project slug")
     parser.add_argument("--name", default=None, help="optional run id (slug-validated)")
+    parser.add_argument("--timeline", default=None, help="timeline slug")
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
@@ -163,6 +167,52 @@ def cmd_start(
     except Exception as exc:
         _print_err(f"start: {exc}")
         return 1
+
+    # Resolve timeline ULID (timeline_id) and slug for display.
+    timeline_id: str | None = None
+    timeline_slug: str | None = None
+    if args.timeline is not None:
+        found = find_timeline_by_slug(slug, args.timeline, root=projects_root)
+        if found is None:
+            _print_err(
+                f"start: timeline {args.timeline!r} not found in project {slug!r}"
+            )
+            return 1
+        timeline_id = found[0]
+        timeline_slug = args.timeline
+    else:
+        default_ulid = read_project_default(slug, root=projects_root)
+        if default_ulid is not None:
+            resolved_slug = find_timeline_slug_for_ulid(slug, default_ulid, root=projects_root)
+            if resolved_slug is not None:
+                timeline_id = default_ulid
+                timeline_slug = resolved_slug
+                _print_err(
+                    f"Using default timeline: {timeline_slug}. "
+                    f"Use --timeline to override."
+                )
+    # If still no timeline, list available timelines and error — but allow the
+    # bootstrap case (project.json absent) to proceed unbound, mirroring
+    # ``astrid attach``'s zero-timeline handling. This keeps legacy callers
+    # that pre-date Sprint 2's container model working until the project is
+    # explicitly initialized.
+    if timeline_id is None:
+        from astrid.core.timeline.crud import list_timelines
+        from astrid.core.project.paths import project_json_path
+        available = list_timelines(slug, root=projects_root)
+        if available:
+            _print_err("No default timeline; pass --timeline <slug>. Available:")
+            for ts in available:
+                _print_err(f"  {ts.slug}  ({ts.name})")
+            return 1
+        if project_json_path(slug, root=projects_root).exists():
+            _print_err(
+                f"start: no timelines exist for project {slug!r}; "
+                f"create one with `astrid timelines create <slug>`"
+            )
+            return 1
+        # Bootstrap: project.json doesn't exist yet — proceed without a timeline
+        # binding. The run record will carry timeline_id=None.
 
     try:
         pack, name = _qualified_split(args.orchestrator_id)
@@ -234,7 +284,12 @@ def cmd_start(
             session_id_for_lease = bound.id
     except SessionBindingError:
         session_id_for_lease = "legacy"
-    write_lease_init(run_dir, session_id=session_id_for_lease, plan_hash=plan_hash)
+    write_lease_init(
+        run_dir,
+        session_id=session_id_for_lease,
+        plan_hash=plan_hash,
+        timeline_id=timeline_id,
+    )
     write_current_run(slug, run_id, root=projects_root)
 
     events_path = run_dir / "events.jsonl"
@@ -246,11 +301,13 @@ def cmd_start(
         qualified_id=args.orchestrator_id,
         run_id=run_id,
         slug=slug,
+        timeline_id=timeline_id,
     )
     (run_dir / "AGENT.md").write_text(agent_md, encoding="utf-8")
 
     print(f"started {args.orchestrator_id}")
     print(f"  project:   {slug}")
+    print(f"  timeline:  {timeline_slug}")
     print(f"  run-id:    {run_id}")
     print(f"  plan-hash: {plan_hash}")
     return 0

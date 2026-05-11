@@ -31,6 +31,13 @@ def create_project(
 ) -> dict[str, Any]:
     project_root = paths.project_dir(slug, root=root)
     project_path = project_root / "project.json"
+
+    # Pre-check: reject if a directory with this slug already exists under the
+    # projects root.  Projects under different ARTAGENTS_PROJECTS_ROOT values
+    # are independent — each root is checked separately.
+    if project_root.exists() and not exist_ok:
+        raise ProjectError(f"project '{slug}' already exists at {project_root}")
+
     if project_path.exists() and not exist_ok:
         raise ProjectError(f"project already exists: {slug}")
     project_root.mkdir(parents=True, exist_ok=True)

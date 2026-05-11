@@ -147,11 +147,14 @@ def test_default_timeline_id_round_trip_none() -> None:
     assert validated["default_timeline_id"] is None
 
 
-def test_default_timeline_id_round_trip_slug() -> None:
-    payload = build_project("demo", default_timeline_id="primary")
-    assert payload["default_timeline_id"] == "primary"
+def test_default_timeline_id_round_trip_ulid() -> None:
+    from astrid.threads.ids import generate_ulid
+
+    valid_ulid = generate_ulid()
+    payload = build_project("demo", default_timeline_id=valid_ulid)
+    assert payload["default_timeline_id"] == valid_ulid
     validated = validate_project(payload)
-    assert validated["default_timeline_id"] == "primary"
+    assert validated["default_timeline_id"] == valid_ulid
 
 
 def test_default_timeline_id_rejects_malformed() -> None:
@@ -159,11 +162,11 @@ def test_default_timeline_id_rejects_malformed() -> None:
     # Non-string, non-None.
     with pytest.raises(ProjectValidationError, match="default_timeline_id"):
         validate_project({**base, "default_timeline_id": 42})
-    # Empty string fails slug regex.
-    with pytest.raises((ProjectValidationError, ValueError), match="default_timeline_id|project slug"):
+    # Empty string fails ULID regex (must be 26 Crockford chars).
+    with pytest.raises(ProjectValidationError, match="default_timeline_id"):
         validate_project({**base, "default_timeline_id": ""})
-    # Invalid slug shape.
-    with pytest.raises((ProjectValidationError, ValueError), match="default_timeline_id|project slug"):
+    # Invalid ULID shape (wrong length / characters).
+    with pytest.raises(ProjectValidationError, match="default_timeline_id"):
         validate_project({**base, "default_timeline_id": "Bad Slug!"})
 
 

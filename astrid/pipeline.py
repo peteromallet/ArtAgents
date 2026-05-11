@@ -146,6 +146,8 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
         return True
     if top == "projects" and len(raw) >= 2 and raw[1] in _UNBOUND_PROJECTS_SUBVERBS:
         return True
+    if top == "timelines" and len(raw) >= 2 and raw[1] == "ls":
+        return True
     if top == "sessions" and len(raw) >= 2 and raw[1] in _UNBOUND_SESSIONS_SUBVERBS:
         return True
     # `author test --project <slug>` exception. The orchestrate.cli wires the
@@ -233,6 +235,10 @@ def _dispatch(raw: list[str]) -> int:
         from .core.project import cli as projects_cli
 
         return projects_cli.main(raw[1:])
+    if raw and raw[0] == "timelines":
+        from .core.timeline import cli as timelines_cli
+
+        return timelines_cli.main(raw[1:])
     if raw and raw[0] == "modalities":
         from . import modalities
 
@@ -368,7 +374,8 @@ Usage:
   python3 -m astrid skills {list,install,uninstall,sync,doctor} ...
   python3 -m astrid executors {list,inspect,validate,install,run} ...
   python3 -m astrid elements {list,inspect,fork,install} ...
-  python3 -m astrid projects {create,show,source,timeline,materialize} ...
+  python3 -m astrid projects {create,show,source} ...
+  python3 -m astrid timelines {ls,create,show,rename,finalize,tombstone,purge,set-default} ...
   python3 -m astrid modalities {list,inspect} ...
   python3 -m astrid reigh-data --project-id PROJECT_ID [--out PATH]
   python3 -m astrid worker --pool banodoco [--worker-id ID] [--max-iterations N]

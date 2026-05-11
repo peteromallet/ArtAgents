@@ -31,12 +31,13 @@ def now_iso() -> str:
 class Session:
     id: str
     project: str
-    timeline: str | None
-    run_id: str | None
     agent_id: str
     attached_at: str
     last_used_at: str
     role: SessionRole
+    timeline: str | None = None
+    timeline_id: str | None = None
+    run_id: str | None = None
 
     def with_changes(self, **changes: Any) -> "Session":
         return replace(self, **changes)
@@ -61,6 +62,7 @@ class Session:
                 id=_require_str(raw, "id"),
                 project=_require_str(raw, "project"),
                 timeline=_optional_str(raw, "timeline"),
+                timeline_id=_optional_str(raw, "timeline_id"),
                 run_id=_optional_str(raw, "run_id"),
                 agent_id=_require_str(raw, "agent_id"),
                 attached_at=_require_str(raw, "attached_at"),

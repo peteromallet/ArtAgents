@@ -92,6 +92,7 @@ def build_run_record(
     metadata: dict[str, Any] | None = None,
     artifacts: dict[str, Any] | None = None,
     created_at: str | None = None,
+    timeline_id: str | None = None,
 ) -> dict[str, Any]:
     now = created_at or utc_now_iso()
     payload: dict[str, Any] = {
@@ -112,6 +113,9 @@ def build_run_record(
         payload["out"] = str(out)
     if argv is not None:
         payload["argv"] = [_require_string(item, "run.argv[]") for item in argv]
+    if timeline_id is not None:
+        from astrid.core.timeline.paths import validate_timeline_ulid
+        payload["timeline_id"] = validate_timeline_ulid(timeline_id)
     return validate_run_record(payload)
 
 
@@ -176,6 +180,13 @@ def validate_run_record(raw: Any) -> dict[str, Any]:
         argv = payload["argv"]
         if not isinstance(argv, list) or not all(isinstance(item, str) for item in argv):
             raise ProjectValidationError("run.argv must be a list of strings")
+    if "timeline_id" in payload:
+        tid = payload["timeline_id"]
+        if tid is None:
+            payload.pop("timeline_id")
+        else:
+            from astrid.core.timeline.paths import validate_timeline_ulid
+            payload["timeline_id"] = validate_timeline_ulid(tid)
     payload.setdefault("created_at", utc_now_iso())
     payload.setdefault("updated_at", payload["created_at"])
     return payload
@@ -220,9 +231,10 @@ def _validate_default_timeline_id(raw: Any) -> str | None:
     if raw is None:
         return None
     if not isinstance(raw, str):
-        raise ProjectValidationError("project.default_timeline_id must be a slug string or null")
+        raise ProjectValidationError("project.default_timeline_id must be a ULID string or null")
     try:
-        return validate_project_slug(raw)
+        from astrid.core.timeline.paths import validate_timeline_ulid
+        return validate_timeline_ulid(raw)
     except ValueError as exc:
         raise ProjectValidationError(f"project.default_timeline_id: {exc}") from exc
 

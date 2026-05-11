@@ -66,19 +66,25 @@ def write_lease_init(
     *,
     session_id: str,
     plan_hash: str,
+    timeline_id: str | None = None,
 ) -> dict[str, Any]:
     """Write the initial lease for a new run (atomic tmp+os.replace).
 
     Use this in ``cmd_start`` BEFORE writing ``current_run.json`` so that any
     reader observing the new current-run pointer is guaranteed to find a
     lease behind it.
+
+    *timeline_id* is a passthrough field — Sprint 5a consumers check it
+    defensively and fall back to ``project.json`` default when absent.
     """
 
-    payload = {
+    payload: dict[str, Any] = {
         "writer_epoch": 0,
         "attached_session_id": session_id,
         "plan_hash": plan_hash,
     }
+    if timeline_id is not None:
+        payload["timeline_id"] = timeline_id
     write_json_atomic(Path(run_dir) / LEASE_FILENAME, payload)
     return payload
 
