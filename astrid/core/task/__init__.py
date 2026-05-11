@@ -1,6 +1,14 @@
-"""Task-mode kernel APIs."""
+"""Task-mode kernel APIs.
 
-from .active_run import clear_active_run, read_active_run, write_active_run
+Sprint 1 (T9): ``active_run`` re-exports are retired from this package
+namespace. The on-disk pointer moved to ``<project>/current_run.json`` +
+``runs/<id>/lease.json``; new callers should import
+``astrid.core.project.current_run`` and ``astrid.core.session.lease``
+directly. A thin backward-compatibility shim still lives at
+``astrid.core.task.active_run`` for in-flight callers (it writes the new
+on-disk shape).
+"""
+
 from .env import (
     ARTAGENTS_ACTOR,
     TASK_ITEM_ID_ENV,
@@ -79,7 +87,6 @@ __all__ = [
     "apply_task_run_env",
     "canonical_event_json",
     "child_subprocess_env",
-    "clear_active_run",
     "command_for_argv",
     "compute_plan_hash",
     "consume_inbox_entry",
@@ -100,7 +107,6 @@ __all__ = [
     "match_attested_command",
     "peek_current_step",
     "pending_count",
-    "read_active_run",
     "read_events",
     "record_dispatch_complete",
     "record_nested_entered",
@@ -117,6 +123,5 @@ __all__ = [
     "task_step_id_env",
     "validate_attested_identity",
     "verify_chain",
-    "write_active_run",
     "write_iteration_feedback",
 ]

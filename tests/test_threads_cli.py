@@ -13,13 +13,22 @@ from astrid.threads.record import build_run_record, finalize_run_record, write_r
 
 
 def test_thread_cli_lifecycle_show_no_content_and_route(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """Threads internal-library lifecycle exercised through astrid.threads.cli.
+
+    Sprint 1 / T12 retired the user-facing ``astrid thread`` CLI verb from
+    ``astrid.pipeline``. The internal library (DEC-001) is retained; this
+    test now exercises only the library-level CLI, not the pipeline route.
+    """
+
     repo = _repo(tmp_path, monkeypatch)
 
     assert cli.main(["new", "Launch"]) == 0
     new_output = capsys.readouterr().out
     thread_id = new_output.split()[0]
 
-    assert pipeline.main(["thread", "list"]) == 0
+    # The pipeline-level `astrid thread list` verb was removed in T8/T12.
+    # The library-level equivalent still works.
+    assert cli.main(["list"]) == 0
     list_output = capsys.readouterr().out
     assert thread_id in list_output
     assert "Launch" in list_output
@@ -36,6 +45,16 @@ def test_thread_cli_lifecycle_show_no_content_and_route(tmp_path: Path, monkeypa
     assert "archived" in capsys.readouterr().out
     assert cli.main(["reopen", thread_id]) == 0
     assert "reopened" in capsys.readouterr().out
+
+
+def test_pipeline_thread_dispatch_removed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The user-facing `astrid thread ...` verb is no longer dispatched."""
+
+    monkeypatch.delenv("ASTRID_SESSION_ID", raising=False)
+    # Without a session, the gate rejects with the standard hint; with a
+    # session bound the dispatcher would fall through to the default brief
+    # orchestrator (no `thread` branch exists anymore).
+    assert pipeline.main(["thread", "list"]) == 2
 
 
 def test_backfill_records_existing_runs_without_moving_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:

@@ -135,3 +135,43 @@ def test_build_project_emits_required_keys() -> None:
     assert expected.issubset(payload.keys())
     validated = validate_project(payload)
     assert validated["slug"] == "demo"
+
+
+def test_default_timeline_id_round_trip_none() -> None:
+    """Sprint 1 sentinel: build emits the key explicitly with None."""
+
+    payload = build_project("demo")
+    assert "default_timeline_id" in payload
+    assert payload["default_timeline_id"] is None
+    validated = validate_project(payload)
+    assert validated["default_timeline_id"] is None
+
+
+def test_default_timeline_id_round_trip_slug() -> None:
+    payload = build_project("demo", default_timeline_id="primary")
+    assert payload["default_timeline_id"] == "primary"
+    validated = validate_project(payload)
+    assert validated["default_timeline_id"] == "primary"
+
+
+def test_default_timeline_id_rejects_malformed() -> None:
+    base = build_project("demo")
+    # Non-string, non-None.
+    with pytest.raises(ProjectValidationError, match="default_timeline_id"):
+        validate_project({**base, "default_timeline_id": 42})
+    # Empty string fails slug regex.
+    with pytest.raises((ProjectValidationError, ValueError), match="default_timeline_id|project slug"):
+        validate_project({**base, "default_timeline_id": ""})
+    # Invalid slug shape.
+    with pytest.raises((ProjectValidationError, ValueError), match="default_timeline_id|project slug"):
+        validate_project({**base, "default_timeline_id": "Bad Slug!"})
+
+
+def test_legacy_project_json_without_default_timeline_id_still_validates() -> None:
+    """Files written before Sprint 1 lack the key entirely — validator must accept them."""
+
+    legacy = build_project("demo")
+    legacy.pop("default_timeline_id", None)
+    validated = validate_project(legacy)
+    assert "default_timeline_id" not in validated
+    assert validated["slug"] == "demo"

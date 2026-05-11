@@ -1,4 +1,14 @@
-"""Thread state primitives for Astrid creative runs."""
+"""Thread state primitives for Astrid creative runs.
+
+DEPRECATED (Sprint 1): the user-facing ``astrid thread`` CLI verb was retired
+in T8/T12. This package is retained as an INTERNAL library (DEC-001) because
+orchestrator/executor runners and pack ``run.py`` files still depend on
+``ThreadIndexStore`` and the variant-sidecar protocol.
+
+# TODO(sprint-N): retire astrid/threads/ entirely; depends on orchestrator/executor
+# runner rewrite and pack run.py migration off ThreadIndexStore + variant sidecars.
+# See plan_v4 Phase 5.
+"""
 
 from __future__ import annotations
 

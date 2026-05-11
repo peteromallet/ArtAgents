@@ -41,7 +41,20 @@ def test_plan_hash_mismatch_rejects_with_abort_recovery(tmp_projects_root: Path)
     assert exc_info.value.recovery == "astrid abort --project demo"
 
 
-def test_chain_integrity_failure_rejects_with_abort_recovery(tmp_projects_root: Path) -> None:
+def test_chain_integrity_failure_no_longer_rejected_in_hot_path(
+    tmp_projects_root: Path,
+) -> None:
+    """Sprint 1 / DEC-007: mid-chain corruption is delegated to offline audit.
+
+    The hot-path verify_chain at gate.py:533 was removed; the tail-only
+    CAS in append_event_locked is the integrity gate for live appends.
+    This test exercises the documented trade-off: gate_command DOES NOT
+    reject on mid-chain corruption, but the offline verify_chain audit
+    primitive still does.
+    """
+
+    from astrid.core.task.events import verify_chain
+
     command = _write_plan(tmp_projects_root, [{"id": "step-1", "command": "echo one"}])[0]
     _activate_plan(tmp_projects_root)
     decision = gate_command("demo", command, [], root=tmp_projects_root)
@@ -51,10 +64,15 @@ def test_chain_integrity_failure_rejects_with_abort_recovery(tmp_projects_root: 
     lines[0] = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     decision.events_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    with pytest.raises(TaskRunGateError) as exc_info:
-        gate_command("demo", command, [], root=tmp_projects_root)
+    # gate_command no longer re-verifies the chain mid-run.
+    second = gate_command("demo", command, [], root=tmp_projects_root)
+    assert second is not None
 
-    assert exc_info.value.recovery == "astrid abort --project demo"
+    # The offline audit primitive still catches mid-chain corruption.
+    ok, bad_index, err = verify_chain(decision.events_path)
+    assert ok is False
+    assert bad_index == 0
+    assert err is not None
 
 
 def test_non_canonical_command_rejects_with_next_recovery(tmp_projects_root: Path) -> None:

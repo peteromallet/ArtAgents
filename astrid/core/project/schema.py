@@ -37,11 +37,16 @@ def build_project(
     name: str | None = None,
     project_id: str | None = None,
     created_at: str | None = None,
+    default_timeline_id: str | None = None,
 ) -> dict[str, Any]:
     now = created_at or utc_now_iso()
     slug = validate_project_slug(slug)
     payload: dict[str, Any] = {
         "created_at": now,
+        # Sprint 1 sentinel: Sprint 2 will populate this when timelines become a
+        # first-class container; emitted even when None so the field is
+        # discoverable.
+        "default_timeline_id": _validate_default_timeline_id(default_timeline_id),
         "name": name or slug,
         "schema_version": PROJECT_SCHEMA_VERSION,
         "slug": slug,
@@ -124,6 +129,10 @@ def validate_project(raw: Any) -> dict[str, Any]:
             payload.pop("project_id")
         else:
             payload["project_id"] = _require_string(payload["project_id"], "project.project_id")
+    if "default_timeline_id" in payload:
+        payload["default_timeline_id"] = _validate_default_timeline_id(
+            payload["default_timeline_id"]
+        )
     return payload
 
 
@@ -205,6 +214,17 @@ def _normalize_asset(raw: Any, *, path: str) -> dict[str, Any]:
         payload["url"] = payload["url"]
         payload.pop("file", None)
     return payload
+
+
+def _validate_default_timeline_id(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise ProjectValidationError("project.default_timeline_id must be a slug string or null")
+    try:
+        return validate_project_slug(raw)
+    except ValueError as exc:
+        raise ProjectValidationError(f"project.default_timeline_id: {exc}") from exc
 
 
 def _require_version(data: dict[str, Any], expected: int, path: str) -> None:

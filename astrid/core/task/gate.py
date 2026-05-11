@@ -90,6 +90,13 @@ class GateDecision:
     project_root: Path | None = None
     iteration: int | None = None
     item_id: str | None = None
+    # Sprint 1 (T9) extensions — populated when a session is bound at
+    # gate_command entry so post-dispatch record_* helpers can flow
+    # through writer_context_from_decision.
+    run_dir: Path | None = None
+    writer_epoch_at_dispatch: int | None = None
+    session_id: str | None = None
+    session: Any = None  # astrid.core.session.model.Session | None
 
 
 @dataclass(frozen=True)
@@ -530,9 +537,11 @@ def gate_command(
 
     run_id = active_run["run_id"]
     events_path = project_root / "runs" / run_id / "events.jsonl"
-    ok, _last_index, error = verify_chain(events_path)
-    if not ok:
-        _reject(slug, error or "events.jsonl chain integrity check failed", abort=True)
+    # Sprint 1 (T9 / DEC-007): the tail-only CAS in append_event_locked is
+    # the integrity gate for the hot append path; mid-chain corruption
+    # detection is delegated to offline audit (verify_chain remains
+    # callable for that purpose). Removing the per-verb O(n) re-walk here
+    # is an acceptable trade-off documented in the brief.
 
     plan = load_plan(plan_path)
     events = read_events(events_path)

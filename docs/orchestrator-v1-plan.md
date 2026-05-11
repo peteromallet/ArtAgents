@@ -22,7 +22,8 @@ Non-goals: no daemon, no web server, no HMAC or keyed crypto, no `.index.db`, no
 Task-mode state lives under `~/Documents/reigh-workspace/astrid-projects/<slug>/`:
 
 ```text
-active_run.json
+current_run.json                 # Sprint 1: { "run_id": "<run-id>" }; replaces active_run.json
+runs/<run-id>/lease.json         # Sprint 1: { writer_epoch, attached_session_id, plan_hash }
 runs/<run-id>/plan.json
 runs/<run-id>/events.jsonl
 runs/<run-id>/AGENT.md
@@ -33,7 +34,7 @@ runs/<run-id>/inbox/
 .cas/<sha256>
 ```
 
-`active_run.json` is `{ "run_id": "<run-id>", "plan_hash": "sha256:<hex>" }`. `plan.json` is immutable after `astrid start`, supersedes checklist naming because the shape is a tree, and is the runtime truth the gate hashes; existing `OrchestratorPlan` / `OrchestratorPlanStep` in `astrid/core/orchestrator/runner.py` remain dry-run display scaffolding. `events.jsonl` is append-only and hash-chained as plain `sha256(prev_hash + canonical_event_json)` with no HMAC. There is no `.index.db`; status and audit read files directly.
+Sprint 1 split the legacy single `active_run.json` into a pair: `current_run.json` (the per-project run pointer; `{ "run_id": "<run-id>" }`) and `runs/<run-id>/lease.json` (the per-run writer-lease record; `{ writer_epoch: int, attached_session_id: str | null, plan_hash: "sha256:<hex>" }`). Lease-first ordering: producers (`cmd_start`) MUST write `lease.json` first, THEN `current_run.json` — readers that observe a new `current_run.json` are guaranteed to find a corresponding lease behind it. `plan.json` is immutable after `astrid start`, supersedes checklist naming because the shape is a tree, and is the runtime truth the gate hashes; existing `OrchestratorPlan` / `OrchestratorPlanStep` in `astrid/core/orchestrator/runner.py` remain dry-run display scaffolding. `events.jsonl` is append-only and hash-chained as plain `sha256(prev_hash + canonical_event_json)` with no HMAC, and the Sprint 1 `append_event_locked` helper enforces a single `flock(LOCK_EX)` + tail-hash CAS + epoch CAS as the atomic critical section for every append. There is no `.index.db`; status and audit read files directly.
 
 ## 4. Step Kinds
 
@@ -53,7 +54,7 @@ Iteration and fan-out are body attributes, not kinds. `repeat.until` supports `u
 
 ## 7. Gate Above Dispatch
 
-The gate checks: `active_run.json` exists; `plan.json` hash matches the pin; `events.jsonl` chain is intact; and the incoming command matches `plan[derived_cursor].command`. Any failure exits non-zero and prints one exact recovery command: start for missing active run, abort for integrity failure, or `astrid next --project <slug>` for command mismatch.
+The gate checks: `current_run.json` exists (Sprint 1 replacement for `active_run.json`); `plan.json` hash matches the pin recorded on `lease.json`; the incoming command matches `plan[derived_cursor].command`. Per-verb `verify_chain` re-walk was retired in Sprint 1 (DEC-007) — the tail-only CAS in `append_event_locked` is the integrity gate for the hot path, with `verify_chain` retained as an offline audit primitive. Any failure exits non-zero and prints one exact recovery command: start for missing active run, abort for integrity failure (via offline audit), or `astrid next --project <slug>` for command mismatch.
 
 Ordering is load-bearing. The first gate sits in `astrid/pipeline.py:15`; a defensive decorator re-checks at `astrid/core/orchestrator/runner.py:132`, the top of `run_orchestrator()`, before `_prepare_project_request()` at line 135 and `thread_wrapper.begin_orchestrator_run()` at line 136. Rejection writes zero project-run files. `events.jsonl` is the single task-mode provenance surface; `astrid/threads/wrapper.py:21-26` keeps existing thread env provenance in `runs/<id>/run.json`.
 

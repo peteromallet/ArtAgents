@@ -24,6 +24,19 @@ from astrid.core.project.paths import (
     validate_project_slug,
     validate_run_id,
 )
+from astrid.core.project.current_run import (
+    clear_current_run,
+    read_current_run,
+    write_current_run,
+)
+from astrid.core.session.lease import (
+    read_lease,
+    release_writer_lease,
+    write_lease_init,
+)
+# Backward-compat shim: gate.py and lifecycle_ack.py still import these via
+# astrid.core.task.active_run during the T9 migration window. The shim
+# writes the new on-disk shape internally.
 from astrid.core.task.active_run import (
     clear_active_run,
     read_active_run,
@@ -57,11 +70,17 @@ _AGENT_MD_TEMPLATE = """{preamble}
 QUALIFIED ORCHESTRATOR: {qualified_id}
 RUN ID: {run_id}
 
+FIRST COMMAND (Sprint 1 / T15)
+- astrid status                    # session breadcrumb; ALWAYS run first
+- astrid attach {slug}     # bind this tab to {slug} if status reports unbound
+
 RECOVERY COMMANDS
 - See next legal action:    astrid next --project {slug}
 - Acknowledge attested:     astrid ack <step> --project {slug} --decision approve [--agent <id> | --actor <name>]
 - View run state:           astrid status --project {slug}
 - End the run:              astrid abort --project {slug}
+- Take over a stuck run:    astrid sessions takeover <run-id|session-id>
+- Detach the current tab:   astrid sessions detach
 
 STOP HOOK
 - The `astrid hook stop` command is the Claude Code Stop-hook entry point.
@@ -151,7 +170,7 @@ def cmd_start(
         _print_err(f"start: {exc}")
         return 1
 
-    if read_active_run(slug, root=projects_root) is not None:
+    if read_current_run(slug, root=projects_root) is not None:
         _print_err(
             f"start: active run already exists for project {slug!r}; "
             f"recovery: astrid abort --project {slug}"
@@ -198,7 +217,25 @@ def cmd_start(
     run_dir = proj_root / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    write_active_run(slug, run_id=run_id, plan_hash=plan_hash, root=projects_root)
+    # Lease-first ordering: any reader that observes current_run.json is
+    # guaranteed to find a corresponding lease.json. The session id on the
+    # lease is whatever ASTRID_SESSION_ID resolves to (CLI gate enforces
+    # the session is bound before cmd_start dispatch); fall back to
+    # 'legacy' for non-CLI callers that haven't migrated yet (tests etc).
+    from astrid.core.session.binding import (
+        SessionBindingError,
+        resolve_current_session,
+    )
+
+    session_id_for_lease = "legacy"
+    try:
+        bound = resolve_current_session()
+        if bound is not None:
+            session_id_for_lease = bound.id
+    except SessionBindingError:
+        session_id_for_lease = "legacy"
+    write_lease_init(run_dir, session_id=session_id_for_lease, plan_hash=plan_hash)
+    write_current_run(slug, run_id, root=projects_root)
 
     events_path = run_dir / "events.jsonl"
     actor = task_actor_env()
@@ -243,17 +280,22 @@ def cmd_abort(
         _print_err(f"abort: {exc}")
         return 1
 
-    active_run = read_active_run(slug, root=projects_root)
-    if active_run is None:
+    run_id = read_current_run(slug, root=projects_root)
+    if run_id is None:
         # Idempotent — Phase 6 Stop-hook may invoke abort defensively.
         return 0
 
-    run_id = active_run["run_id"]
-    events_path = (
-        project_dir(slug, root=projects_root) / "runs" / run_id / "events.jsonl"
-    )
+    run_dir = project_dir(slug, root=projects_root) / "runs" / run_id
+    events_path = run_dir / "events.jsonl"
     append_event(events_path, make_run_aborted_event(run_id, reason=args.reason))
-    clear_active_run(slug, root=projects_root)
+    # DEC-010: clear the pointer AND release the writer lease so the run
+    # is fully detached. A follow-up takeover would now see the lease as
+    # orphan-pending.
+    clear_current_run(slug, root=projects_root)
+    try:
+        release_writer_lease(run_dir)
+    except FileNotFoundError:
+        pass
     print(f"aborted {run_id}")
     return 0
 

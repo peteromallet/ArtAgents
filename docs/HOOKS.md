@@ -38,21 +38,27 @@ when Claude finishes a turn:
 `astrid hook stop` is a no-op unless an active run exists somewhere it can
 discover. Discovery runs in two tiers:
 
-1. **cwd-ancestor walk** — climb from the current working directory up
+1. **session-bound resolution** (Sprint 1) — if ``ASTRID_SESSION_ID`` is
+   set and resolves to a session record whose ``project`` has a live
+   ``current_run.json`` + ``lease.json`` pair, that's the active run.
+2. **cwd-ancestor walk** — climb from the current working directory up
    through its parents; if any ancestor `D` is a direct child of the
-   projects root and contains `active_run.json`, treat `D.name` as the
-   project slug.
-2. **projects-root scan** — if no ancestor matched, iterate the projects
-   root (`$ARTAGENTS_PROJECTS_ROOT`, default
-   `~/Documents/reigh-workspace/astrid-projects/`) and pick every
-   subdirectory whose name is a valid project slug and that contains an
-   `active_run.json`.
+   projects root and contains `current_run.json` (the Sprint 1
+   replacement for the legacy `active_run.json`), treat `D.name` as the
+   project slug. The legacy `active_run.json` filename is no longer
+   written; Sprint 1's `scripts/migrations/sprint-1/migrate_active_run_to_current_run.py`
+   converts on-disk state.
+3. **(deferred)** the previous projects-root scan was retired in Sprint 1
+   — it surprised users who happened to have unrelated projects with
+   stale state. The session-bound + cwd-ancestor paths together cover
+   every supported workflow.
 
 For each discovered slug (sorted), the hook re-prints `astrid next`
 output (the prohibition preamble plus the current step) so Claude Code
 re-injects it into the next turn. If no slugs are discovered the hook exits
 silently with status 0 — your normal Claude Code sessions are unaffected.
 
-The hook does **not** require Claude's cwd to be the project state directory.
-The projects-root scan means it works from any cwd, including a sibling repo
-checkout where you actually edit code.
+When the agent is running with `ASTRID_SESSION_ID` exported, the hook works
+from any cwd because session-bound resolution wins regardless of working
+directory. Without a session bound, the cwd-ancestor walk is the only
+fallback — running from an unrelated repo checkout silently no-ops.

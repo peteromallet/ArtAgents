@@ -1,15 +1,26 @@
 #!/usr/bin/env python3
 """Astrid top-level command gateway.
 
-Subcommands dispatch to focused module CLIs (executors, orchestrators,
-elements, projects, threads, modalities, doctor, setup, audit). Brief / video
-flags fall through to the ``builtin.hype`` orchestrator resolved through the
+Sprint 1 wires the session CLI gate: every verb outside the unbound
+allowlist requires ``ASTRID_SESSION_ID`` to resolve to a valid session
+record. Unbound callers are pointed at ``astrid attach <project>``.
+
+The unbound allowlist mirrors the brief: ``attach``, ``status``,
+``projects ls``, ``projects create``, ``sessions ls``,
+``sessions takeover``, ``sessions detach``, ``init`` (first-run
+bootstrap), and the help flags. ``author test --project <slug>`` is also
+a documented exception so workflow tests can run without an operator
+session.
+
+Subcommands dispatch to focused module CLIs. Brief / video flags fall
+through to the ``builtin.hype`` orchestrator resolved through the
 orchestrator registry.
 """
 
 from __future__ import annotations
 
 import sys
+from typing import Iterable
 
 
 # Phase 5 lifecycle verbs short-circuit the implicit task-mode gate at the top
@@ -18,6 +29,21 @@ import sys
 # explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
 # bypasses the gate's command-match step.
 LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook"}
+
+
+# Sprint 1 session-gate allowlist. A first-token (or two-token) match against
+# this set lets the verb run without a bound session. Everything else needs
+# ``ASTRID_SESSION_ID`` to resolve to a session record.
+_UNBOUND_TOP_LEVEL = {
+    "attach",
+    "status",
+    "sessions",  # sub-verbs handled below
+    "init",
+    "-h",
+    "--help",
+}
+_UNBOUND_PROJECTS_SUBVERBS = {"ls", "create"}
+_UNBOUND_SESSIONS_SUBVERBS = {"ls", "takeover", "detach"}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,6 +61,28 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         # Never let the nudge break a real command.
         pass
+
+    # Session gate. Verbs outside the unbound allowlist require a resolvable
+    # session record; print the documented hint and exit 2 otherwise.
+    if not _verb_is_unbound_allowlisted(raw):
+        from .core.session.binding import (
+            ASTRID_SESSION_ID_ENV,  # noqa: F401 — referenced in the error path
+            SessionBindingError,
+            resolve_current_session,
+        )
+
+        try:
+            session = resolve_current_session()
+        except SessionBindingError as exc:
+            print(f"session: {exc}", file=sys.stderr)
+            return 2
+        if session is None:
+            print(
+                "no session bound — run `astrid attach <project>`",
+                file=sys.stderr,
+            )
+            return 2
+
     if raw and raw[0] in LIFECYCLE_VERBS:
         return _dispatch(raw)
     project_slug = _extract_project_slug(raw)
@@ -56,10 +104,67 @@ def main(argv: list[str] | None = None) -> int:
         returncode = _dispatch(raw)
         return returncode
     finally:
-        task_gate.record_dispatch_complete(decision, returncode)
+        # T9 extends GateDecision with a `.session` field so the post-dispatch
+        # record helpers can flow through a fresh WriterContext. Until that
+        # lands, guard the wrapper with hasattr() so existing callers that
+        # don't carry a session keep working unchanged.
+        if hasattr(decision, "session") and getattr(decision, "session", None) is not None:
+            from .core.session.writer import writer_context_from_decision
+
+            try:
+                with writer_context_from_decision(decision):
+                    task_gate.record_dispatch_complete(decision, returncode)
+            except Exception:
+                # Fall back to the unwrapped path on any writer-auth failure;
+                # T9's lifecycle migration is the layer that makes this hard.
+                task_gate.record_dispatch_complete(decision, returncode)
+        else:
+            task_gate.record_dispatch_complete(decision, returncode)
+
+
+def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
+    """Decide whether the invocation may run without a bound session.
+
+    The allowlist is the canonical Sprint 1 set (brief §CLI gate):
+
+    * ``attach``, ``init``, ``-h`` / ``--help`` (full-verb).
+    * ``status`` — both the new session breadcrumb (no ``--project``) and
+      the legacy ``astrid status --project <slug>``.
+    * ``projects ls`` and ``projects create``.
+    * ``sessions ls`` / ``sessions takeover`` / ``sessions detach``.
+    * ``author test --project <slug>`` — documented exception for the
+      workflow test runner.
+    """
+
+    if not raw:
+        return True  # empty argv → entrypoint help
+
+    top = raw[0]
+    if top in {"-h", "--help"}:
+        return True
+    if top in {"attach", "init", "status"}:
+        return True
+    if top == "projects" and len(raw) >= 2 and raw[1] in _UNBOUND_PROJECTS_SUBVERBS:
+        return True
+    if top == "sessions" and len(raw) >= 2 and raw[1] in _UNBOUND_SESSIONS_SUBVERBS:
+        return True
+    # `author test --project <slug>` exception. The orchestrate.cli wires the
+    # `test` sub-verb regardless of whether a session is bound, so we open the
+    # gate explicitly to match.
+    if top == "author" and "test" in raw[1:] and "--project" in raw:
+        return True
+    return False
 
 
 def _dispatch(raw: list[str]) -> int:
+    if raw and raw[0] == "attach":
+        from .core.session.cli import build_parser as _sb
+        from .core.session.cli import cmd_attach
+
+        args = _sb().parse_args(["attach", *raw[1:]])
+        return int(cmd_attach(args))
+    if raw and raw[0] == "sessions":
+        return _dispatch_sessions(raw[1:])
     if raw and raw[0] == "start":
         from .core.task.lifecycle import cmd_start
 
@@ -77,9 +182,17 @@ def _dispatch(raw: list[str]) -> int:
 
         return cmd_abort(raw[1:])
     if raw and raw[0] == "status":
-        from .core.task.lifecycle import cmd_status
+        # The new session-status verb fires when no --project is given; the
+        # legacy lifecycle status verb keeps working with --project.
+        if "--project" in raw[1:]:
+            from .core.task.lifecycle import cmd_status
 
-        return cmd_status(raw[1:])
+            return cmd_status(raw[1:])
+        from .core.session.cli import build_parser as _sb
+        from .core.session.cli import cmd_status as session_status
+
+        args = _sb().parse_args(["status"])
+        return int(session_status(args))
     if raw and raw[0] == "runs":
         return _dispatch_runs(raw[1:])
     if raw and raw[0] == "hook":
@@ -120,10 +233,6 @@ def _dispatch(raw: list[str]) -> int:
         from .core.project import cli as projects_cli
 
         return projects_cli.main(raw[1:])
-    if raw and raw[0] == "thread":
-        from .threads import cli as thread_cli
-
-        return thread_cli.main(raw[1:])
     if raw and raw[0] == "modalities":
         from . import modalities
 
@@ -149,6 +258,38 @@ def _dispatch(raw: list[str]) -> int:
 
         return banodoco_worker.main(raw[1:])
     return _run_default_brief_orchestrator(raw)
+
+
+def _dispatch_sessions(args: list[str]) -> int:
+    if not args:
+        print(
+            "usage: astrid sessions {ls,detach,takeover} ...",
+            file=sys.stderr,
+        )
+        return 2
+    from .core.session.cli import (
+        build_parser,
+        cmd_sessions_detach,
+        cmd_sessions_ls,
+        cmd_sessions_takeover,
+    )
+
+    sub = args[0]
+    parser = build_parser()
+    if sub == "ls":
+        parsed = parser.parse_args(["ls"])
+        return int(cmd_sessions_ls(parsed))
+    if sub == "detach":
+        parsed = parser.parse_args(["detach", *args[1:]])
+        return int(cmd_sessions_detach(parsed))
+    if sub == "takeover":
+        parsed = parser.parse_args(["takeover", *args[1:]])
+        return int(cmd_sessions_takeover(parsed))
+    print(
+        f"sessions: unknown sub-verb {sub!r}; expected one of ls / detach / takeover",
+        file=sys.stderr,
+    )
+    return 2
 
 
 def _dispatch_runs(args: list[str]) -> int:
@@ -220,11 +361,14 @@ Usage:
     python3 -m astrid next --project <slug>
     python3 -m astrid ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]
     python3 -m astrid hook stop   # Claude Code Stop-hook entry point; see docs/HOOKS.md
+  Session verbs (Sprint 1):
+    python3 -m astrid attach <project> [--timeline <slug>] [--session <id>] [--as agent:<id>]
+    python3 -m astrid status
+    python3 -m astrid sessions {ls,detach,takeover} ...
   python3 -m astrid skills {list,install,uninstall,sync,doctor} ...
   python3 -m astrid executors {list,inspect,validate,install,run} ...
   python3 -m astrid elements {list,inspect,fork,install} ...
   python3 -m astrid projects {create,show,source,timeline,materialize} ...
-  python3 -m astrid thread {new,list,show,archive,reopen,backfill,keep,dismiss,group} ...
   python3 -m astrid modalities {list,inspect} ...
   python3 -m astrid reigh-data --project-id PROJECT_ID [--out PATH]
   python3 -m astrid worker --pool banodoco [--worker-id ID] [--max-iterations N]
@@ -232,12 +376,12 @@ Usage:
   python3 -m astrid --video SRC --brief BRIEF --out runs/name [--render]
   python3 -m astrid --brief BRIEF --out runs/name --target-duration SECONDS [--render]
 Start here:
-  python3 -m astrid doctor
+  python3 -m astrid attach <project>
+  python3 -m astrid status
   python3 -m astrid orchestrators list
   python3 -m astrid executors list
   python3 -m astrid elements list
   python3 -m astrid projects show --project PROJECT
-  python3 -m astrid thread list
   python3 -m astrid modalities list
 
 Inspect before running:

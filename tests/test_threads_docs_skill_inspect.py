@@ -10,11 +10,11 @@ from astrid.threads.schema import make_thread_record
 
 
 THREAD_ID = "01ARZ3NDEKTSV4RRFFQ69G5FW0"
+# Sprint 1 / T15 rewrite: the SKILL.md status-first paragraph replaced the
+# old `thread show @active` mandate.
 SKILL_PARAGRAPH = (
-    "At the start of any session that will produce runs, run python3 -m astrid thread show @active first. "
-    "The [thread] prefix on every command output is your continuous indicator; if it shows the wrong thread, "
-    "run thread new or pass --thread @new to your next command. Selections are append-only; the most recent "
-    "write is authoritative on read; prior selections are preserved as history but do not affect current keepers."
+    "At the start of any session that will produce runs, run "
+    "`python3 -m astrid status` FIRST."
 )
 
 

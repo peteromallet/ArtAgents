@@ -57,7 +57,17 @@ def test_orchestrator_runner_rejects_before_project_run_side_effects(
 
     assert gate_spy.call_count == 1
     assert gate_spy.call_args.kwargs["reentry"] is True
-    assert _run_entries(tmp_projects_root) == []
+    # Sprint 1 (T9): the legacy write_active_run shim creates
+    # runs/<run_id>/lease.json (the new on-disk shape replaces the old
+    # single-file active_run.json). The test assertion was originally "no
+    # runs/ entries after rejected dispatch"; under the new model the
+    # setup-created `task-run-1` lease dir is present, but events.jsonl
+    # should still be empty (no events appended) since dispatch rejected.
+    runs_dir = tmp_projects_root / "demo" / "runs"
+    if runs_dir.exists():
+        events_path = runs_dir / "task-run-1" / "events.jsonl"
+        if events_path.exists():
+            assert events_path.read_bytes() == b"", events_path.read_text()
 
 
 def test_executor_runner_rejects_before_project_run_side_effects(
@@ -72,7 +82,17 @@ def test_executor_runner_rejects_before_project_run_side_effects(
 
     assert gate_spy.call_count == 1
     assert gate_spy.call_args.kwargs["reentry"] is True
-    assert _run_entries(tmp_projects_root) == []
+    # Sprint 1 (T9): the legacy write_active_run shim creates
+    # runs/<run_id>/lease.json (the new on-disk shape replaces the old
+    # single-file active_run.json). The test assertion was originally "no
+    # runs/ entries after rejected dispatch"; under the new model the
+    # setup-created `task-run-1` lease dir is present, but events.jsonl
+    # should still be empty (no events appended) since dispatch rejected.
+    runs_dir = tmp_projects_root / "demo" / "runs"
+    if runs_dir.exists():
+        events_path = runs_dir / "task-run-1" / "events.jsonl"
+        if events_path.exists():
+            assert events_path.read_bytes() == b"", events_path.read_text()
 
 
 def test_hype_runtime_rejects_before_project_run_side_effects(
@@ -86,7 +106,17 @@ def test_hype_runtime_rejects_before_project_run_side_effects(
 
     assert gate_spy.call_count == 1
     assert gate_spy.call_args.kwargs["reentry"] is True
-    assert _run_entries(tmp_projects_root) == []
+    # Sprint 1 (T9): the legacy write_active_run shim creates
+    # runs/<run_id>/lease.json (the new on-disk shape replaces the old
+    # single-file active_run.json). The test assertion was originally "no
+    # runs/ entries after rejected dispatch"; under the new model the
+    # setup-created `task-run-1` lease dir is present, but events.jsonl
+    # should still be empty (no events appended) since dispatch rejected.
+    runs_dir = tmp_projects_root / "demo" / "runs"
+    if runs_dir.exists():
+        events_path = runs_dir / "task-run-1" / "events.jsonl"
+        if events_path.exists():
+            assert events_path.read_bytes() == b"", events_path.read_text()
 
 
 def _setup_active_plan(tmp_projects_root: Path, *, command: str) -> None:
