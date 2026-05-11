@@ -53,10 +53,10 @@ from astrid.core.task.gate import (
 )
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
-    AttestedStep,
-    CodeStep,
-    NestedStep,
     RepeatUntil,
+    is_attested_kind,
+    is_code_kind,
+    is_group_step,
     load_plan,
 )
 
@@ -72,9 +72,9 @@ def _find_step_by_path(plan, path_tuple):
     steps = plan.steps
     for segment in path_tuple[:-1]:
         match = next((s for s in steps if s.id == segment), None)
-        if match is None or not isinstance(match, NestedStep):
+        if match is None or not is_group_step(match):
             return None
-        steps = match.plan.steps
+        steps = match.children or ()
     return next((s for s in steps if s.id == path_tuple[-1]), None)
 
 
@@ -188,16 +188,14 @@ def cmd_ack(
 
 
 def _ack_approve(args, slug, peek, projects_root, proj_root) -> int:
-    if isinstance(peek.step, CodeStep):
+    if is_code_kind(peek.step):
         _print_err(
             "ack: approve is invalid for code steps. code steps advance via "
             f"subprocess; just run the printed command (astrid next --project {slug})."
         )
         return 1
-    if not isinstance(peek.step, AttestedStep):
-        _print_err(
-            f"ack: cannot approve step kind {type(peek.step).__name__}"
-        )
+    if not is_attested_kind(peek.step):
+        _print_err("ack: cannot approve non-attested step")
         return 1
 
     # FLAG-P5-001: synthesize the incoming command as step.command +
@@ -232,7 +230,7 @@ def _ack_approve(args, slug, peek, projects_root, proj_root) -> int:
 
 
 def _ack_retry(args, slug, peek, plan, events, events_path, run_id, proj_root) -> int:
-    if not isinstance(peek.step, AttestedStep):
+    if not is_attested_kind(peek.step):
         _print_err(
             "ack: retry is only valid on attested steps. Code steps "
             "redispatch implicitly when you re-run the printed argv."
@@ -275,7 +273,7 @@ def _ack_retry(args, slug, peek, plan, events, events_path, run_id, proj_root) -
 
 
 def _ack_iterate(args, slug, peek, plan, events, events_path, run_id, proj_root) -> int:
-    if not isinstance(peek.step, AttestedStep):
+    if not is_attested_kind(peek.step):
         _print_err("ack: iterate is only valid on attested steps")
         return 1
     if not args.feedback or not args.feedback.strip():

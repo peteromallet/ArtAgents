@@ -54,10 +54,11 @@ from astrid.core.task.gate import TaskRunGateError, peek_current_step
 from astrid.core.task.inbox import consume_inbox_entry, pending_count, scan_inbox
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
-    AttestedStep,
-    CodeStep,
-    NestedStep,
     RepeatForEach,
+    Step,
+    is_attested_kind,
+    is_code_kind,
+    is_group_step,
     compute_plan_hash,
     load_plan,
     step_dir_for_path,
@@ -406,8 +407,8 @@ def cmd_status(
         print("current:   <run exhausted>")
     else:
         path_str = STEP_PATH_SEP.join(peek.path_tuple)
-        kind = "code" if isinstance(peek.step, CodeStep) else (
-            "attested" if isinstance(peek.step, AttestedStep) else "nested"
+        kind = "nested" if is_group_step(peek.step) else (
+            "attested" if is_attested_kind(peek.step) else "code"
         )
         suffix = ""
         if peek.iteration is not None:
@@ -462,9 +463,9 @@ def _find_step_by_path(plan, path_tuple):
     steps = plan.steps
     for segment in path_tuple[:-1]:
         match = next((s for s in steps if s.id == segment), None)
-        if match is None or not isinstance(match, NestedStep):
+        if match is None or not is_group_step(match):
             return None
-        steps = match.plan.steps
+        steps = match.children or ()
     return next((s for s in steps if s.id == path_tuple[-1]), None)
 
 
@@ -552,14 +553,14 @@ def cmd_next(
 
     path_str = STEP_PATH_SEP.join(peek.path_tuple)
 
-    if isinstance(peek.step, CodeStep):
+    if is_code_kind(peek.step):
         print(f"run: {peek.step.command}")
         print(
             "(rerun the same command if it failed; the gate detects re-entry "
             "and skips a duplicate step_dispatched event.)"
         )
-    elif isinstance(peek.step, AttestedStep):
-        print(peek.step.instructions)
+    elif is_attested_kind(peek.step):
+        print(peek.step.instructions or peek.step.command or "")
         print()
         # peek.step.repeat is None when the leaf is the body of a repeat
         # frame (the body is a clone with repeat stripped) — peek.item_id
@@ -577,7 +578,7 @@ def cmd_next(
             _format_ack_template(
                 path_str=path_str,
                 slug=slug,
-                ack_kind=peek.step.ack.kind,
+                ack_kind=(peek.step.ack.kind if peek.step.ack is not None else "agent"),
                 has_repeat_for_each=host_has_for_each,
             )
         )
