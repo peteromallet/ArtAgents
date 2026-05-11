@@ -1,0 +1,1 @@
+"""Spike tests for evaluating technical assumptions before committing to design."""
