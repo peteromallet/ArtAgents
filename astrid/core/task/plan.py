@@ -1,4 +1,4 @@
-"""Task plan helpers."""
+"""Task plan helpers — collapsed Step schema (DRAFT, locked after hype spike T6)."""
 
 from __future__ import annotations
 
@@ -14,8 +14,13 @@ from astrid.core.task.events import canonical_event_json
 from astrid.verify import Check, canonical_check_params, file_nonempty
 
 
-TASK_STEP_KINDS = ("code", "attested", "nested")
 STEP_PATH_SEP = "/"
+
+AdapterKind = Literal["local", "manual", "remote-artifact"]
+ADAPTERS: tuple[AdapterKind, ...] = ("local", "manual", "remote-artifact")
+AssigneeForm = Literal["system", "any-agent", "any-human", "agent", "actor"]
+SupersedeScope = Literal["all", "future-iterations", "future-items"]
+SUPERSEDE_SCOPES: tuple[SupersedeScope, ...] = ("all", "future-iterations", "future-items")
 
 
 class TaskPlanError(ValueError):
@@ -55,42 +60,109 @@ Repeat = Union[RepeatUntil, RepeatForEach]
 
 
 @dataclass(frozen=True)
-class CodeStep:
-    id: str
-    command: str
-    produces: tuple[ProducesEntry, ...] = ()
-    repeat: Repeat | None = None
-    kind: Literal["code"] = "code"
+class CostEntry:
+    amount: float
+    currency: str
+    source: str
 
 
 @dataclass(frozen=True)
-class AttestedStep:
-    id: str
-    command: str
-    instructions: str
-    ack: AckRule
-    produces: tuple[ProducesEntry, ...] = ()
-    repeat: Repeat | None = None
-    kind: Literal["attested"] = "attested"
+class SupersededRef:
+    to_version: int
+    scope: SupersedeScope
 
 
 @dataclass(frozen=True)
-class NestedStep:
+class Step:
+    """Single collapsed step shape — replaces CodeStep/AttestedStep/NestedStep."""
+
     id: str
-    plan: "TaskPlan"
+    adapter: AdapterKind = "local"
+    version: int = 1
+    requires_ack: bool = False
+    assignee: str = "system"
     produces: tuple[ProducesEntry, ...] = ()
     repeat: Repeat | None = None
-    kind: Literal["nested"] = "nested"
+    command: str | None = None
+    instructions: str | None = None
+    children: tuple["Step", ...] | None = None
+    cost: CostEntry | None = None
+    superseded_by: SupersededRef | None = None
+    # Optional ack rule preserved for migrated attested steps (carries kind=agent|actor).
+    ack: AckRule | None = None
+
+    @property
+    def plan(self) -> "TaskPlan | None":
+        """Compat shim for legacy NestedStep.plan access. Returns None on leaves."""
+        if self.children is None:
+            return None
+        return TaskPlan(plan_id=f"_inline_{self.id}", version=2, steps=self.children)
+
+    def __post_init__(self) -> None:
+        # Structural invariants only — adapter/command-shape lives in _validate_step.
+        if self.command is None and self.children is None:
+            raise TaskPlanError(
+                f"step {self.id!r}: must have either 'command' (leaf) or 'children' (group)"
+            )
+        if self.command is not None and self.children is not None:
+            raise TaskPlanError(
+                f"step {self.id!r}: cannot have both 'command' and 'children'"
+            )
+        _parse_assignee(self.assignee, step_id=self.id)
+        # Phase 1–3 v2-rejection invariant: until T8 retires this, only v1 is constructible.
+        if self.version != 1:
+            raise TaskPlanError(
+                f"step {self.id!r}: version must be 1 in Phase 1–3 (got {self.version}); supersede support unlocks at T8"
+            )
 
 
-TaskPlanStep = Union[CodeStep, AttestedStep, NestedStep]
+def is_group_step(step: "Step") -> bool:
+    """True for group steps (children present)."""
+    return step.children is not None
+
+
+def is_leaf_step(step: "Step") -> bool:
+    """True for leaf steps (command present, no children)."""
+    return step.children is None
+
+
+def is_code_kind(step: "Step") -> bool:
+    """Legacy CodeStep semantics: leaf, no ack required."""
+    return is_leaf_step(step) and not step.requires_ack
+
+
+def is_attested_kind(step: "Step") -> bool:
+    """Legacy AttestedStep semantics: leaf, requires_ack."""
+    return is_leaf_step(step) and step.requires_ack
+
+
+# Legacy aliases kept ONLY so cross-module imports survive the T2→T3 window.
+# These classes are never constructed by the validator anymore. T3 will rewrite
+# isinstance dispatches and these placeholders are removed in T3/T24.
+class _LegacyStepPlaceholder:
+    """Placeholder so legacy `from .plan import CodeStep` imports do not crash mid-sweep."""
+
+
+class CodeStep(_LegacyStepPlaceholder):
+    pass
+
+
+class AttestedStep(_LegacyStepPlaceholder):
+    pass
+
+
+class NestedStep(_LegacyStepPlaceholder):
+    pass
+
+
+TaskPlanStep = Step  # legacy alias
 
 
 @dataclass(frozen=True)
 class TaskPlan:
     plan_id: str
     version: int
-    steps: tuple[TaskPlanStep, ...]
+    steps: tuple[Step, ...]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -117,6 +189,7 @@ def step_dir_for_path(
     run_id: str,
     plan_step_path: tuple[str, ...],
     *,
+    step_version: int = 1,
     iteration: int | None = None,
     item_id: str | None = None,
     root: str | Path | None = None,
@@ -127,11 +200,16 @@ def step_dir_for_path(
         raise TaskPlanError("plan_step_path must contain at least one segment")
     for segment in plan_step_path:
         validate_run_id(segment)
+    if not isinstance(step_version, int) or isinstance(step_version, bool) or step_version < 1:
+        raise TaskPlanError("step_dir_for_path: step_version must be an int >= 1")
     if iteration is not None and item_id is not None:
         raise TaskPlanError("step_dir_for_path: iteration and item_id are mutually exclusive")
     base = project_dir(slug, root=root) / "runs" / run_id / "steps"
-    for segment in plan_step_path:
+    for idx, segment in enumerate(plan_step_path):
         base = base / segment
+        # Versioned segment lives directly under the leaf step id only.
+        if idx == len(plan_step_path) - 1:
+            base = base / f"v{step_version}"
     if iteration is not None:
         if not isinstance(iteration, int) or isinstance(iteration, bool) or iteration < 1:
             raise TaskPlanError("step_dir_for_path: iteration must be an int >= 1")
@@ -147,26 +225,26 @@ def step_dir_for(
     run_id: str,
     plan_step_id: str,
     *,
+    step_version: int = 1,
     root: str | Path | None = None,
 ) -> Path:
-    return step_dir_for_path(slug, run_id, (plan_step_id,), root=root)
+    return step_dir_for_path(slug, run_id, (plan_step_id,), step_version=step_version, root=root)
 
 
-def iter_steps_with_path(plan: TaskPlan) -> Iterator[tuple[tuple[str, ...], TaskPlanStep]]:
+def iter_steps_with_path(plan: TaskPlan) -> Iterator[tuple[tuple[str, ...], Step]]:
     """Yield ``(path, step)`` in pre-order for every step in the plan tree."""
 
-    def _walk(steps: tuple[TaskPlanStep, ...], prefix: tuple[str, ...]) -> Iterator[tuple[tuple[str, ...], TaskPlanStep]]:
+    def _walk(steps: tuple[Step, ...], prefix: tuple[str, ...]) -> Iterator[tuple[tuple[str, ...], Step]]:
         for step in steps:
             path = prefix + (step.id,)
             yield path, step
-            if isinstance(step, NestedStep):
-                yield from _walk(step.plan.steps, path)
+            if step.children is not None:
+                yield from _walk(step.children, path)
 
     yield from _walk(plan.steps, ())
 
 
 def parse_from_ref(from_ref: str) -> tuple[str, str]:
-    """Parse '<step-id>.produces.<name>' into (step_id, produces_name)."""
     sep = ".produces."
     idx = from_ref.find(sep)
     if idx <= 0 or idx + len(sep) >= len(from_ref):
@@ -176,29 +254,49 @@ def parse_from_ref(from_ref: str) -> tuple[str, str]:
     return from_ref[:idx], from_ref[idx + len(sep):]
 
 
-def _step_to_dict(step: TaskPlanStep) -> dict[str, Any]:
-    if isinstance(step, CodeStep):
-        out: dict[str, Any] = {"id": step.id, "kind": "code", "command": step.command}
-    elif isinstance(step, AttestedStep):
-        out = {
-            "id": step.id,
-            "kind": "attested",
-            "command": step.command,
-            "instructions": step.instructions,
-            "ack": {"kind": step.ack.kind},
-        }
-    elif isinstance(step, NestedStep):
-        out = {
-            "id": step.id,
-            "kind": "nested",
-            "plan": step.plan.to_dict(),
-        }
-    else:
-        raise TaskPlanError(f"unknown step type: {type(step)!r}")
+def _parse_assignee(assignee: str, *, step_id: str) -> tuple[AssigneeForm, str | None]:
+    """Validate assignee string and return (form, identity-or-None)."""
+    if not isinstance(assignee, str) or not assignee:
+        raise TaskPlanError(f"step {step_id!r}: assignee must be a non-empty string")
+    if assignee in ("system", "any-agent", "any-human"):
+        return assignee, None  # type: ignore[return-value]
+    for prefix, kind in (("agent:", "agent"), ("human:", "actor")):
+        if assignee.startswith(prefix):
+            ident = assignee[len(prefix):]
+            if not ident:
+                raise TaskPlanError(
+                    f"step {step_id!r}: assignee {assignee!r} missing identity after {prefix!r}"
+                )
+            return kind, ident  # type: ignore[return-value]
+    raise TaskPlanError(
+        f"step {step_id!r}: assignee must be one of 'system'|'any-agent'|'any-human'|'agent:<id>'|'human:<name>', got {assignee!r}"
+    )
+
+
+def _step_to_dict(step: Step) -> dict[str, Any]:
+    out: dict[str, Any] = {"id": step.id, "adapter": step.adapter}
+    if step.version != 1:
+        out["version"] = step.version
+    if step.requires_ack:
+        out["requires_ack"] = True
+    if step.assignee != "system":
+        out["assignee"] = step.assignee
+    if step.command is not None:
+        out["command"] = step.command
+    if step.instructions is not None:
+        out["instructions"] = step.instructions
+    if step.children is not None:
+        out["children"] = [_step_to_dict(c) for c in step.children]
     if step.produces:
         out["produces"] = _produces_to_dict(step.produces)
     if step.repeat is not None:
         out["repeat"] = _repeat_to_dict(step.repeat)
+    if step.ack is not None:
+        out["ack"] = {"kind": step.ack.kind}
+    if step.cost is not None:
+        out["cost"] = {"amount": step.cost.amount, "currency": step.cost.currency, "source": step.cost.source}
+    if step.superseded_by is not None:
+        out["superseded_by"] = {"to_version": step.superseded_by.to_version, "scope": step.superseded_by.scope}
     return out
 
 
@@ -246,6 +344,11 @@ def _read_plan_payload(plan_path: str | Path) -> Any:
         raise TaskPlanError(f"failed to read {path}: {exc}") from exc
 
 
+def _read_legacy_plan_payload(plan_path: str | Path) -> Any:
+    """Private accessor used by migrate_plans.py to load v1 plans bypassing validation."""
+    return _read_plan_payload(plan_path)
+
+
 def _validate_plan(payload: Any, *, _is_root: bool = True) -> TaskPlan:
     if not isinstance(payload, dict):
         raise TaskPlanError("plan must be an object")
@@ -254,114 +357,141 @@ def _validate_plan(payload: Any, *, _is_root: bool = True) -> TaskPlan:
     steps = payload.get("steps")
     if not isinstance(plan_id, str) or not plan_id:
         raise TaskPlanError("plan plan_id must be a non-empty string")
-    if version != 1 or isinstance(version, bool):
-        raise TaskPlanError("plan version must be 1")
+    if version != 2 or isinstance(version, bool):
+        raise TaskPlanError("plan version must be 2")
     if not isinstance(steps, list):
         raise TaskPlanError("plan steps must be a list")
 
-    validated_steps: list[TaskPlanStep] = []
+    validated_steps: list[Step] = []
     for index, step in enumerate(steps):
         validated_steps.append(_validate_step(step, index, validated_steps))
 
-    plan = TaskPlan(plan_id=plan_id, version=1, steps=tuple(validated_steps))
+    plan = TaskPlan(plan_id=plan_id, version=2, steps=tuple(validated_steps))
     if _is_root:
         _assert_unique_paths(plan)
     return plan
 
 
-def _validate_step(step: Any, index: int, prior_siblings: list[TaskPlanStep]) -> TaskPlanStep:
+def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
     if not isinstance(step, dict):
         raise TaskPlanError(f"plan steps[{index}] must be an object")
-    kind = step.get("kind", "code")
-    if kind == "code":
-        return _validate_code_step(step, index, prior_siblings)
-    if kind == "attested":
-        return _validate_attested_step(step, index, prior_siblings)
-    if kind == "nested":
-        return _validate_nested_step(step, index, prior_siblings)
-    raise TaskPlanError(
-        f"plan steps[{index}].kind must be one of {TASK_STEP_KINDS}, got {kind!r}"
-    )
-
-
-def _validate_code_step(step: dict[str, Any], index: int, prior_siblings: list[TaskPlanStep]) -> CodeStep:
-    step_id = step.get("id")
-    command = step.get("command")
-    if not isinstance(step_id, str) or not step_id:
+    step_id_raw = step.get("id")
+    if not isinstance(step_id_raw, str) or not step_id_raw:
         raise TaskPlanError(f"plan steps[{index}].id must be a non-empty string")
-    if not isinstance(command, str) or not command:
-        raise TaskPlanError(f"plan steps[{index}].command must be a non-empty string")
-    _reject_orchestrators_run(command, index)
-    produces = _validate_produces(step.get("produces"), index, allow_legacy_list=True)
-    repeat = _validate_repeat(step.get("repeat"), index, prior_siblings)
-    return CodeStep(
-        id=validate_run_id(step_id),
-        command=command,
-        produces=produces,
-        repeat=repeat,
-    )
+    step_id = validate_run_id(step_id_raw)
 
+    adapter = step.get("adapter", "local")
+    if adapter not in ADAPTERS:
+        raise TaskPlanError(
+            f"plan steps[{index}].adapter must be one of {ADAPTERS}, got {adapter!r}"
+        )
 
-def _validate_attested_step(step: dict[str, Any], index: int, prior_siblings: list[TaskPlanStep]) -> AttestedStep:
-    step_id = step.get("id")
+    requires_ack = step.get("requires_ack", False)
+    if not isinstance(requires_ack, bool):
+        raise TaskPlanError(f"plan steps[{index}].requires_ack must be a bool")
+
+    assignee = step.get("assignee", "system")
+    _parse_assignee(assignee, step_id=step_id)  # validates shape
+
     command = step.get("command")
     instructions = step.get("instructions")
-    raw_produces = step.get("produces")
-    ack = step.get("ack")
-    if not isinstance(step_id, str) or not step_id:
-        raise TaskPlanError(f"plan steps[{index}].id must be a non-empty string")
-    if not isinstance(command, str) or not command:
-        raise TaskPlanError(f"plan steps[{index}].command must be a non-empty string")
-    if not isinstance(instructions, str) or not instructions:
-        raise TaskPlanError(
-            f"plan steps[{index}].instructions must be a non-empty string for attested step"
-        )
-    if isinstance(raw_produces, list) and raw_produces:
-        raise TaskPlanError(
-            f"plan steps[{index}].produces is a sentinel-only list; attested produces require a semantic check (use dict form with non-sentinel check)"
-        )
-    produces = _validate_produces(raw_produces, index, allow_legacy_list=False)
-    for entry in produces:
-        if entry.check.sentinel:
-            raise TaskPlanError(
-                f"plan steps[{index}].produces[{entry.name!r}] uses sentinel-only check {entry.check.check_id!r}; attested produces requires a semantic check"
-            )
-    if not isinstance(ack, dict):
-        raise TaskPlanError(f"plan steps[{index}].ack must be an object")
-    ack_kind = ack.get("kind")
-    if ack_kind not in {"agent", "actor"}:
-        raise TaskPlanError(
-            f"plan steps[{index}].ack.kind must be 'agent' or 'actor', got {ack_kind!r}"
-        )
+    raw_children = step.get("children")
+
+    if command is not None and not (isinstance(command, str) and command):
+        raise TaskPlanError(f"plan steps[{index}].command must be a non-empty string when present")
+    if instructions is not None and not (isinstance(instructions, str) and instructions):
+        raise TaskPlanError(f"plan steps[{index}].instructions must be a non-empty string when present")
+
+    children: tuple[Step, ...] | None = None
+    if raw_children is not None:
+        if not isinstance(raw_children, list):
+            raise TaskPlanError(f"plan steps[{index}].children must be a list")
+        if command is not None:
+            raise TaskPlanError(f"plan steps[{index}]: leaf (command) and group (children) are mutually exclusive")
+        validated_children: list[Step] = []
+        for child_idx, child in enumerate(raw_children):
+            validated_children.append(_validate_step(child, child_idx, validated_children))
+        children = tuple(validated_children)
+    elif command is None:
+        raise TaskPlanError(f"plan steps[{index}]: must define either 'command' or 'children'")
+
+    produces = _validate_produces(step.get("produces"), index, allow_legacy_list=(adapter == "local" and children is None))
     repeat = _validate_repeat(step.get("repeat"), index, prior_siblings)
-    return AttestedStep(
-        id=validate_run_id(step_id),
+
+    ack_raw = step.get("ack")
+    ack: AckRule | None = None
+    if ack_raw is not None:
+        if not isinstance(ack_raw, dict):
+            raise TaskPlanError(f"plan steps[{index}].ack must be an object")
+        ack_kind = ack_raw.get("kind")
+        if ack_kind not in {"agent", "actor"}:
+            raise TaskPlanError(
+                f"plan steps[{index}].ack.kind must be 'agent' or 'actor', got {ack_kind!r}"
+            )
+        ack = AckRule(kind=ack_kind)
+
+    cost_raw = step.get("cost")
+    cost: CostEntry | None = None
+    if cost_raw is not None:
+        if not isinstance(cost_raw, dict):
+            raise TaskPlanError(f"plan steps[{index}].cost must be an object")
+        amount = cost_raw.get("amount")
+        currency = cost_raw.get("currency")
+        source = cost_raw.get("source")
+        if not isinstance(amount, (int, float)) or isinstance(amount, bool):
+            raise TaskPlanError(f"plan steps[{index}].cost.amount must be a number")
+        if not isinstance(currency, str) or not currency:
+            raise TaskPlanError(f"plan steps[{index}].cost.currency must be a non-empty string")
+        if not isinstance(source, str) or not source:
+            raise TaskPlanError(f"plan steps[{index}].cost.source must be a non-empty string")
+        cost = CostEntry(amount=float(amount), currency=currency, source=source)
+
+    superseded_by_raw = step.get("superseded_by")
+    superseded_by: SupersededRef | None = None
+    if superseded_by_raw is not None:
+        if not isinstance(superseded_by_raw, dict):
+            raise TaskPlanError(f"plan steps[{index}].superseded_by must be an object")
+        to_version = superseded_by_raw.get("to_version")
+        scope = superseded_by_raw.get("scope")
+        if not isinstance(to_version, int) or isinstance(to_version, bool) or to_version < 2:
+            raise TaskPlanError(f"plan steps[{index}].superseded_by.to_version must be an int >= 2")
+        if scope not in SUPERSEDE_SCOPES:
+            raise TaskPlanError(
+                f"plan steps[{index}].superseded_by.scope must be one of {SUPERSEDE_SCOPES}, got {scope!r}"
+            )
+        superseded_by = SupersededRef(to_version=to_version, scope=scope)
+
+    version_field = step.get("version", 1)
+    if not isinstance(version_field, int) or isinstance(version_field, bool) or version_field < 1:
+        raise TaskPlanError(f"plan steps[{index}].version must be an int >= 1")
+
+    new_step = Step(
+        id=step_id,
+        adapter=adapter,
+        version=version_field,
+        requires_ack=requires_ack,
+        assignee=assignee,
+        produces=produces,
+        repeat=repeat,
         command=command,
         instructions=instructions,
-        produces=produces,
-        ack=AckRule(kind=ack_kind),
-        repeat=repeat,
+        children=children,
+        cost=cost,
+        superseded_by=superseded_by,
+        ack=ack,
     )
 
+    # Post-construction adapter/command-shape checks. _reject_orchestrators_run
+    # only runs on local-adapter leaves (per SC2: keys on step.adapter == 'local').
+    if new_step.adapter == "local" and new_step.command is not None:
+        _reject_orchestrators_run(new_step)
+    if new_step.adapter == "manual":
+        if new_step.command is None or not new_step.command.strip():
+            raise TaskPlanError(
+                f"plan steps[{index}]: manual adapter requires a non-empty command (dispatch payload)"
+            )
 
-def _validate_nested_step(step: dict[str, Any], index: int, prior_siblings: list[TaskPlanStep]) -> NestedStep:
-    step_id = step.get("id")
-    child_plan = step.get("plan")
-    if not isinstance(step_id, str) or not step_id:
-        raise TaskPlanError(f"plan steps[{index}].id must be a non-empty string")
-    if not isinstance(child_plan, dict):
-        raise TaskPlanError(
-            f"plan steps[{index}].plan must be a nested plan object"
-        )
-    nested = _validate_plan(child_plan, _is_root=False)
-    produces = _validate_produces(step.get("produces"), index, allow_legacy_list=False)
-    repeat = _validate_repeat(step.get("repeat"), index, prior_siblings)
-    return NestedStep(
-        id=validate_run_id(step_id),
-        plan=nested,
-        produces=produces,
-        repeat=repeat,
-    )
+    return new_step
 
 
 def _validate_produces(raw: Any, index: int, *, allow_legacy_list: bool) -> tuple[ProducesEntry, ...]:
@@ -410,7 +540,7 @@ def _validate_produces(raw: Any, index: int, *, allow_legacy_list: bool) -> tupl
             entries.append(ProducesEntry(name=name, path=path_value, check=check))
         return tuple(entries)
     raise TaskPlanError(
-        f"plan steps[{index}].produces must be a dict (or legacy list for code steps)"
+        f"plan steps[{index}].produces must be a dict (or legacy list for local-adapter leaf steps)"
     )
 
 
@@ -437,7 +567,7 @@ def _validate_check(raw: Any, index: int, produces_name: str) -> Check:
     return Check(check_id=check_id, params=canonical_check_params(params), sentinel=sentinel)
 
 
-def _validate_repeat(raw: Any, index: int, prior_siblings: list[TaskPlanStep]) -> Repeat | None:
+def _validate_repeat(raw: Any, index: int, prior_siblings: list[Step]) -> Repeat | None:
     if raw is None:
         return None
     if not isinstance(raw, dict):
@@ -491,7 +621,7 @@ def _validate_repeat_until(raw: dict[str, Any], index: int) -> RepeatUntil:
     )
 
 
-def _validate_repeat_for_each(raw: Any, index: int, prior_siblings: list[TaskPlanStep]) -> RepeatForEach:
+def _validate_repeat_for_each(raw: Any, index: int, prior_siblings: list[Step]) -> RepeatForEach:
     if not isinstance(raw, dict):
         raise TaskPlanError(
             f"plan steps[{index}].repeat.for_each must be an object"
@@ -527,17 +657,20 @@ def _validate_repeat_for_each(raw: Any, index: int, prior_siblings: list[TaskPla
     return RepeatForEach(items_source="from", items=(), from_ref=from_ref)
 
 
-def _reject_orchestrators_run(command: str, index: int) -> None:
+def _reject_orchestrators_run(step: Step) -> None:
+    """Reject leaf local-adapter steps that try to shell out to `astrid orchestrators run`."""
+    if step.command is None:
+        return
     try:
-        tokens = shlex.split(command)
+        tokens = shlex.split(step.command)
     except ValueError as exc:
         raise TaskPlanError(
-            f"plan steps[{index}].command is not shell-parseable: {exc}"
+            f"step {step.id!r}: command is not shell-parseable: {exc}"
         ) from exc
     tokens = _strip_astrid_prefix(tokens)
     if len(tokens) >= 2 and tokens[0] == "orchestrators" and tokens[1] == "run":
         raise TaskPlanError(
-            "code step argv targets 'astrid orchestrators run'; use a nested step"
+            f"step {step.id!r}: local-adapter command targets 'astrid orchestrators run'; use a group step (children) instead"
         )
 
 
@@ -554,12 +687,9 @@ def _strip_astrid_prefix(tokens: list[str]) -> list[str]:
 
 
 def _assert_unique_paths(plan: TaskPlan) -> None:
-    """Reject sibling-id collisions inside any one frame.
+    """Reject sibling-id collisions inside any one frame."""
 
-    Identical leaf ids in different subtrees are accepted because their full paths differ.
-    """
-
-    def _check(steps: tuple[TaskPlanStep, ...], prefix: tuple[str, ...]) -> None:
+    def _check(steps: tuple[Step, ...], prefix: tuple[str, ...]) -> None:
         seen: set[str] = set()
         for step in steps:
             if step.id in seen:
@@ -568,7 +698,7 @@ def _assert_unique_paths(plan: TaskPlan) -> None:
                     f"duplicate step id {step.id!r} among siblings at {location!r}"
                 )
             seen.add(step.id)
-            if isinstance(step, NestedStep):
-                _check(step.plan.steps, prefix + (step.id,))
+            if step.children is not None:
+                _check(step.children, prefix + (step.id,))
 
     _check(plan.steps, ())

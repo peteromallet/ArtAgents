@@ -37,8 +37,8 @@ from astrid.core.task.lifecycle import cmd_start
 from astrid.core.task.lifecycle_ack import cmd_ack
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
-    AttestedStep,
-    CodeStep,
+    is_attested_kind,
+    is_code_kind,
     load_plan,
 )
 
@@ -128,7 +128,7 @@ def run_fixture(
             step = peek.step
             path_str = STEP_PATH_SEP.join(peek.path_tuple)
 
-            if isinstance(step, CodeStep):
+            if is_code_kind(step):
                 cmd_str = step.command
                 cmd_argv = shlex.split(cmd_str)
                 try:
@@ -150,8 +150,8 @@ def run_fixture(
                 record_dispatch_complete(decision, completed.returncode)
                 continue
 
-            if isinstance(step, AttestedStep):
-                if step.ack.kind == "agent":
+            if is_attested_kind(step):
+                if step.ack is not None and step.ack.kind == "agent":
                     flag_pair = ["--agent", "author_test"]
                 else:
                     flag_pair = ["--actor", "author_test"]

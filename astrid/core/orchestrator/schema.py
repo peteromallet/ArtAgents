@@ -1,10 +1,4 @@
-"""Stdlib schema and validation for Astrid orchestrators.
-
-Note: the task-mode ``code`` step kind is a strict superset of ``RUNTIME_KINDS``
-in expressive power; ``TASK_STEP_KINDS`` is re-exported from
-``astrid.core.task.plan`` (single source of truth) for convenience and is
-not wired into ``OrchestratorDefinition`` validation.
-"""
+"""Stdlib schema and validation for Astrid orchestrators."""
 
 from __future__ import annotations
 
@@ -24,9 +18,6 @@ from astrid.contracts.schema import (
     Output,
     Port,
 )
-from astrid.core.task.plan import TASK_STEP_KINDS
-
-
 ORCHESTRATOR_KINDS = {"built_in", "external"}
 RUNTIME_KINDS = {"python", "command"}
 
@@ -491,7 +482,6 @@ __all__ = [
     "ORCHESTRATOR_KINDS",
     "RUNTIME_KINDS",
     "SHORT_DESCRIPTION_MAX_LEN",
-    "TASK_STEP_KINDS",
     "CachePolicy",
     "CommandSpec",
     "OrchestratorDefinition",

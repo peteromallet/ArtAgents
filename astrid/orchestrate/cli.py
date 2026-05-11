@@ -23,10 +23,11 @@ from typing import Optional
 from astrid.core.task.events import read_events
 from astrid.core.task.normalize import dump_events_jsonl, normalize_events
 from astrid.core.task.plan import (
-    AttestedStep,
-    CodeStep,
-    NestedStep,
     RepeatForEach,
+    Step,
+    is_attested_kind,
+    is_code_kind,
+    is_group_step,
     RepeatUntil,
     TaskPlan,
     TaskPlanError,
@@ -139,7 +140,7 @@ def _cmd_check(qid: str, packs_root: Optional[Path]) -> int:
     # `astrid orchestrators run`. We layer a redundant explicit walk so the
     # author sees a clear pass message and the SLA is exercised.
     for path, step in iter_steps_with_path(plan):
-        if isinstance(step, AttestedStep):
+        if is_attested_kind(step):
             for entry in step.produces:
                 if entry.check.sentinel:
                     _print_err(
@@ -147,7 +148,7 @@ def _cmd_check(qid: str, packs_root: Optional[Path]) -> int:
                         f"produces[{entry.name!r}] uses sentinel-only check"
                     )
                     return 1
-        if isinstance(step, (CodeStep, AttestedStep)) and step.repeat is not None:
+        if (not is_group_step(step)) and step.repeat is not None:
             if isinstance(step.repeat, RepeatForEach) and step.repeat.from_ref:
                 # load_plan already validated this; emit nothing extra.
                 _ = parse_from_ref(step.repeat.from_ref)
@@ -390,21 +391,22 @@ def _format_step_explain(
     parent_repeat_chain: tuple[str, ...] = (),
 ) -> list[str]:
     lines: list[str] = []
-    kind = step.kind
-    if isinstance(step, CodeStep):
+    if is_group_step(step):
+        kind = "nested"
         lines.append(
-            f"{indent}Step `{step.id}` ({kind}) runs `{step.command}`."
+            f"{indent}Step `{step.id}` ({kind}) is a group step. Children:"
         )
-    elif isinstance(step, AttestedStep):
-        ack = step.ack.kind
+    elif is_attested_kind(step):
+        kind = "attested"
+        ack = step.ack.kind if step.ack is not None else "agent"
         lines.append(
             f"{indent}Step `{step.id}` ({kind}) waits for {ack} attestation; "
-            f"the runner prints: {step.instructions!r}"
+            f"the runner prints: {(step.instructions or step.command)!r}"
         )
-    elif isinstance(step, NestedStep):
+    else:
+        kind = "code"
         lines.append(
-            f"{indent}Step `{step.id}` ({kind}) delegates to sub-orchestrator "
-            f"`{step.plan.plan_id}`. Children:"
+            f"{indent}Step `{step.id}` ({kind}) runs `{step.command}`."
         )
     if step.produces:
         names = sorted(p.name for p in step.produces)
@@ -431,8 +433,8 @@ def _format_step_explain(
                 f"{indent}  Fans out across items resolved from "
                 f"`{repeat.from_ref}` via repeat.for_each."
             )
-    if isinstance(step, NestedStep):
-        for child in step.plan.steps:
+    if is_group_step(step):
+        for child in (step.children or ()):
             lines.extend(
                 _format_step_explain(
                     child, indent + "  ",

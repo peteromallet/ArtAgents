@@ -50,10 +50,11 @@ from astrid.core.task.cas import intern, link_into_produces
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
     AckRule,
-    AttestedStep,
-    CodeStep,
-    NestedStep,
     ProducesEntry,
+    Step,
+    is_attested_kind,
+    is_code_kind,
+    is_group_step,
     RepeatForEach,
     RepeatUntil,
     TaskPlan,
@@ -189,9 +190,9 @@ def derive_cursor(plan: TaskPlan, events: Sequence[dict[str, Any]], *, slug: str
                     recovery="inspect events.jsonl",
                 )
             step = top.plan.steps[top.child_index]
-            if not isinstance(step, NestedStep):
+            if not is_group_step(step):
                 raise TaskRunGateError(
-                    reason="nested_entered did not land on a NestedStep",
+                    reason="nested_entered did not land on a group step",
                     recovery="inspect events.jsonl",
                 )
             frames.append(
@@ -431,7 +432,7 @@ def _auto_traverse_to_leaf(
                     incoming_command=incoming_command,
                 )
                 continue
-        if isinstance(current_step, NestedStep):
+        if is_group_step(current_step):
             child_hash = _compute_inline_plan_hash(current_step.plan)
             append_fn(make_nested_entered_event(path_str, child_hash))
             cursor.frames.append(
@@ -580,7 +581,7 @@ def gate_command(
     iteration = top.iteration if top.repeat_step_id is not None else None
     item_id = top.item_id if top.repeat_step_id is not None else None
 
-    if isinstance(current_step, CodeStep):
+    if is_code_kind(current_step):
         return _dispatch_code(
             slug=slug,
             command=command,
@@ -594,7 +595,7 @@ def gate_command(
             iteration=iteration,
             item_id=item_id,
         )
-    if isinstance(current_step, AttestedStep):
+    if is_attested_kind(current_step):
         return _dispatch_attested(
             slug=slug,
             command=command,
@@ -638,13 +639,16 @@ def _has_iteration_exhausted(events: Sequence[dict[str, Any]], host_path: str) -
     return None
 
 
-def _make_exhaust_override_step(slug: str, host_path: str) -> AttestedStep:
+def _make_exhaust_override_step(slug: str, host_path: str) -> Step:
     override_path = f"{host_path}{STEP_PATH_SEP}{EXHAUST_OVERRIDE_ID}"
-    return AttestedStep(
+    return Step(
         id=EXHAUST_OVERRIDE_ID,
+        adapter="manual",
         command=f"ack --project {slug} --step {override_path}",
         instructions="repeat.until max_iterations exhausted; human override required to advance",
         ack=AckRule(kind="actor"),
+        requires_ack=True,
+        assignee="any-human",
     )
 
 
@@ -777,7 +781,7 @@ def _enter_repeat_for_each(
     completed = progress["completed"]
     # For attested host: the incoming command may target a specific item via --item.
     target_item: str | None = None
-    if isinstance(host, AttestedStep):
+    if is_attested_kind(host):
         _, args = match_attested_command(incoming_command, host.command)
         if args.item is not None:
             target_item = args.item
@@ -801,7 +805,7 @@ def _dispatch_code(
     *,
     slug: str,
     command: str,
-    step: CodeStep,
+    step: Step,
     path_str: str,
     path_tuple: tuple[str, ...],
     events_path: Path,
@@ -915,7 +919,7 @@ def _dispatch_attested(
     *,
     slug: str,
     command: str,
-    step: AttestedStep,
+    step: Step,
     path_str: str,
     path_tuple: tuple[str, ...],
     events_path: Path,
@@ -1071,7 +1075,7 @@ def match_attested_command(incoming: str, expected_prefix: str) -> tuple[bool, A
 def validate_attested_identity(
     *,
     slug: str,
-    step: AttestedStep,
+    step: Step,
     args: AttestedArgs,
     run_started_actor: str | None,
 ) -> tuple[str, str]:

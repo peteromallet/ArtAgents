@@ -31,8 +31,8 @@ from astrid.core.task.gate import (
 )
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
-    AttestedStep,
-    CodeStep,
+    is_attested_kind,
+    is_code_kind,
     load_plan,
 )
 from astrid.core.task.events import read_events
@@ -218,12 +218,12 @@ def consume_inbox_entry(
         return True
 
     # approve / retry both require the cursor to be on a matching attested step.
-    if peek.exhausted or peek.step is None or isinstance(peek.step, CodeStep):
+    if peek.exhausted or peek.step is None or is_code_kind(peek.step):
         _LOGGER.warning(
             "inbox: skipping %s: cursor not on an attested step", entry.path.name
         )
         return False
-    if not isinstance(peek.step, AttestedStep):
+    if not is_attested_kind(peek.step):
         _LOGGER.warning(
             "inbox: skipping %s: cursor not on an attested step", entry.path.name
         )
