@@ -103,6 +103,8 @@ device_name_0 NVIDIA A40
 
 PID 1 and `npm run start` had NVIDIA and RunPod SSH env values such as `CUDA_VERSION`, `NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`, `TORCH_CUDA_ARCH_LIST`, and `RUNPOD_TCP_PORT_22`. No `HF_TOKEN` was present in the probed container environment.
 
+Astrid now passes host `HF_TOKEN` through RunPod `env` at provision/session time. RunPod lifecycle forwards those values to the SDK `create_pod(..., env=...)`, but the Ostris image only writes selected platform values to `/etc/rp_environment`; arbitrary values such as `HF_TOKEN` should not be assumed to survive into later SSH sessions there. The stage bootstrap therefore sources `/etc/rp_environment`, falls back to reading `HF_TOKEN` from `/proc/1/environ`, and writes only the runtime value to `/app/ai-toolkit/.env` with `0600`-style permissions. The generated bootstrap script never contains the literal token.
+
 Source references found in `/app/ai-toolkit`:
 
 - `run.py` calls `load_dotenv()`, sets `HF_HUB_ENABLE_HF_TRANSFER` default `1`, sets `NO_ALBUMENTATIONS_UPDATE=1`, sets `DISABLE_TELEMETRY=YES`, and reads optional `SEED` and `DEBUG_TOOLKIT`.
@@ -112,4 +114,4 @@ Source references found in `/app/ai-toolkit`:
 - UI-launched jobs set `AITK_JOB_ID`, `CUDA_VISIBLE_DEVICES`, `IS_AI_TOOLKIT_UI`, and optional UI-stored `HF_TOKEN`.
 - `toolkit/timer.py` checks `IS_AI_TOOLKIT_UI`.
 
-Astrid should not write literal secrets into `bootstrap.sh`. If `HF_TOKEN` is needed, it must be present in the pod environment or an ai-toolkit `.env` before `run.py` starts.
+Astrid should not write literal secrets into `bootstrap.sh`. If `HF_TOKEN` is needed, it must be present in the pod environment and copied into the ai-toolkit `.env` before `run.py` starts.

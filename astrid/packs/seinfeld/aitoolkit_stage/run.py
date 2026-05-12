@@ -29,7 +29,7 @@ HIVEMIND_DEFAULTS = {
     "grad_accum": 4,
     "seed_default": 42,
     "trigger_word": "seinfeld scene",
-    "base_model_default": "Lightricks/LTX-Video",
+    "base_model_default": "Lightricks/LTX-2.3",
 }
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "lora_train" / "config_template.yaml"
@@ -149,6 +149,25 @@ if [ ! -f "$TOOLKIT_ROOT/run.py" ]; then
   echo "ERROR: AI Toolkit training entrypoint missing: $TOOLKIT_ROOT/run.py" >&2
   exit 2
 fi
+
+hf_token_value="${HF_TOKEN:-}"
+if [ -z "$hf_token_value" ] && [ -r /proc/1/environ ]; then
+  hf_token_value="$(tr '\0' '\n' </proc/1/environ | awk -F= '$1=="HF_TOKEN"{sub(/^[^=]*=/,""); print; exit}')"
+fi
+if [ -z "$hf_token_value" ]; then
+  echo "ERROR: HF_TOKEN is not available in the pod environment; cannot train gated LTX 2.3." >&2
+  exit 5
+fi
+umask 077
+if [ -f "$TOOLKIT_ROOT/.env" ]; then
+  grep -v '^HF_TOKEN=' "$TOOLKIT_ROOT/.env" > "$TOOLKIT_ROOT/.env.tmp" || true
+else
+  : > "$TOOLKIT_ROOT/.env.tmp"
+fi
+printf 'HF_TOKEN=%s\n' "$hf_token_value" >> "$TOOLKIT_ROOT/.env.tmp"
+mv "$TOOLKIT_ROOT/.env.tmp" "$TOOLKIT_ROOT/.env"
+export HF_TOKEN="$hf_token_value"
+unset hf_token_value
 
 if [ ! -f "$WORKSPACE/config.yaml" ]; then
   echo "ERROR: expected config at $WORKSPACE/config.yaml" >&2

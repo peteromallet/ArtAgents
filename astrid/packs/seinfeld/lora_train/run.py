@@ -28,6 +28,7 @@ DEFAULT_STORAGE = "seinfeld-dataset"
 DEFAULT_GPU = "NVIDIA RTX 6000 Ada Generation"
 DEFAULT_CONTAINER_DISK_GB = 200
 DEFAULT_MAX_RUNTIME = 43200  # 12h ceiling
+DEFAULT_BASE_MODEL = "Lightricks/LTX-2.3"
 PACK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -237,7 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Default run subcommand (also runnable as bare flags for orchestrator framework)
     p.add_argument("--manifest")
     p.add_argument("--vocabulary")
-    p.add_argument("--base-model-name", dest="base_model_name", default="ltx-2.3")
+    p.add_argument("--base-model-name", dest="base_model_name", default=DEFAULT_BASE_MODEL)
     p.add_argument("--lora-id", default="seinfeld-scene-v1")
     p.add_argument("--steps", type=int, default=None)
     p.add_argument("--seed", type=int, default=42)
@@ -428,7 +429,7 @@ def cmd_resume(args: argparse.Namespace) -> int:
     # Reconstruct an args-like namespace for _register.
     reg_args = argparse.Namespace(
         vocabulary=state["vocabulary"],
-        base_model_name=state.get("base_model_name", "ltx-2.3"),
+        base_model_name=state.get("base_model_name", DEFAULT_BASE_MODEL),
         lora_id=state.get("lora_id", "seinfeld-scene-v1"),
     )
     rc = _register(reg_args, out, chosen_path, local_lora, Path(state["staged_config"]))

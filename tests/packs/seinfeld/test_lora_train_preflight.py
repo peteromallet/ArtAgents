@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 from astrid.packs.seinfeld.lora_train import run as lora_run
 
 from ._fixtures import make_dataset, make_vocab
@@ -42,3 +44,5 @@ def test_preflight_passes_with_intact_dataset(tmp_path: Path) -> None:
     vocab = make_vocab(tmp_path)
     rc = _run_dryrun(tmp_path, manifest, vocab)
     assert rc == 0
+    cfg = yaml.safe_load((tmp_path / "out" / "stage" / "staged_config.yaml").read_text(encoding="utf-8"))
+    assert cfg["config"]["process"][0]["model"]["name_or_path"] == "Lightricks/LTX-2.3"

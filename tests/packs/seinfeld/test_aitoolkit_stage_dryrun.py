@@ -46,9 +46,15 @@ def test_dry_run_writes_parseable_yaml_with_hivemind_keys(tmp_path: Path) -> Non
     assert proc["train"]["lr"] == 2.0e-5
     assert proc["train"]["seed"] == 42
     assert proc["model"]["is_ltx"] is True
+    assert proc["model"]["name_or_path"] == "Lightricks/LTX-2.3"
     assert proc["sample"]["width"] == 512
     assert proc["sample"]["height"] == 768
     assert len(proc["sample"]["prompts"]) >= 3
+
+    bootstrap_text = bootstrap.read_text(encoding="utf-8")
+    assert "/proc/1/environ" in bootstrap_text
+    assert '$TOOLKIT_ROOT/.env' in bootstrap_text
+    assert "hf_test_token" not in bootstrap_text
 
 
 def test_dry_run_smoke_overrides_steps_to_100(tmp_path: Path) -> None:

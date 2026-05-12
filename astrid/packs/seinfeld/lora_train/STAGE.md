@@ -37,7 +37,7 @@ After step 4, the orchestrator writes `<out>/last_run.json`:
   "checkpoint_manifest": "<abs path>",
   "eval_grid_index": "<abs path>",
   "vocabulary": "<abs path>",
-  "base_model_name": "ltx-2.3",
+  "base_model_name": "Lightricks/LTX-2.3",
   "lora_id": "seinfeld-scene-v1",
   "out": "<abs path>"
 }

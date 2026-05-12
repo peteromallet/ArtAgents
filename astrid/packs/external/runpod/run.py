@@ -98,6 +98,12 @@ def _cost_amount(duration_seconds: float, hourly_rate: float) -> float:
     return duration_seconds * hourly_rate / 3600.0
 
 
+def _host_hf_token_env_vars() -> dict[str, str]:
+    """Return pod env vars sourced from the host process without inventing defaults."""
+    token = os.environ.get("HF_TOKEN")
+    return {"HF_TOKEN": token} if token else {}
+
+
 # ---------------------------------------------------------------------------
 # Shared helper: load pod_handle and rebuild config
 # ---------------------------------------------------------------------------
@@ -126,6 +132,7 @@ def _load_handle_and_config(handle_path: Path) -> tuple[dict[str, Any], Any]:
         ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
         ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
         ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
+        env_vars=_host_hf_token_env_vars(),
     )
     return handle, config
 
@@ -171,6 +178,7 @@ def cmd_provision(args: argparse.Namespace, produces_dir: Path) -> int:
         ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
         ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
         ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
+        env_vars=_host_hf_token_env_vars(),
     )
 
     async def _provision() -> tuple[Any, dict[str, Any]]:
@@ -445,6 +453,7 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
         ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
         ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
         ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
+        env_vars=_host_hf_token_env_vars(),
     )
 
     t0 = time.monotonic()
