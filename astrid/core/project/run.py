@@ -78,7 +78,7 @@ def prepare_project_run(
         step_id = task_env.task_step_id_env()
         if not step_id:
             raise ProjectRunError("ARTAGENTS_TASK_STEP_ID must be set when ARTAGENTS_TASK_RUN_ID is set")
-        run_root = step_dir_for(project_slug, parent_run_id, step_id, root=projects_root)
+        run_root = step_dir_for(project_slug, parent_run_id, step_id, step_version=1, root=projects_root)
         run_root.mkdir(parents=True, exist_ok=True)
         now = utc_now_iso()
         run_metadata = dict(metadata or {})

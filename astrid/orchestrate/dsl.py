@@ -154,7 +154,7 @@ class _PlanBuilder:
         next_visiting = _visiting | {self.plan_id}
         return {
             "plan_id": self.plan_id,
-            "version": 1,
+            "version": 2,
             "steps": [
                 _step_to_dict(step, _resolver=_resolver, _visiting=next_visiting)
                 for step in self.steps

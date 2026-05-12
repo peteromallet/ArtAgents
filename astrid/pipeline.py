@@ -28,7 +28,7 @@ from typing import Iterable
 # command to dispatch through plan[cursor]. cmd_ack approve re-enters the gate
 # explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
 # bypasses the gate's command-match step.
-LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook"}
+LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook", "plan", "claim", "unclaim"}
 
 
 # Sprint 1 session-gate allowlist. A first-token (or two-token) match against
@@ -101,7 +101,13 @@ def main(argv: list[str] | None = None) -> int:
 
     returncode = -1
     try:
-        returncode = _dispatch(raw)
+        # Sprint 3 (T14): adapter-aware dispatch. For code steps with an adapter
+        # (local/manual), the adapter's dispatch() was already called inside
+        # gate_command.  Skip _dispatch(raw) to avoid double-execution.
+        if decision.step_kind == "code" and decision.adapter:
+            returncode = _wait_adapter(decision)
+        else:
+            returncode = _dispatch(raw)
         return returncode
     finally:
         # T9 extends GateDecision with a `.session` field so the post-dispatch
@@ -199,6 +205,14 @@ def _dispatch(raw: list[str]) -> int:
         return _dispatch_runs(raw[1:])
     if raw and raw[0] == "hook":
         return _dispatch_hook(raw[1:])
+    if raw and raw[0] == "plan":
+        return _dispatch_plan_verbs(raw[1:])
+    if raw and raw[0] == "claim":
+        from .core.task.claim import cmd_claim
+        return cmd_claim(raw[1:])
+    if raw and raw[0] == "unclaim":
+        from .core.task.claim import cmd_unclaim
+        return cmd_unclaim(raw[1:])
     if raw and raw[0] == "publish":
         from .packs.builtin.publish import run as publish
 
@@ -323,6 +337,87 @@ def _dispatch_hook(args: list[str]) -> int:
     return cmd_hook_stop(args[1:])
 
 
+def _dispatch_plan_verbs(args: list[str]) -> int:
+    """Delegate plan sub-verbs to plan_verbs.cmd_plan (T8/T17)."""
+    from .core.task.plan_verbs import cmd_plan
+
+    return cmd_plan(args)
+
+
+def _wait_adapter(decision: Any) -> int:
+    """Wait for an adapter-dispatched step to complete. Returns a returncode.
+
+    For local adapter: poll the subprocess until it exits, capture returncode.
+    For manual adapter: the agent does work out-of-band; return 0 immediately.
+    The actual completion is detected by record_dispatch_complete via the adapter.
+    """
+    adapter_kind = getattr(decision, "adapter", None)
+    if adapter_kind == "local":
+        return _wait_local_subprocess(decision)
+    if adapter_kind == "manual":
+        # Manual steps: dispatch payload already written; agent works out-of-band.
+        # Completion arrives via ack or inbox — not a subprocess exit code.
+        return 0
+    # Legacy / unknown: fall through to -1 (adapter handles it in record_dispatch_complete).
+    return 0
+
+
+def _wait_local_subprocess(decision: Any) -> int:
+    """Block until the local-adapter subprocess exits. Return its exit code."""
+    import os
+    import time
+
+    pid = getattr(decision, "pid", None)
+    if pid is None:
+        return -1
+    try:
+        while True:
+            try:
+                wpid, status = os.waitpid(pid, os.WNOHANG)
+                if wpid == pid:
+                    if os.WIFEXITED(status):
+                        return os.WEXITSTATUS(status)
+                    if os.WIFSIGNALED(status):
+                        return -abs(os.WTERMSIG(status))
+                    return -1
+            except ChildProcessError:
+                # Already reaped — check returncode sidecar.
+                return _read_returncode_sidecar(decision)
+            except ProcessLookupError:
+                return _read_returncode_sidecar(decision)
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        # Forward the interrupt to the child but don't crash.
+        try:
+            os.kill(pid, 2)  # SIGINT
+        except OSError:
+            pass
+        return -1
+
+
+def _read_returncode_sidecar(decision: Any) -> int:
+    """If the subprocess pid is gone, try to read the returncode sidecar file."""
+    from pathlib import Path
+
+    project_root = getattr(decision, "project_root", None)
+    run_id = getattr(decision, "run_id", None)
+    path_tuple = getattr(decision, "plan_step_path", ())
+    step_version = getattr(decision, "step_version", 1)
+    if not project_root or not run_id or not path_tuple:
+        return -1
+    step_dir = project_root / "runs" / run_id / "steps"
+    for seg in path_tuple:
+        step_dir = step_dir / seg
+    step_dir = step_dir / f"v{step_version}"
+    rc_path = step_dir / "returncode"
+    if rc_path.exists():
+        try:
+            return int(rc_path.read_text().strip())
+        except (ValueError, OSError):
+            pass
+    return -1
+
+
 def _extract_project_slug(raw: list[str]) -> str | None:
     for index, token in enumerate(raw):
         if token == "--project":
@@ -363,6 +458,13 @@ Usage:
     python3 -m astrid abort --project <slug>
     python3 -m astrid status --project <slug>
     python3 -m astrid runs ls [--project <slug>]
+  Plan-mutation verbs (Sprint 3):
+    python3 -m astrid plan add-step --project <slug> --run-id <id> --step-id <id> --command '...' [--adapter local|manual] [--after|--before|--into <path>]
+    python3 -m astrid plan edit-step <path> --project <slug> --run-id <id> [--command '...'] [--assignee ...]
+    python3 -m astrid plan remove-step <path> --project <slug> --run-id <id>
+    python3 -m astrid plan supersede-step <path> --project <slug> --run-id <id> --scope {all,future-iterations,future-items}
+    python3 -m astrid claim <step> --project <slug> --run-id <id> [--for agent:<id>|human:<name>]
+    python3 -m astrid unclaim <step> --project <slug> --run-id <id> [--for agent:<id>|human:<name>]
   Task-mode agent-facing verbs (mid-run):
     python3 -m astrid next --project <slug>
     python3 -m astrid ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]

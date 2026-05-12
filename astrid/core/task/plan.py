@@ -1,4 +1,4 @@
-"""Task plan helpers — collapsed Step schema (DRAFT, locked after hype spike T6)."""
+"""Task plan helpers — collapsed Step schema (locked at Sprint 3 T6 after hype spike)."""
 
 from __future__ import annotations
 
@@ -90,6 +90,10 @@ class Step:
     superseded_by: SupersededRef | None = None
     # Optional ack rule preserved for migrated attested steps (carries kind=agent|actor).
     ack: AckRule | None = None
+    # Group-step re-export map (hype-spike G1): explicit name -> "child-id.produces.name".
+    # Lets a group step publish a stable namespace over its descendants' produces without
+    # the schema implying auto-aggregation. Leaf steps MUST leave this None.
+    re_export: tuple[tuple[str, str], ...] | None = None
 
     @property
     def plan(self) -> "TaskPlan | None":
@@ -109,10 +113,14 @@ class Step:
                 f"step {self.id!r}: cannot have both 'command' and 'children'"
             )
         _parse_assignee(self.assignee, step_id=self.id)
-        # Phase 1–3 v2-rejection invariant: until T8 retires this, only v1 is constructible.
-        if self.version != 1:
+        if self.re_export is not None and self.children is None:
             raise TaskPlanError(
-                f"step {self.id!r}: version must be 1 in Phase 1–3 (got {self.version}); supersede support unlocks at T8"
+                f"step {self.id!r}: re_export is only valid on group steps (children present)"
+            )
+        # v2+ supersede support unlocked at T8 (was: Phase 1–3 v2-rejection invariant).
+        if self.version < 1:
+            raise TaskPlanError(
+                f"step {self.id!r}: version must be >= 1 (got {self.version})"
             )
 
 
@@ -297,6 +305,8 @@ def _step_to_dict(step: Step) -> dict[str, Any]:
         out["cost"] = {"amount": step.cost.amount, "currency": step.cost.currency, "source": step.cost.source}
     if step.superseded_by is not None:
         out["superseded_by"] = {"to_version": step.superseded_by.to_version, "scope": step.superseded_by.scope}
+    if step.re_export is not None:
+        out["re_export"] = {name: ref for name, ref in step.re_export}
     return out
 
 
@@ -465,6 +475,28 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
     if not isinstance(version_field, int) or isinstance(version_field, bool) or version_field < 1:
         raise TaskPlanError(f"plan steps[{index}].version must be an int >= 1")
 
+    re_export_raw = step.get("re_export")
+    re_export: tuple[tuple[str, str], ...] | None = None
+    if re_export_raw is not None:
+        if children is None:
+            raise TaskPlanError(
+                f"plan steps[{index}].re_export is only valid on group steps (children present)"
+            )
+        if not isinstance(re_export_raw, dict) or not re_export_raw:
+            raise TaskPlanError(f"plan steps[{index}].re_export must be a non-empty object")
+        entries: list[tuple[str, str]] = []
+        for name, ref in re_export_raw.items():
+            if not isinstance(name, str) or not name:
+                raise TaskPlanError(f"plan steps[{index}].re_export keys must be non-empty strings")
+            if not isinstance(ref, str) or not ref:
+                raise TaskPlanError(
+                    f"plan steps[{index}].re_export[{name!r}] must be a non-empty '<child-id>.produces.<name>' string"
+                )
+            # Sanity-parse; full descendant-resolution lives in T7's validator I3.
+            parse_from_ref(ref)
+            entries.append((name, ref))
+        re_export = tuple(entries)
+
     new_step = Step(
         id=step_id,
         adapter=adapter,
@@ -479,6 +511,7 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
         cost=cost,
         superseded_by=superseded_by,
         ack=ack,
+        re_export=re_export,
     )
 
     # Post-construction adapter/command-shape checks. _reject_orchestrators_run

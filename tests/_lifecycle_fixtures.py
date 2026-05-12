@@ -17,6 +17,29 @@ from astrid.core.task.lifecycle import cmd_start
 from astrid.orchestrate.compile import compile_to_path
 
 
+def migrate_v1_plan(plan: dict) -> dict:
+    """Rewrite a Sprint 2 (v1) plan dict in place to the Sprint 3 (v2) collapsed schema.
+
+    Reuses the production migration logic so legacy test fixtures keep working
+    without per-test schema rewrites. Idempotent: v2 plans pass through unchanged.
+    """
+    import importlib.util
+    import sys as _sys
+
+    if plan.get("version") == 2:
+        return plan
+    _spec = importlib.util.spec_from_file_location(
+        "_astrid_sprint3_migrate_plans",
+        Path(__file__).resolve().parent.parent
+        / "scripts" / "migrations" / "sprint-3" / "migrate_plans.py",
+    )
+    _mod = importlib.util.module_from_spec(_spec)
+    _sys.modules[_spec.name] = _mod
+    _spec.loader.exec_module(_mod)
+    new_steps = [_mod._migrate_step(s) if isinstance(s, dict) else s for s in plan.get("steps", [])]
+    return {"plan_id": plan.get("plan_id", "unknown"), "version": 2, "steps": new_steps}
+
+
 def make_pack(packs_root: Path, pack: str, module_name: str, body: str) -> Path:
     pack_dir = packs_root / pack
     pack_dir.mkdir(parents=True, exist_ok=True)

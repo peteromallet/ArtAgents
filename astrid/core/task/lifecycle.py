@@ -415,7 +415,7 @@ def cmd_status(
             suffix += f"  iter={peek.iteration}"
         if peek.item_id is not None:
             suffix += f"  item={peek.item_id}"
-        print(f"current:   {path_str} [{kind}]{suffix}")
+        print(f"current:   {path_str} [{kind}] v{peek.step.version}{suffix}")
         if peek.step.produces:
             names = ", ".join(p.name for p in peek.step.produces)
             print(f"produces:  {names}")
@@ -596,6 +596,7 @@ def cmd_next(
                 slug,
                 run_id,
                 peek.path_tuple,
+                step_version=1,
                 iteration=prev_iter,
                 root=projects_root,
             )

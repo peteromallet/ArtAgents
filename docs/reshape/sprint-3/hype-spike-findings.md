@@ -33,6 +33,8 @@ The remaining findings are revisions — none block sprint-3 schema lock.
 
 **Schema revision needed:** add `re_export: dict[str, str] | None` to `Step` (group-step-only). Lock during T6.
 
+**Status (T6):** LANDED. `Step.re_export: tuple[tuple[str, str], ...] | None` added; `__post_init__` rejects re_export on leaf steps; `_validate_step` parses `re_export` from JSON (rejects on non-group, non-dict, empty, or malformed `<child-id>.produces.<name>` refs); `_step_to_dict` round-trips. Full descendant-resolution (does each ref actually resolve to a real produces?) deferred to T7 validator I3.
+
 ---
 
 ## Gap G2 — Cost field needs a sidecar convention for local-adapter steps

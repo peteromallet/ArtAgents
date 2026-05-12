@@ -273,22 +273,74 @@ def make_run_aborted_event(run_id: str, *, reason: str | None = None) -> dict[st
     return payload
 
 
-def make_step_dispatched_event(plan_step_path: str, command: str) -> dict[str, Any]:
-    return {
+def make_step_dispatched_event(
+    plan_step_path: str,
+    command: str,
+    *,
+    adapter: str | None = None,
+    step_version: int | None = None,
+    pid: int | None = None,
+) -> dict[str, Any]:
+    """Emit a ``step_dispatched`` event.  *None-valued kwargs are OMITTED* (never ``null``)."""
+    payload: dict[str, Any] = {
         "command": command,
         "kind": "step_dispatched",
-        "plan_step_id": plan_step_path,
+        "plan_step_path": plan_step_path.split("/") if "/" in plan_step_path else [plan_step_path],
         "ts": _utc_now_iso(),
     }
+    if adapter is not None:
+        payload["adapter"] = adapter
+    if step_version is not None:
+        payload["step_version"] = step_version
+    if pid is not None:
+        payload["pid"] = pid
+    return payload
 
 
-def make_step_completed_event(plan_step_path: str, returncode: int) -> dict[str, Any]:
-    return {
+def make_step_completed_event(
+    plan_step_path: str,
+    returncode: int,
+    *,
+    cost: dict[str, Any] | None = None,
+    adapter: str | None = None,
+) -> dict[str, Any]:
+    """Emit a ``step_completed`` event.  *None-valued kwargs are OMITTED* (never ``null``)."""
+    payload: dict[str, Any] = {
         "kind": "step_completed",
-        "plan_step_id": plan_step_path,
+        "plan_step_path": plan_step_path.split("/") if "/" in plan_step_path else [plan_step_path],
         "returncode": returncode,
         "ts": _utc_now_iso(),
     }
+    if cost is not None:
+        payload["cost"] = cost
+    if adapter is not None:
+        payload["adapter"] = adapter
+    return payload
+
+
+def make_step_failed_event(
+    plan_step_path: str,
+    returncode: int | None,
+    *,
+    reason: str | None = None,
+    cost: dict[str, Any] | None = None,
+    adapter: str | None = None,
+) -> dict[str, Any]:
+    """Emit a ``step_failed`` event.  *None-valued kwargs are OMITTED* (never ``null``)."""
+    payload: dict[str, Any] = {
+        "kind": "step_failed",
+        "plan_step_path": plan_step_path.split("/") if "/" in plan_step_path else [plan_step_path],
+        "ts": _utc_now_iso(),
+    }
+    if returncode is not None:
+        payload["returncode"] = returncode
+    if reason is not None:
+        payload["reason"] = reason
+    if cost is not None:
+        payload["cost"] = cost
+    if adapter is not None:
+        payload["adapter"] = adapter
+    return payload
 
 
 def make_step_attested_event(

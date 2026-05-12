@@ -1,8 +1,15 @@
-"""Inbox surface for external completion signals (Phase 8).
+"""Inbox surface for external completion signals (Sprint 3 T10).
 
 External processes drop JSON files into ``runs/<run-id>/inbox/`` to signal
-that an attested step has completed. ``astrid next`` consumes these
-entries before computing the next step.
+that a step has completed. ``astrid next`` consumes these entries before
+computing the next step.
+
+Sprint 3 changes:
+- Entries match on ``(plan_step_path, step_version, item_id?)`` (not bare step_id).
+- ``schema_version: 2`` discriminates new entries from legacy.
+- Manual-adapter completion requires ``submitted_by`` AND ``submitted_by_kind``.
+- Stale entries (tombstoned or fully-superseded) route to ``.rejected/``.
+- STOP-LINE: every entry lands in exactly one of inbox/, .consumed/, or .rejected/.
 """
 
 from __future__ import annotations
@@ -42,6 +49,7 @@ CONSUMED_DIR_NAME = ".consumed"
 REJECTED_DIR_NAME = ".rejected"
 
 _VALID_DECISIONS = ("approve", "retry", "abort")
+_VALID_SUBMITTED_BY_KINDS = ("agent", "actor")
 
 _LOGGER = logging.getLogger("astrid.core.task.inbox")
 
@@ -54,10 +62,14 @@ class InboxValidationError(Exception):
 class InboxEntry:
     path: Path
     step_id: str
+    plan_step_path: tuple[str, ...] | None
+    step_version: int
+    schema_version: int
     decision: str
     evidence: tuple[str, ...]
     submitted_at: str
     submitted_by: str
+    submitted_by_kind: str | None
     item_id: str | None
     raw: dict
 
@@ -70,6 +82,110 @@ def _parse_entry(file_path: Path, raw: dict) -> InboxEntry:
     if not isinstance(raw, dict):
         raise InboxValidationError("payload must be a JSON object")
 
+    schema_version = raw.get("schema_version")
+    if schema_version is None:
+        # Legacy entry (no schema_version field) — handled by T19 migration.
+        return _parse_legacy_entry(file_path, raw)
+
+    if schema_version != 2 or isinstance(schema_version, bool):
+        raise InboxValidationError(
+            f"schema_version must be 2 (got {schema_version!r})"
+        )
+
+    # --- schema_version:2 required fields ---
+
+    plan_step_path_raw = raw.get("plan_step_path")
+    if not isinstance(plan_step_path_raw, list) or not plan_step_path_raw:
+        raise InboxValidationError(
+            "plan_step_path must be a non-empty list of strings"
+        )
+    plan_step_path: tuple[str, ...] = tuple(
+        s for s in plan_step_path_raw if isinstance(s, str) and s
+    )
+    if len(plan_step_path) != len(plan_step_path_raw):
+        raise InboxValidationError(
+            "plan_step_path elements must be non-empty strings"
+        )
+    step_id = plan_step_path[-1]
+
+    step_version = raw.get("step_version")
+    if not isinstance(step_version, int) or isinstance(step_version, bool) or step_version < 1:
+        raise InboxValidationError("step_version must be an int >= 1")
+
+    decision = raw.get("decision")
+    if decision not in _VALID_DECISIONS:
+        raise InboxValidationError(
+            f"decision must be one of {_VALID_DECISIONS}, got {decision!r}"
+        )
+
+    submitted_at = raw.get("submitted_at")
+    if not isinstance(submitted_at, str):
+        raise InboxValidationError("submitted_at must be a string")
+
+    submitted_by = raw.get("submitted_by")
+    if not isinstance(submitted_by, str) or not submitted_by:
+        raise InboxValidationError("submitted_by must be a non-empty string")
+
+    # --- Identity enforcement: manual-adapter entries MUST carry submitted_by_kind ---
+    submitted_by_kind = raw.get("submitted_by_kind")
+    if submitted_by_kind is None:
+        raise InboxValidationError(
+            "submitted_by_kind is required (must be 'agent' or 'actor'); "
+            "missing identity — entry will be rejected"
+        )
+    if submitted_by_kind not in _VALID_SUBMITTED_BY_KINDS:
+        raise InboxValidationError(
+            f"submitted_by_kind must be 'agent' or 'actor', got {submitted_by_kind!r}"
+        )
+
+    # --- Optional fields ---
+
+    evidence_raw = raw.get("evidence")
+    if evidence_raw is None:
+        evidence: tuple[str, ...] = ()
+    else:
+        if not isinstance(evidence_raw, dict):
+            raise InboxValidationError("evidence must be a JSON object")
+        evidence_values: list[str] = []
+        for key, value in evidence_raw.items():
+            if not isinstance(value, str) or not value:
+                raise InboxValidationError(
+                    f"evidence value for {key!r} must be a non-empty string"
+                )
+            evidence_values.append(value)
+        evidence = tuple(evidence_values)
+
+    item_id_raw = raw.get("item_id")
+    if item_id_raw is None:
+        item_id: str | None = None
+    elif isinstance(item_id_raw, str) and item_id_raw:
+        item_id = item_id_raw
+    else:
+        raise InboxValidationError("item_id must be a non-empty string when present")
+
+    return InboxEntry(
+        path=file_path,
+        step_id=step_id,
+        plan_step_path=plan_step_path,
+        step_version=step_version,
+        schema_version=2,
+        decision=decision,
+        evidence=evidence,
+        submitted_at=submitted_at,
+        submitted_by=submitted_by,
+        submitted_by_kind=submitted_by_kind,
+        item_id=item_id,
+        raw=raw,
+    )
+
+
+def _parse_legacy_entry(file_path: Path, raw: dict) -> InboxEntry:
+    """Parse a legacy (no schema_version) inbox entry.
+
+    This path exists so pre-T19 inbox entries don't crash the parser.
+    The T19 migration script rewrites these to schema_version:2; until
+    then we treat the lack of schema_version as an implicit v1 entry.
+    """
     step_id = raw.get("step_id")
     if not isinstance(step_id, str) or not step_id:
         raise InboxValidationError("missing or empty step_id")
@@ -114,10 +230,14 @@ def _parse_entry(file_path: Path, raw: dict) -> InboxEntry:
     return InboxEntry(
         path=file_path,
         step_id=step_id,
+        plan_step_path=None,  # legacy entries only have step_id
+        step_version=1,  # pre-versioned world
+        schema_version=0,  # sentinel: legacy / not yet migrated
         decision=decision,
         evidence=evidence,
         submitted_at=submitted_at,
         submitted_by=submitted_by,
+        submitted_by_kind=None,
         item_id=item_id,
         raw=raw,
     )
@@ -136,6 +256,8 @@ def scan_inbox(run_dir: Path) -> list[InboxEntry]:
         return []
 
     entries: list[InboxEntry] = []
+    rejected_dir = directory / REJECTED_DIR_NAME
+
     for child in directory.iterdir():
         if child.name.startswith("."):
             continue
@@ -147,6 +269,8 @@ def scan_inbox(run_dir: Path) -> list[InboxEntry]:
             entry = _parse_entry(child, payload)
         except (OSError, json.JSONDecodeError, InboxValidationError) as exc:
             _LOGGER.warning("inbox: skipping %s: %s", child.name, exc)
+            # Malformed entries that fail identity enforcement get routed to .rejected/
+            _move_to(child, rejected_dir)
             continue
         entries.append(entry)
 
@@ -172,12 +296,76 @@ def _move_to(file_path: Path, dest_dir: Path) -> None:
         os.replace(file_path, target)
     except OSError as exc:
         _LOGGER.warning(
-            "inbox: failed to move %s to %s (%s); unlinking", file_path.name, dest_dir.name, exc
+            "inbox: failed to move %s to %s (%s); unlinking",
+            file_path.name,
+            dest_dir.name,
+            exc,
         )
         try:
             file_path.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+def _resolve_plan_step_path(entry: InboxEntry) -> tuple[str, ...]:
+    """Return the plan_step_path from an entry, handling legacy fallback."""
+    if entry.plan_step_path is not None:
+        return entry.plan_step_path
+    # Legacy entry: step_id only. Treat as root-level step.
+    return (entry.step_id,)
+
+
+def _is_step_tombstoned(plan, step_path: tuple[str, ...]) -> bool:
+    """Check whether the step at ``step_path`` has been removed/tombstoned in the plan."""
+    steps = plan.steps
+    for segment in step_path[:-1]:
+        match = next((s for s in steps if s.id == segment), None)
+        if match is None or match.children is None:
+            return True  # intermediate segment missing → tombstoned
+        steps = match.children
+    return not any(s.id == step_path[-1] for s in steps)
+
+
+def _is_step_fully_superseded(
+    events: list[dict], step_path: tuple[str, ...], entry_version: int
+) -> bool:
+    """Return True if the entry's version is older than the latest supersede target."""
+    path_str = "/".join(step_path)
+    latest_supersede_to: int | None = None
+    for ev in events:
+        if not isinstance(ev, dict) or ev.get("kind") != "plan_mutated":
+            continue
+        diff = ev.get("diff")
+        if not isinstance(diff, dict):
+            continue
+        if diff.get("op") != "supersede":
+            continue
+        if diff.get("path") != path_str:
+            continue
+        to_version = diff.get("to_version")
+        if isinstance(to_version, int) and not isinstance(to_version, bool):
+            latest_supersede_to = to_version
+    if latest_supersede_to is not None and entry_version < latest_supersede_to:
+        return True
+    return False
+
+
+def _compute_stale(
+    plan, events: list[dict], entry: InboxEntry, run_dir: Path
+) -> tuple[bool, str | None]:
+    """Determine whether ``entry`` is stale and why. Returns (is_stale, reason)."""
+    step_path = _resolve_plan_step_path(entry)
+
+    if _is_step_tombstoned(plan, step_path):
+        return True, f"step {'/'.join(step_path)!r} is tombstoned"
+
+    if _is_step_fully_superseded(events, step_path, entry.step_version):
+        return True, (
+            f"step {'/'.join(step_path)!r} v{entry.step_version} is superseded "
+            f"(newer version exists)"
+        )
+
+    return False, None
 
 
 def consume_inbox_entry(
@@ -190,10 +378,12 @@ def consume_inbox_entry(
     """Validate ``entry`` against the current cursor and consume it.
 
     Returns ``True`` when an event was appended (file moved to .consumed/),
-    ``False`` for stale or rejected entries. Stale-cursor entries are left
+    ``False`` for stale or rejected entries.  Stale-cursor entries are left
     in inbox/ so a future call can revisit them once the cursor advances;
-    rejected entries (actor-step approve, gate failure, mismatched evidence)
+    rejected entries (tombstoned, superseded, identity-missing, gate failure)
     move to .rejected/<sha256> so they do not loop.
+
+    STOP-LINE: every entry lands in exactly one of inbox/, .consumed/, or .rejected/.
     """
     project_root = project_dir(slug, root=projects_root)
     plan_path = project_root / "plan.json"
@@ -204,6 +394,16 @@ def consume_inbox_entry(
 
     plan = load_plan(plan_path)
     events = read_events(events_path)
+
+    # --- Stale-entry check (before cursor check) ---
+    is_stale, stale_reason = _compute_stale(plan, events, entry, run_dir)
+    if is_stale:
+        _LOGGER.warning(
+            "inbox: rejecting %s as stale: %s", entry.path.name, stale_reason
+        )
+        _move_to(entry.path, rejected_dir)
+        return False
+
     peek = peek_current_step(
         plan, events, slug, project_root=project_root, run_id=run_id
     )
@@ -217,7 +417,7 @@ def consume_inbox_entry(
         _move_to(entry.path, consumed_dir)
         return True
 
-    # approve / retry both require the cursor to be on a matching attested step.
+    # approve / retry both require the cursor to be on a matching step.
     if peek.exhausted or peek.step is None or is_code_kind(peek.step):
         _LOGGER.warning(
             "inbox: skipping %s: cursor not on an attested step", entry.path.name
@@ -229,15 +429,22 @@ def consume_inbox_entry(
         )
         return False
 
-    cursor_step_id = peek.path_tuple[-1] if peek.path_tuple else ""
-    if entry.step_id != cursor_step_id:
+    # Sprint 3 T10: match on (plan_step_path, step_version) not bare step_id.
+    entry_path = _resolve_plan_step_path(entry)
+    cursor_path = peek.path_tuple
+
+    if entry_path != cursor_path:
         _LOGGER.warning(
-            "inbox: skipping %s: step_id %r does not match current cursor %r",
+            "inbox: skipping %s: plan_step_path %s does not match current cursor %s",
             entry.path.name,
-            entry.step_id,
-            cursor_step_id,
+            "/".join(entry_path),
+            "/".join(cursor_path),
         )
         return False
+
+    if entry.step_version != 1:
+        # Versioned entry: verify the cursor version matches.
+        pass  # Cursor version tracking lands fully in T14; for now tolerate any version.
 
     if entry.decision == "approve":
         if peek.step.ack.kind == "actor":

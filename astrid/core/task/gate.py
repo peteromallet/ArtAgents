@@ -14,6 +14,7 @@ import dataclasses
 import hashlib
 import json
 import shlex
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -43,6 +44,7 @@ from astrid.core.task.events import (
     make_step_attested_event,
     make_step_completed_event,
     make_step_dispatched_event,
+    make_step_failed_event,
     read_events,
     verify_chain,
 )
@@ -50,11 +52,13 @@ from astrid.core.task.cas import intern, link_into_produces
 from astrid.core.task.plan import (
     STEP_PATH_SEP,
     AckRule,
+    CostEntry,
     ProducesEntry,
     Step,
     is_attested_kind,
     is_code_kind,
     is_group_step,
+    iter_steps_with_path,
     RepeatForEach,
     RepeatUntil,
     TaskPlan,
@@ -98,6 +102,10 @@ class GateDecision:
     writer_epoch_at_dispatch: int | None = None
     session_id: str | None = None
     session: Any = None  # astrid.core.session.model.Session | None
+    # Sprint 3 (T14) adapter dispatch fields.
+    step_version: int = 1
+    adapter: str | None = None
+    pid: int | None = None
 
 
 @dataclass(frozen=True)
@@ -712,7 +720,7 @@ def _resolve_for_each_items(
         items = repeat.items
     else:
         target_id, produces_name = parse_from_ref(repeat.from_ref or "")
-        prior_step_dir = step_dir_for_path(slug, run_id, (target_id,), root=project_root.parent)
+        prior_step_dir = step_dir_for_path(slug, run_id, (target_id,), step_version=1, root=project_root.parent)
         # Find the prior step's declared produces path. We need the plan for that.
         # We re-load plan.json which is allowed at gate_command (not in derive_cursor).
         plan = load_plan(project_root / "plan.json")
@@ -801,6 +809,47 @@ def _enter_repeat_for_each(
     return target_item
 
 
+def _resolve_adapter(step: Step):
+    """Return the concrete adapter instance for ``step.adapter``."""
+    from astrid.core.adapter.local import LocalAdapter
+    from astrid.core.adapter.manual import ManualAdapter
+    from astrid.core.adapter.remote_artifact import RemoteArtifactAdapter
+
+    if step.adapter == "local":
+        return LocalAdapter()
+    if step.adapter == "manual":
+        return ManualAdapter()
+    if step.adapter == "remote-artifact":
+        return RemoteArtifactAdapter()
+    raise TaskRunGateError(
+        reason=f"unknown adapter {step.adapter!r}",
+        recovery="use --adapter local or manual",
+    )
+
+
+def _make_run_ctx(
+    slug: str,
+    run_id: str,
+    path_tuple: tuple[str, ...],
+    step_version: int,
+    project_root: Path,
+    iteration: int | None = None,
+    item_id: str | None = None,
+):
+    """Return a RunContext for adapter dispatch. Return type is adapter.RunContext (lazy import)."""
+    from astrid.core.adapter import RunContext
+
+    return RunContext(
+        slug=slug,
+        run_id=run_id,
+        project_root=project_root,
+        plan_step_path=path_tuple,
+        step_version=step_version,
+        iteration=iteration,
+        item_id=item_id,
+    )
+
+
 def _dispatch_code(
     *,
     slug: str,
@@ -817,6 +866,13 @@ def _dispatch_code(
 ) -> GateDecision:
     if command != step.command:
         _reject(slug, "incoming command does not match plan[cursor]", abort=False)
+
+    adapter = _resolve_adapter(step)
+    step_version = step.version
+    run_ctx = _make_run_ctx(
+        slug, run_id, path_tuple, step_version, project_root,
+        iteration=iteration, item_id=item_id,
+    )
 
     if reentry:
         # FLAG-P3-005: scan back to the latest event for THIS plan_step_id rather than events[-1];
@@ -840,9 +896,11 @@ def _dispatch_code(
                 reentry=True,
                 iteration=iteration,
                 item_id=item_id,
+                adapter=step.adapter,
+                step_version=step_version,
             )
         if isinstance(latest, dict) and latest.get("kind") == "produces_check_failed":
-            append_event(events_path, make_step_dispatched_event(path_str, command))
+            dispatch_result = _adapter_dispatch(adapter, step, run_ctx, path_str, command, events_path)
             apply_task_run_env(run_id, slug, path_str, item_id=item_id, iteration=iteration)
             return _code_decision(
                 run_id=run_id,
@@ -855,10 +913,13 @@ def _dispatch_code(
                 reentry=False,
                 iteration=iteration,
                 item_id=item_id,
+                adapter=step.adapter,
+                step_version=step_version,
+                pid=dispatch_result.pid if dispatch_result else None,
             )
         _reject(slug, "incoming command does not match plan[cursor]", abort=False)
 
-    append_event(events_path, make_step_dispatched_event(path_str, command))
+    dispatch_result = _adapter_dispatch(adapter, step, run_ctx, path_str, command, events_path)
     apply_task_run_env(run_id, slug, path_str, item_id=item_id, iteration=iteration)
     return _code_decision(
         run_id=run_id,
@@ -871,7 +932,39 @@ def _dispatch_code(
         reentry=False,
         iteration=iteration,
         item_id=item_id,
+        adapter=step.adapter,
+        step_version=step_version,
+        pid=dispatch_result.pid if dispatch_result else None,
     )
+
+
+def _adapter_dispatch(
+    adapter,
+    step: Step,
+    run_ctx,
+    path_str: str,
+    command: str,
+    events_path: Path,
+):
+    """Call adapter.dispatch() and emit step_dispatched. Returns DispatchResult or None on reject."""
+    from astrid.core.adapter.remote_artifact import RemoteArtifactDeferralError
+
+    try:
+        result = adapter.dispatch(step, run_ctx)
+    except RemoteArtifactDeferralError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
+    if result.status == "rejected":
+        _reject(run_ctx.slug, f"adapter {step.adapter!r} rejected dispatch: {result.reason}", abort=False)
+    # Single emission point: cmd_next/gate emits step_dispatched.
+    dispatched = make_step_dispatched_event(
+        path_str, command,
+        adapter=step.adapter,
+        step_version=run_ctx.step_version,
+        pid=result.pid,
+    )
+    append_event(events_path, dispatched)
+    return result
 
 
 def _code_decision(
@@ -886,6 +979,9 @@ def _code_decision(
     reentry: bool,
     iteration: int | None = None,
     item_id: str | None = None,
+    adapter: str | None = None,
+    step_version: int = 1,
+    pid: int | None = None,
 ) -> GateDecision:
     return GateDecision(
         active=True,
@@ -900,6 +996,9 @@ def _code_decision(
         project_root=project_root,
         iteration=iteration,
         item_id=item_id,
+        adapter=adapter,
+        step_version=step_version,
+        pid=pid,
     )
 
 
@@ -966,6 +1065,8 @@ def _dispatch_attested(
         project_root=project_root,
         iteration=iteration,
         item_id=item_id,
+        adapter=step.adapter,
+        step_version=step.version,
     )
     if step.produces:
         _run_inline_checks(decision, step.produces)
@@ -1004,6 +1105,7 @@ def write_iteration_feedback(decision: GateDecision, feedback: str) -> None:
         decision.slug,
         decision.run_id,
         decision.plan_step_path,
+        step_version=1,
         iteration=decision.iteration,
         root=decision.project_root.parent,
     )
@@ -1015,6 +1117,7 @@ def write_iteration_feedback(decision: GateDecision, feedback: str) -> None:
             decision.slug,
             decision.run_id,
             decision.plan_step_path,
+            step_version=1,
             iteration=decision.iteration - 1,
             root=decision.project_root.parent,
         )
@@ -1115,12 +1218,83 @@ def record_dispatch_complete(decision: GateDecision, returncode: int) -> None:
     if decision.step_kind == "attested":
         # attested steps are advanced by step_attested itself; do not double-emit
         return
-    append_event(
-        decision.events_path,
-        make_step_completed_event(decision.plan_step_id, returncode),
+
+    # Resolve adapter to get completion (cost, status) — the adapter owns the
+    # completion logic, not the gate.
+    run_ctx = _make_run_ctx(
+        decision.slug or "",
+        decision.run_id or "",
+        decision.plan_step_path,
+        decision.step_version,
+        decision.project_root or Path("."),
+        iteration=decision.iteration,
+        item_id=decision.item_id,
     )
+    # Load step from plan to get the full Step (for adapter.complete which needs produces).
+    step = _load_step_for_decision(decision)
+    adapter = _resolve_adapter(step) if step else None
+
+    if adapter is not None:
+        complete_result = adapter.complete(step, run_ctx)
+        cost_dict: dict[str, Any] | None = None
+        if complete_result.cost is not None:
+            cost_dict = {
+                "amount": complete_result.cost.amount,
+                "currency": complete_result.cost.currency,
+                "source": complete_result.cost.source,
+            }
+        # requires_ack enforcement: cursor stays on step until non-stale ack arrives.
+        # Do NOT emit step_completed for requires_ack steps — the ack event will advance.
+        if step is not None and step.requires_ack:
+            return
+        if complete_result.status == "failed":
+            append_event(
+                decision.events_path,
+                make_step_failed_event(
+                    decision.plan_step_id,
+                    complete_result.returncode,
+                    reason=complete_result.reason,
+                    cost=cost_dict,
+                    adapter=decision.adapter,
+                ),
+            )
+        else:
+            append_event(
+                decision.events_path,
+                make_step_completed_event(
+                    decision.plan_step_id,
+                    returncode if returncode != -1 else (complete_result.returncode or 0),
+                    cost=cost_dict,
+                    adapter=decision.adapter,
+                ),
+            )
+    else:
+        # Legacy path: no adapter info on decision — use raw returncode.
+        append_event(
+            decision.events_path,
+            make_step_completed_event(decision.plan_step_id, returncode),
+        )
+
     if decision.produces:
         _run_inline_checks(decision, decision.produces)
+
+
+def _load_step_for_decision(decision: GateDecision) -> Step | None:
+    """Load the Step object for a decision by reading plan.json + events."""
+    if decision.project_root is None or not decision.plan_step_path:
+        return None
+    plan_path = decision.project_root / "plan.json"
+    if not plan_path.exists():
+        return None
+    plan = load_plan(plan_path)
+    events_path = decision.project_root / "runs" / (decision.run_id or "") / "events.jsonl"
+    events = read_events(events_path) if events_path.exists() else []
+    from astrid.core.task.plan_verbs import apply_mutations
+    effective = apply_mutations(plan, events)
+    for path_tuple, s in iter_steps_with_path(effective):
+        if path_tuple == decision.plan_step_path:
+            return s
+    return None
 
 
 # step_dir_for_path is the ONLY directory API used in this gate path (FLAG-P3-001).
@@ -1138,6 +1312,7 @@ def _run_inline_checks(decision: GateDecision, produces: tuple[ProducesEntry, ..
         decision.slug,
         decision.run_id,
         decision.plan_step_path,
+        step_version=1,
         iteration=decision.iteration,
         item_id=decision.item_id,
         root=projects_root,

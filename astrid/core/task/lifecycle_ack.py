@@ -104,6 +104,26 @@ def cmd_ack(
     *,
     projects_root: Optional[Path] = None,
 ) -> int:
+    # --- Early abort decision: handle before argparse so identity flags are not required ---
+    argv_list = list(argv)
+    abort_idx = None
+    for i, a in enumerate(argv_list):
+        if a == "--decision" and i + 1 < len(argv_list) and argv_list[i + 1] == "abort":
+            abort_idx = i
+            break
+    if abort_idx is not None:
+        # Extract --project for cmd_abort.
+        proj = None
+        for i, a in enumerate(argv_list):
+            if a == "--project" and i + 1 < len(argv_list):
+                proj = argv_list[i + 1]
+                break
+        if proj is None:
+            _print_err("ack: --project is required for abort")
+            return 1
+        from astrid.core.task.lifecycle import cmd_abort
+        return cmd_abort(["--project", proj], projects_root=projects_root)
+
     parser = argparse.ArgumentParser(prog="astrid ack", add_help=True)
     parser.add_argument("step", help="STEP_PATH_SEP-joined plan step path (e.g. 'review' or 'outer/inner')")
     parser.add_argument("--project", required=True, help="project slug")
@@ -119,7 +139,7 @@ def cmd_ack(
         default=[],
         help="repeatable; evidence path or sentinel",
     )
-    identity = parser.add_mutually_exclusive_group()
+    identity = parser.add_mutually_exclusive_group(required=True)
     identity.add_argument("--agent", default=None, help="agent id (mutually exclusive with --actor)")
     identity.add_argument("--actor", default=None, help="actor name (mutually exclusive with --agent)")
     parser.add_argument("--feedback", default=None, help="iterate feedback (required for --decision=iterate)")
@@ -129,16 +149,21 @@ def cmd_ack(
     except SystemExit as exc:
         return int(exc.code or 2)
 
+    # --- Function-boundary identity assertion (Sprint 3 T16) ---
+    # argparse `required=True` catches the CLI case.  This assertion catches
+    # Python callers that synthesize Namespace(agent=None, actor=None) directly.
+    if args.agent is None and args.actor is None:
+        _print_err(
+            "ack: --agent <id> or --actor <name> is required "
+            "(no anonymous acks — Sprint 3 T16)"
+        )
+        return 1
+
     try:
         slug = validate_project_slug(args.project)
     except Exception as exc:
         _print_err(f"ack: {exc}")
         return 1
-
-    # abort decision is administrative: delegate to cmd_abort, no identity required.
-    if args.decision == "abort":
-        from astrid.core.task.lifecycle import cmd_abort
-        return cmd_abort(["--project", slug], projects_root=projects_root)
 
     active_run = read_active_run(slug, root=projects_root)
     if active_run is None:
@@ -152,6 +177,18 @@ def cmd_ack(
     proj_root = project_dir(slug, root=projects_root)
     plan_path = proj_root / "plan.json"
     events_path = proj_root / "runs" / run_id / "events.jsonl"
+
+    # --- Read writer_epoch for stale-ack rejection (Sprint 3 T16) ---
+    from astrid.core.task.events import LEASE_FILENAME
+    import json as _json
+    lease_path = proj_root / "runs" / run_id / LEASE_FILENAME
+    writer_epoch: int | None = None
+    try:
+        if lease_path.exists():
+            lease_payload = _json.loads(lease_path.read_text(encoding="utf-8"))
+            writer_epoch = int(lease_payload.get("writer_epoch", 0))
+    except Exception:
+        pass  # defensive: epoch check is best-effort
 
     plan = load_plan(plan_path)
     events = read_events(events_path)
@@ -172,16 +209,24 @@ def cmd_ack(
         )
         return 1
 
-    if args.decision == "approve":
-        return _ack_approve(args, slug, peek, projects_root, proj_root)
-    if args.decision == "retry":
-        return _ack_retry(
-            args, slug, peek, plan, events, events_path, run_id, proj_root
-        )
-    if args.decision == "iterate":
-        return _ack_iterate(
-            args, slug, peek, plan, events, events_path, run_id, proj_root
-        )
+    try:
+        if args.decision == "approve":
+            return _ack_approve(args, slug, peek, projects_root, proj_root)
+        if args.decision == "retry":
+            return _ack_retry(
+                args, slug, peek, plan, events, events_path, run_id, proj_root
+            )
+        if args.decision == "iterate":
+            return _ack_iterate(
+                args, slug, peek, plan, events, events_path, run_id, proj_root
+            )
+    except Exception as exc:
+        from astrid.core.task.events import StaleEpochError, StaleTailError
+        if isinstance(exc, (StaleEpochError, StaleTailError)):
+            _print_err(f"ack: stale — {exc}; the run lease has changed under you. "
+                        f"Re-run the ack to pick up the new writer_epoch.")
+            return 1
+        raise
     # argparse choices=... already constrains this; defensive only.
     _print_err(f"ack: unknown decision {args.decision!r}")
     return 1

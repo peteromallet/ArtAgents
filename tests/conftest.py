@@ -27,6 +27,47 @@ if "ARTAGENTS_TIMELINE_COMPOSITION_SRC" not in os.environ:
     atexit.register(lambda: shutil.rmtree(_package_src, ignore_errors=True))
 
 
+# Sprint 3 test-only shim: auto-migrate v1 plan dicts to v2 inside _validate_plan
+# so legacy fixtures keep working without per-test schema rewrites.
+def _install_v1_plan_migration_shim() -> None:
+    import importlib.util
+    import sys as _sys
+    from astrid.core.task import plan as _plan_mod
+
+    _orig_validate = _plan_mod._validate_plan
+    _migrate_module_path = (
+        Path(__file__).resolve().parent.parent
+        / "scripts" / "migrations" / "sprint-3" / "migrate_plans.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "_astrid_sprint3_migrate_plans_testshim", _migrate_module_path
+    )
+    _mig = importlib.util.module_from_spec(_spec)
+    _sys.modules[_spec.name] = _mig
+    _spec.loader.exec_module(_mig)
+
+    def _shim(payload: Any, *, _is_root: bool = True):
+        if (
+            isinstance(payload, dict)
+            and payload.get("version") == 1
+            and isinstance(payload.get("steps"), list)
+        ):
+            payload = {
+                "plan_id": payload.get("plan_id", "unknown"),
+                "version": 2,
+                "steps": [
+                    _mig._migrate_step(s) if isinstance(s, dict) else s
+                    for s in payload["steps"]
+                ],
+            }
+        return _orig_validate(payload, _is_root=_is_root)
+
+    _plan_mod._validate_plan = _shim
+
+
+_install_v1_plan_migration_shim()
+
+
 # ---------------------------------------------------------------------------
 # Sprint 1 / T10: session-bootstrap autouse + attached_session fixture
 # ---------------------------------------------------------------------------

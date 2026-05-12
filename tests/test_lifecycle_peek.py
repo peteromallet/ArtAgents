@@ -3,6 +3,9 @@ iteration>=2, repeat.for_each item, nested. Parity assertion against
 gate_command on a parallel events copy (FLAG-P5-003 — divergence here would
 silently mis-print the cursor in cmd_next/cmd_status). Also verifies peek
 does NOT write to events.jsonl (hash before/after).
+
+Rewritten for Sprint 3 collapsed Step schema: CodeStep/AttestedStep/NestedStep
+replaced with Step(adapter=…, requires_ack=…, children=…).
 """
 
 from __future__ import annotations
@@ -35,11 +38,9 @@ from astrid.core.task.gate import (
 )
 from astrid.core.task.plan import (
     AckRule,
-    AttestedStep,
-    CodeStep,
-    NestedStep,
     RepeatForEach,
     RepeatUntil,
+    Step,
     TaskPlan,
     compute_plan_hash,
 )
@@ -81,9 +82,9 @@ def _stage_run(
 
 
 def test_peek_empty_events_returns_first_step(tmp_projects_root: Path) -> None:
-    plan = TaskPlan(plan_id="p", version=1, steps=(
-        CodeStep(id="step_a", command="echo a"),
-        CodeStep(id="step_b", command="echo b"),
+    plan = TaskPlan(plan_id="p", version=2, steps=(
+        Step(id="step_a", adapter="local", command="echo a"),
+        Step(id="step_b", adapter="local", command="echo b"),
     ))
     events_path = _stage_run(tmp_projects_root, plan, "demo", "r1")
     events = [json.loads(line) for line in events_path.read_text().splitlines()]
@@ -98,9 +99,10 @@ def test_peek_empty_events_returns_first_step(tmp_projects_root: Path) -> None:
 
 
 def test_peek_iteration_ge_2(tmp_projects_root: Path) -> None:
-    plan = TaskPlan(plan_id="p", version=1, steps=(
-        AttestedStep(
-            id="review", command="r.sh", instructions="ok", ack=AckRule(kind="actor"),
+    plan = TaskPlan(plan_id="p", version=2, steps=(
+        Step(
+            id="review", adapter="manual", requires_ack=True,
+            command="r.sh", instructions="ok", ack=AckRule(kind="actor"),
             repeat=RepeatUntil(condition="user_approves", max_iterations=3, on_exhaust="fail"),
         ),
     ))
@@ -118,9 +120,10 @@ def test_peek_iteration_ge_2(tmp_projects_root: Path) -> None:
 
 
 def test_peek_for_each_item(tmp_projects_root: Path) -> None:
-    plan = TaskPlan(plan_id="p", version=1, steps=(
-        AttestedStep(
-            id="review_each", command="r.sh", instructions="check", ack=AckRule(kind="actor"),
+    plan = TaskPlan(plan_id="p", version=2, steps=(
+        Step(
+            id="review_each", adapter="manual", requires_ack=True,
+            command="r.sh", instructions="check", ack=AckRule(kind="actor"),
             repeat=RepeatForEach(items_source="static", items=("a", "b", "c")),
         ),
     ))
@@ -136,17 +139,15 @@ def test_peek_for_each_item(tmp_projects_root: Path) -> None:
 
 
 def test_peek_inside_nested_plan(tmp_projects_root: Path) -> None:
-    inner = TaskPlan(plan_id="inner", version=1, steps=(
-        CodeStep(id="inner_step", command="echo inner"),
-    ))
-    plan = TaskPlan(plan_id="root", version=1, steps=(
-        NestedStep(id="outer", plan=inner),
+    inner_step = Step(id="inner_step", adapter="local", command="echo inner")
+    plan = TaskPlan(plan_id="root", version=2, steps=(
+        Step(id="outer", adapter="local", children=(inner_step,)),
     ))
     events_path = _stage_run(tmp_projects_root, plan, "demo", "r4")
     events = [json.loads(line) for line in events_path.read_text().splitlines()]
     before = _hash_file(events_path)
     peek = peek_current_step(plan, events, "demo", project_root=tmp_projects_root/"demo", run_id="r4")
-    # Peek descends through NestedStep wrapper and surfaces the inner CodeStep.
+    # Peek descends through group wrapper and surfaces the inner leaf.
     assert not peek.exhausted
     assert peek.path_tuple == ("outer", "inner_step")
     assert peek.step.id == "inner_step"
@@ -160,17 +161,15 @@ def test_peek_parity_with_gate_command_on_parallel_events(tmp_projects_root: Pat
     (peek doesn't write). The two implementations must agree on the leaf
     plan_step_path.
     """
-    inner = TaskPlan(plan_id="inner", version=1, steps=(
-        CodeStep(id="inner_step", command="echo hello"),
-    ))
-    plan = TaskPlan(plan_id="root", version=1, steps=(
-        NestedStep(id="outer", plan=inner),
+    inner_step = Step(id="inner_step", adapter="local", command="echo hello")
+    plan = TaskPlan(plan_id="root", version=2, steps=(
+        Step(id="outer", adapter="local", children=(inner_step,)),
     ))
     events_path = _stage_run(tmp_projects_root, plan, "demo", "r5")
     events = [json.loads(line) for line in events_path.read_text().splitlines()]
     peek = peek_current_step(plan, events, "demo", project_root=tmp_projects_root/"demo", run_id="r5")
     # gate_command dispatches the inner_step's command through the gate; it
-    # auto-traverses into the nested frame and the resulting decision's
+    # auto-traverses into the group frame and the resulting decision's
     # plan_step_path must equal peek.path_tuple.
     decision = gate_command("demo", "echo hello", ["echo", "hello"], root=tmp_projects_root)
     assert decision.active is True
@@ -181,8 +180,8 @@ def test_peek_parity_with_gate_command_on_parallel_events(tmp_projects_root: Pat
 
 
 def test_peek_exhausted_returns_step_none(tmp_projects_root: Path) -> None:
-    plan = TaskPlan(plan_id="p", version=1, steps=(
-        CodeStep(id="solo", command="echo solo"),
+    plan = TaskPlan(plan_id="p", version=2, steps=(
+        Step(id="solo", adapter="local", command="echo solo"),
     ))
     events_path = _stage_run(tmp_projects_root, plan, "demo", "r6")
     # Mark solo step complete via a step_completed event so cursor advances past root.
