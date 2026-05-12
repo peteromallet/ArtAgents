@@ -424,6 +424,68 @@ def _sha256_for_path(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _write_run_json(args: argparse.Namespace, plan_hash: str) -> None:
+    """Write or update ``run.json`` in the run directory with hype metadata.
+
+    ``consumes`` is populated from source media paths (video, audio, brief,
+    theme, assets). The ``plan_hash`` and ``orchestrator`` fields are added
+    for run audit. If ``run.json`` already exists (created by ``cmd_start``),
+    the new fields are merged in.
+    """
+    run_json = args.out / "run.json"
+
+    # Build consumes list from source media paths.
+    consumes: list[dict[str, str]] = []
+    video = getattr(args, "video", None)
+    if video is not None and isinstance(video, Path) and video.is_file():
+        consumes.append({"source": str(video), "sha256": _sha256_for_path(video)})
+    audio = getattr(args, "audio", None)
+    if (
+        audio is not None
+        and isinstance(audio, Path)
+        and audio.is_file()
+        and audio != video
+    ):
+        consumes.append({"source": str(audio), "sha256": _sha256_for_path(audio)})
+    brief = getattr(args, "brief", None)
+    if brief is not None and isinstance(brief, Path) and brief.is_file():
+        consumes.append({"source": str(brief), "sha256": _sha256_for_path(brief)})
+    theme = getattr(args, "theme", None)
+    if theme is not None and isinstance(theme, Path) and theme.is_file():
+        consumes.append({"source": str(theme), "sha256": _sha256_for_path(theme)})
+    for key, path in getattr(args, "asset_pairs", []):
+        if isinstance(path, Path) and path.is_file():
+            consumes.append(
+                {"source": str(path), "sha256": _sha256_for_path(path)}
+            )
+
+    hype_fields: dict[str, Any] = {
+        "consumes": consumes,
+        "orchestrator": "builtin.hype",
+    }
+    if plan_hash:
+        hype_fields["plan_hash"] = plan_hash
+
+    if run_json.exists():
+        try:
+            existing = json.loads(run_json.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+        if not isinstance(existing, dict):
+            existing = {}
+        existing.update(hype_fields)
+        run_json.write_text(
+            json.dumps(existing, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        run_json.parent.mkdir(parents=True, exist_ok=True)
+        run_json.write_text(
+            json.dumps(hype_fields, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+
 def probe_audio_duration(path: Path | str) -> float:
     result = subprocess.run(
         [
@@ -1329,6 +1391,52 @@ def pool_main(args: argparse.Namespace) -> int:
     # Computes step set, builds redacted commands, writes hype.plan.json, exits.
     if getattr(args, "dry_run", False):
         return _write_dry_run_plan(args)
+
+    # Sprint 5a: emit the plan v2 to the project root (canonical plan.json
+    # path). The plan uses the leaner 6-stage spine: transcribe → scenes →
+    # cut → render → editor_review → validate. Dynamic discovery (shot count
+    # after cut) is handled by ``astrid plan add-step`` at runtime.
+    _plan_hash = ""
+    project_slug = getattr(args, "project", None)
+    if project_slug is not None:
+        from astrid.core.project.paths import project_dir
+
+        proj_root = project_dir(project_slug)
+        plan_path = proj_root / "plan.json"
+        try:
+            from astrid.packs.builtin.hype.plan_template import (
+                build_plan_v2,
+                emit_plan_json,
+            )
+
+            plan = build_plan_v2(
+                python_exec=args.python_exec,
+                run_root=args.out,
+                source=getattr(args, "video", None),
+                brief=getattr(args, "brief", None),
+                theme=getattr(args, "theme", None),
+            )
+            emit_plan_json(plan, plan_path)
+
+            from astrid.core.task.plan import compute_plan_hash
+
+            _plan_hash = compute_plan_hash(plan_path)
+        except Exception as exc:
+            print(f"hype: plan emission failed: {exc}", file=sys.stderr)
+            # Continue with empty plan_hash; the run can still proceed via
+            # the legacy path, but plan-based dispatch won't be available.
+    else:
+        # No project slug — running outside project mode. Check for an
+        # existing plan.json in the run root as a fallback.
+        plan_json = args.out / "plan.json"
+        if plan_json.is_file():
+            try:
+                from astrid.core.task.plan import compute_plan_hash
+
+                _plan_hash = compute_plan_hash(plan_json)
+            except Exception:
+                _plan_hash = ""
+    _write_run_json(args, _plan_hash)
 
     _prefetch_url_inputs(args)
     steps = [step for step in select_steps(args) if step.name not in set(args.skip)]

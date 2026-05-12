@@ -351,6 +351,42 @@ def make_step_failed_event(
     return payload
 
 
+def make_step_awaiting_fetch_event(
+    path_str: str,
+    *,
+    missing: list[str],
+    mismatched: list[str],
+    reason: str | None = None,
+    adapter: str | None = None,
+) -> dict[str, Any]:
+    """Emit a ``step_awaiting_fetch`` event after partial artifact fetch.
+
+    *missing*: artifact names that could not be fetched.
+    *mismatched*: artifact names whose sha256 did not match the declared checksum.
+    """
+    payload: dict[str, Any] = {
+        "kind": "step_awaiting_fetch",
+        "missing": list(missing),
+        "mismatched": list(mismatched),
+        "plan_step_path": path_str.split("/") if "/" in path_str else [path_str],
+        "ts": _utc_now_iso(),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    if adapter is not None:
+        payload["adapter"] = adapter
+    return payload
+
+
+def make_run_completed_event(run_id: str) -> dict[str, Any]:
+    """Emit a ``run_completed`` event when the cursor reaches end-of-plan."""
+    return {
+        "kind": "run_completed",
+        "run_id": run_id,
+        "ts": _utc_now_iso(),
+    }
+
+
 def make_step_attested_event(
     plan_step_path: str,
     attestor_kind: str,
@@ -533,6 +569,65 @@ def make_cursor_rewind_event(
     }
 
 
+def _run_is_complete(plan: Any, events: list[dict[str, Any]]) -> bool:
+    """Return True only when all leaf steps are terminal-non-aborted.
+
+    Terminal-non-aborted means the step has a ``step_completed`` or
+    ``step_failed`` event and is NOT in ``awaiting_fetch`` or ``dispatched``
+    without terminal follow-up.
+    """
+    # Lazy import to avoid circular dependency with plan.py.
+    from astrid.core.task.plan import Step  # noqa: PLC0415
+
+    # Collect all leaf step ids from the plan.
+    leaf_ids: set[str] = set()
+
+    def _collect_leaves(steps: tuple[Step, ...]) -> None:
+        for step in steps:
+            if step.children is None:
+                leaf_ids.add(step.id)
+            else:
+                _collect_leaves(step.children)
+
+    if hasattr(plan, "steps") and plan.steps is not None:
+        _collect_leaves(plan.steps)
+
+    if not leaf_ids:
+        return False
+
+    # Map step path -> latest event kind for terminal checks.
+    latest_by_path: dict[str, str] = {}
+    for event in events:
+        path_list = event.get("plan_step_path")
+        if isinstance(path_list, list) and path_list:
+            path_str = "/".join(str(p) for p in path_list)
+            kind = event.get("kind")
+            if isinstance(kind, str):
+                latest_by_path[path_str] = kind
+
+    for leaf_id in leaf_ids:
+        # Find latest event whose path matches this leaf id.
+        # Events use plan_step_path which is a list; the last element
+        # is typically the step's own id for leaf steps.
+        latest_kind: str | None = None
+        for path_str, kind in latest_by_path.items():
+            parts = path_str.split("/")
+            if parts and parts[-1] == leaf_id:
+                latest_kind = kind
+
+        if latest_kind is None:
+            # No event at all for this leaf — not terminal.
+            return False
+        if latest_kind == "step_awaiting_fetch":
+            return False
+        if latest_kind == "step_dispatched":
+            return False
+        if latest_kind not in {"step_completed", "step_failed"}:
+            return False
+
+    return True
+
+
 def _event_hash(prev_hash: str, event: dict[str, Any]) -> str:
     digest = hashlib.sha256((prev_hash + canonical_event_json(event)).encode("utf-8")).hexdigest()
     return f"sha256:{digest}"
@@ -658,3 +753,38 @@ def _fsync_dir(path: Path) -> None:
     finally:
         if fd is not None:
             os.close(fd)
+
+
+__all__ = [
+    "EventLogError",
+    "NotWriterError",
+    "StaleEpochError",
+    "StaleTailError",
+    "ZERO_HASH",
+    "append_event",
+    "append_event_locked",
+    "canonical_event_json",
+    "make_cursor_rewind_event",
+    "make_for_each_expanded_event",
+    "make_item_attested_event",
+    "make_item_completed_event",
+    "make_item_started_event",
+    "make_iteration_exhausted_event",
+    "make_iteration_failed_event",
+    "make_iteration_started_event",
+    "make_nested_entered_event",
+    "make_nested_exited_event",
+    "make_produces_check_failed_event",
+    "make_produces_check_passed_event",
+    "make_run_aborted_event",
+    "make_run_completed_event",
+    "make_run_started_event",
+    "make_step_attested_event",
+    "make_step_awaiting_fetch_event",
+    "make_step_completed_event",
+    "make_step_dispatched_event",
+    "make_step_failed_event",
+    "read_events",
+    "verify_chain",
+    "_run_is_complete",
+]

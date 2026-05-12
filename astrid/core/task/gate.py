@@ -42,6 +42,7 @@ from astrid.core.task.events import (
     make_produces_check_failed_event,
     make_produces_check_passed_event,
     make_step_attested_event,
+    make_step_awaiting_fetch_event,
     make_step_completed_event,
     make_step_dispatched_event,
     make_step_failed_event,
@@ -947,13 +948,7 @@ def _adapter_dispatch(
     events_path: Path,
 ):
     """Call adapter.dispatch() and emit step_dispatched. Returns DispatchResult or None on reject."""
-    from astrid.core.adapter.remote_artifact import RemoteArtifactDeferralError
-
-    try:
-        result = adapter.dispatch(step, run_ctx)
-    except RemoteArtifactDeferralError as exc:
-        print(str(exc), file=sys.stderr)
-        raise SystemExit(1) from exc
+    result = adapter.dispatch(step, run_ctx)
     if result.status == "rejected":
         _reject(run_ctx.slug, f"adapter {step.adapter!r} rejected dispatch: {result.reason}", abort=False)
     # Single emission point: cmd_next/gate emits step_dispatched.
@@ -1258,6 +1253,18 @@ def record_dispatch_complete(decision: GateDecision, returncode: int) -> None:
                     adapter=decision.adapter,
                 ),
             )
+        elif complete_result.status == "awaiting_fetch":
+            missing, mismatched = _read_awaiting_fetch_items(run_ctx)
+            append_event(
+                decision.events_path,
+                make_step_awaiting_fetch_event(
+                    decision.plan_step_id,
+                    missing=missing,
+                    mismatched=mismatched,
+                    reason=complete_result.reason,
+                    adapter=decision.adapter,
+                ),
+            )
         else:
             append_event(
                 decision.events_path,
@@ -1277,6 +1284,43 @@ def record_dispatch_complete(decision: GateDecision, returncode: int) -> None:
 
     if decision.produces:
         _run_inline_checks(decision, decision.produces)
+
+
+def _read_awaiting_fetch_items(run_ctx: Any) -> tuple[list[str], list[str]]:
+    """Read missing/mismatched artifact names from the step's remote_state.json sidecar.
+
+    The remote-artifact adapter persists fetch results into ``remote_state.json``
+    when fetch_artifacts returns ``awaiting_fetch``.  Returns (missing, mismatched)
+    lists — empty lists if the sidecar is missing or unreadable.
+    """
+    step_dir = _step_dir_from_run_ctx(run_ctx)
+    remote_state_path = step_dir / "remote_state.json"
+    if not remote_state_path.exists():
+        return [], []
+    try:
+        state = json.loads(remote_state_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return [], []
+    missing = state.get("missing", [])
+    mismatched = state.get("mismatched", [])
+    if not isinstance(missing, list):
+        missing = []
+    if not isinstance(mismatched, list):
+        mismatched = []
+    return list(missing), list(mismatched)
+
+
+def _step_dir_from_run_ctx(run_ctx: Any) -> Path:
+    """Resolve runs/<run>/steps/<id>/v<N>/ for a RunContext."""
+    base = run_ctx.project_root / "runs" / run_ctx.run_id / "steps"
+    for segment in run_ctx.plan_step_path:
+        base = base / segment
+    base = base / f"v{run_ctx.step_version}"
+    if getattr(run_ctx, "iteration", None) is not None:
+        base = base / "iterations" / f"{run_ctx.iteration:03d}"
+    elif getattr(run_ctx, "item_id", None) is not None:
+        base = base / "items" / run_ctx.item_id
+    return base
 
 
 def _load_step_for_decision(decision: GateDecision) -> Step | None:

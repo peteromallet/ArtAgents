@@ -10,13 +10,26 @@ from pathlib import Path
 import pytest
 
 from astrid.core.adapter import RunContext
-from astrid.core.adapter.remote_artifact import (
-    REMOTE_ARTIFACT_DEFERRAL,
-    RemoteArtifactAdapter,
-    RemoteArtifactDeferralError,
-    _deferral_message,
-)
 from astrid.core.task.plan import Step
+
+# Sprint 5a: the remote-artifact stub has been replaced by the real adapter.
+# The deferral symbols (REMOTE_ARTIFACT_DEFERRAL, RemoteArtifactDeferralError,
+# _deferral_message) no longer exist. This test file is replaced by
+# test_remote_artifact_real.py in T12.
+try:
+    from astrid.core.adapter.remote_artifact import (  # noqa: F401
+        REMOTE_ARTIFACT_DEFERRAL,
+        RemoteArtifactAdapter,
+        RemoteArtifactDeferralError,
+        _deferral_message,
+    )
+except ImportError:
+    import pytest  # noqa: F401
+    pytest.skip(
+        "remote-artifact stub removed in Sprint 5a T4; "
+        "replaced by test_remote_artifact_real.py (T12)",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture

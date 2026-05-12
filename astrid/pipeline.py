@@ -29,7 +29,7 @@ from typing import Any, Iterable
 # command to dispatch through plan[cursor]. cmd_ack approve re-enters the gate
 # explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
 # bypasses the gate's command-match step.
-LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook", "plan", "claim", "unclaim"}
+LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook", "plan", "claim", "unclaim", "step"}
 
 
 # Sprint 1 session-gate allowlist. A first-token (or two-token) match against
@@ -217,6 +217,10 @@ def _dispatch(raw: list[str]) -> int:
         return int(session_status(args))
     if raw and raw[0] == "runs":
         return _dispatch_runs(raw[1:])
+    if raw and raw[0] == "run":
+        return _dispatch_run(raw[1:])
+    if raw and raw[0] == "step":
+        return _dispatch_step(raw[1:])
     if raw and raw[0] == "hook":
         return _dispatch_hook(raw[1:])
     if raw and raw[0] == "plan":
@@ -339,6 +343,57 @@ def _dispatch_runs(args: list[str]) -> int:
         return cmd_runs_ls(args[1:])
     print(
         f"runs: unknown sub-verb {sub!r}; only 'runs ls' is implemented in Phase 5",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _dispatch_run(args: list[str]) -> int:
+    """Dispatch ``astrid run {show,artifacts,trace,cost}`` sub-verbs."""
+    if not args:
+        print(
+            "usage: astrid run {show,artifacts,trace,cost} ...",
+            file=sys.stderr,
+        )
+        return 2
+    from astrid.core.task.run_audit import (
+        cmd_run_artifacts,
+        cmd_run_cost,
+        cmd_run_show,
+        cmd_run_trace,
+    )
+
+    sub = args[0]
+    if sub == "show":
+        return cmd_run_show(args[1:])
+    if sub == "artifacts":
+        return cmd_run_artifacts(args[1:])
+    if sub == "trace":
+        return cmd_run_trace(args[1:])
+    if sub == "cost":
+        return cmd_run_cost(args[1:])
+    print(
+        f"run: unknown sub-verb {sub!r}; expected one of show / artifacts / trace / cost",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _dispatch_step(args: list[str]) -> int:
+    """Dispatch ``astrid step {retry-fetch}`` sub-verbs."""
+    if not args:
+        print(
+            "usage: astrid step {retry-fetch} ...",
+            file=sys.stderr,
+        )
+        return 2
+    from astrid.core.task.lifecycle import cmd_step_retry_fetch
+
+    sub = args[0]
+    if sub == "retry-fetch":
+        return cmd_step_retry_fetch(args[1:])
+    print(
+        f"step: unknown sub-verb {sub!r}; expected retry-fetch",
         file=sys.stderr,
     )
     return 2
@@ -474,6 +529,7 @@ def _wait_adapter(decision: Any) -> int:
 
     For local adapter: poll the subprocess until it exits, capture returncode.
     For manual adapter: the agent does work out-of-band; return 0 immediately.
+    For remote-artifact adapter: poll the remote job in a loop until done/failed.
     The actual completion is detected by record_dispatch_complete via the adapter.
     """
     adapter_kind = getattr(decision, "adapter", None)
@@ -483,7 +539,9 @@ def _wait_adapter(decision: Any) -> int:
         # Manual steps: dispatch payload already written; agent works out-of-band.
         # Completion arrives via ack or inbox — not a subprocess exit code.
         return 0
-    # Legacy / unknown: fall through to -1 (adapter handles it in record_dispatch_complete).
+    if adapter_kind == "remote-artifact":
+        return _wait_remote_artifact(decision)
+    # Legacy / unknown: fall through to 0 (adapter handles it in record_dispatch_complete).
     return 0
 
 
@@ -518,6 +576,74 @@ def _wait_local_subprocess(decision: Any) -> int:
         except OSError:
             pass
         return -1
+
+
+def _wait_remote_artifact(decision: Any) -> int:
+    """Poll the remote-artifact adapter until the subprocess exits.
+
+    Loads ``remote_state.json`` from the step directory and polls the
+    adapter's poll() method in a loop, sleeping ``poll_interval_seconds``
+    between checks.  Returns 0 on ``done``, 1 on ``failed``.
+    """
+    import json
+    import time
+    from pathlib import Path
+
+    from astrid.core.adapter.remote_artifact import RemoteArtifactAdapter
+
+    project_root = getattr(decision, "project_root", None)
+    run_id = getattr(decision, "run_id", None)
+    path_tuple = getattr(decision, "plan_step_path", ())
+    step_version = getattr(decision, "step_version", 1)
+    if not project_root or not run_id or not path_tuple:
+        return 1
+
+    step_dir = project_root / "runs" / run_id / "steps"
+    for seg in path_tuple:
+        step_dir = step_dir / seg
+    step_dir = step_dir / f"v{step_version}"
+
+    remote_state_path = step_dir / "remote_state.json"
+    if not remote_state_path.exists():
+        return 1
+
+    try:
+        state = json.loads(remote_state_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return 1
+
+    poll_interval = state.get("poll_interval_seconds", 30) or 30
+    adapter = RemoteArtifactAdapter()
+
+    while True:
+        try:
+            wpid, status = os.waitpid(decision.pid, os.WNOHANG) if getattr(decision, "pid", None) else (0, 0)
+        except (ChildProcessError, OSError):
+            wpid = 0
+
+        poll_result = adapter.poll(None, _make_run_ctx_for_poll(
+            project_root, run_id, path_tuple, step_version
+        ))
+        if poll_result.status == "done":
+            return 0
+        if poll_result.status == "failed":
+            return 1
+        time.sleep(poll_interval)
+
+
+def _make_run_ctx_for_poll(
+    project_root: Any, run_id: Any, path_tuple: Any, step_version: Any
+) -> Any:
+    """Build a minimal RunContext for adapter.poll() calls."""
+    from astrid.core.adapter import RunContext
+
+    return RunContext(
+        slug="",
+        run_id=str(run_id),
+        project_root=Path(project_root) if not isinstance(project_root, Path) else project_root,
+        plan_step_path=tuple(path_tuple),
+        step_version=int(step_version),
+    )
 
 
 def _read_returncode_sidecar(decision: Any) -> int:

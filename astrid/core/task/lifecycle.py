@@ -45,9 +45,13 @@ from astrid.core.task.active_run import (
 from astrid.core.task.env import task_actor_env
 from astrid.core.task.events import (
     EventLogError,
+    _run_is_complete,
     append_event,
     make_run_aborted_event,
+    make_run_completed_event,
     make_run_started_event,
+    make_step_awaiting_fetch_event,
+    make_step_completed_event,
     read_events,
 )
 from astrid.core.task.gate import TaskRunGateError, peek_current_step
@@ -547,8 +551,13 @@ def cmd_next(
     )
 
     if peek.exhausted or peek.step is None:
-        print("run complete")
-        print(f"recovery: astrid abort --project {slug}")
+        if _run_is_complete(plan, events):
+            append_event(events_path, make_run_completed_event(run_id))
+        else:
+            print(
+                "run not complete: some steps still awaiting_fetch or in-flight",
+                file=sys.stderr,
+            )
         return 0
 
     path_str = STEP_PATH_SEP.join(peek.path_tuple)
@@ -667,22 +676,30 @@ def cmd_next(
 def _summarize_run_dir(run_dir: Path) -> tuple[str, str, str]:
     """Return (status, last_event_kind, last_ts) for a run directory.
 
-    Per FLAG-P5-006: only ``aborted`` vs ``in-progress`` are reliably
-    distinguishable in V1. A naturally completed plan still leaves
-    ``active_run.json`` in place, so the "complete" bucket is mostly
-    unobservable.
+    Status:
+    - ``completed`` — terminal ``run_completed`` event present (S5a contract).
+    - ``aborted`` — terminal ``run_aborted`` event present (S1 contract).
+    - ``in-flight`` — neither terminal event yet; the run is still being driven.
     """
     events_path = run_dir / "events.jsonl"
     if not events_path.is_file():
-        return "in-progress", "", ""
+        return "in-flight", "", ""
     events = read_events(events_path)
     if not events:
-        return "in-progress", "", ""
+        return "in-flight", "", ""
     last = events[-1]
     last_kind = str(last.get("kind", ""))
     last_ts = str(last.get("ts", ""))
-    status = "aborted" if last_kind == "run_aborted" else "in-progress"
+    if last_kind == "run_aborted":
+        status = "aborted"
+    elif last_kind == "run_completed":
+        status = "completed"
+    else:
+        status = "in-flight"
     return status, last_kind, last_ts
+
+
+_RUNS_LS_STATUSES = ("completed", "in-flight", "aborted")
 
 
 def cmd_runs_ls(
@@ -692,6 +709,12 @@ def cmd_runs_ls(
 ) -> int:
     parser = argparse.ArgumentParser(prog="astrid runs ls", add_help=True)
     parser.add_argument("--project", default=None, help="optional project slug filter")
+    parser.add_argument(
+        "--status",
+        default=None,
+        choices=_RUNS_LS_STATUSES,
+        help="filter by terminal status",
+    )
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
@@ -717,11 +740,208 @@ def cmd_runs_ls(
             continue
         for run_dir in sorted(p for p in runs_root.iterdir() if p.is_dir()):
             status, last_kind, last_ts = _summarize_run_dir(run_dir)
+            if args.status is not None and status != args.status:
+                continue
             rows.append((proj.name, run_dir.name, status, last_kind, last_ts))
 
     for slug, run_id, status, last_kind, last_ts in rows:
         print(f"{slug}\t{run_id}\t{status}\t{last_kind}\t{last_ts}")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# cmd_step_retry_fetch
+# ---------------------------------------------------------------------------
+
+
+def cmd_step_retry_fetch(
+    argv: Sequence[str],
+    *,
+    projects_root: Optional[Path] = None,
+) -> int:
+    """Retry artifact fetch for a step in ``awaiting_fetch`` state."""
+    from astrid.core.adapter.remote_artifact_fetch import fetch_artifacts
+    from astrid.core.task.plan_verbs import apply_mutations
+    from astrid.core.task.plan import iter_steps_with_path
+
+    parser = argparse.ArgumentParser(prog="astrid step retry-fetch", add_help=True)
+    parser.add_argument("step_id", help="step id (e.g. transcribe, render)")
+    parser.add_argument("--run", default=None, dest="run_id", help="run id")
+    parser.add_argument("--project", default=None, help="project slug")
+    try:
+        args = parser.parse_args(list(argv))
+    except SystemExit as exc:
+        return int(exc.code or 2)
+
+    if args.project is not None:
+        try:
+            slug = validate_project_slug(args.project)
+        except Exception as exc:
+            _print_err(f"step retry-fetch: {exc}")
+            return 1
+    else:
+        _print_err("step retry-fetch: --project is required")
+        return 1
+
+    if args.run_id is not None:
+        try:
+            run_id = validate_run_id(args.run_id)
+        except Exception as exc:
+            _print_err(f"step retry-fetch: --run {exc}")
+            return 1
+    else:
+        current = read_current_run(slug, root=projects_root)
+        if current is None:
+            _print_err(
+                f"step retry-fetch: no active run for project {slug!r} "
+                f"and --run not specified"
+            )
+            return 1
+        run_id = current
+
+    proj_root = project_dir(slug, root=projects_root)
+    run_dir = proj_root / "runs" / run_id
+    if not run_dir.is_dir():
+        _print_err(
+            f"step retry-fetch: run {run_id!r} not found in project {slug!r}"
+        )
+        return 1
+
+    events_path = run_dir / "events.jsonl"
+    if not events_path.is_file():
+        _print_err(
+            f"step retry-fetch: no events.jsonl for run {run_id!r}"
+        )
+        return 1
+
+    events = read_events(events_path)
+    if not events:
+        _print_err(
+            f"step retry-fetch: empty events log for run {run_id!r}"
+        )
+        return 1
+
+    step_id = args.step_id
+    latest_event = _latest_event_for_step(events, step_id)
+    if latest_event is None:
+        _print_err(
+            f"step retry-fetch: no events found for step {step_id!r} "
+            f"in run {run_id!r}"
+        )
+        return 1
+
+    latest_kind = latest_event.get("kind")
+
+    if latest_kind == "step_completed":
+        _print_err(
+            f"step retry-fetch: step {step_id!r} is already completed"
+        )
+        return 0
+
+    if latest_kind == "step_failed":
+        _print_err(
+            f"step retry-fetch: step {step_id!r} is failed, not awaiting_fetch"
+        )
+        return 1
+
+    if latest_kind != "step_awaiting_fetch":
+        _print_err(
+            f"step retry-fetch: step {step_id!r} is in state "
+            f"{latest_kind!r}, expected awaiting_fetch"
+        )
+        return 1
+
+    plan_path = proj_root / "plan.json"
+    if not plan_path.is_file():
+        _print_err(
+            f"step retry-fetch: plan.json not found for project {slug!r}"
+        )
+        return 1
+
+    plan = load_plan(plan_path)
+    effective = apply_mutations(plan, events)
+
+    target_step: Step | None = None
+    target_path: tuple[str, ...] = ()
+    for path_tuple, s in iter_steps_with_path(effective):
+        if s.id == step_id and target_step is None:
+            target_step = s
+            target_path = path_tuple
+
+    if target_step is None:
+        _print_err(
+            f"step retry-fetch: step {step_id!r} not found in effective plan"
+        )
+        return 1
+
+    step_version = target_step.version
+
+    from astrid.core.adapter import RunContext
+
+    run_ctx = RunContext(
+        slug=slug,
+        run_id=run_id,
+        project_root=proj_root,
+        plan_step_path=target_path,
+        step_version=step_version,
+    )
+
+    fetch_result = fetch_artifacts(target_step, run_ctx)
+
+    if fetch_result.status == "completed":
+        path_str = STEP_PATH_SEP.join(target_path)
+        append_event(
+            events_path,
+            make_step_completed_event(
+                path_str,
+                0,
+                adapter="remote-artifact",
+            ),
+        )
+        print(f"step {step_id}: all artifacts fetched")
+
+        events_after = read_events(events_path)
+        plan_after = load_plan(plan_path)
+        if _run_is_complete(plan_after, events_after):
+            append_event(events_path, make_run_completed_event(run_id))
+            print(f"run {run_id}: completed")
+        return 0
+
+    if fetch_result.status == "awaiting_fetch":
+        path_str = STEP_PATH_SEP.join(target_path)
+        append_event(
+            events_path,
+            make_step_awaiting_fetch_event(
+                path_str,
+                missing=list(fetch_result.missing),
+                mismatched=list(fetch_result.mismatched),
+                reason=fetch_result.reason,
+                adapter="remote-artifact",
+            ),
+        )
+        _print_err(
+            f"step {step_id}: still awaiting_fetch: "
+            f"missing={fetch_result.missing}, mismatched={fetch_result.mismatched}"
+        )
+        return 1
+
+    _print_err(f"step retry-fetch: fetch failed: {fetch_result.reason}")
+    return 1
+
+
+def _latest_event_for_step(
+    events: list[dict[str, Any]],
+    step_id: str,
+) -> dict[str, Any] | None:
+    """Return the latest event whose leaf step id matches *step_id*."""
+    latest: dict[str, Any] | None = None
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        path_list = ev.get("plan_step_path")
+        if isinstance(path_list, list) and path_list and path_list[-1] == step_id:
+            latest = ev
+    return latest
 
 
 from astrid.core.task.lifecycle_ack import cmd_ack  # noqa: E402
@@ -733,4 +953,5 @@ __all__ = [
     "cmd_runs_ls",
     "cmd_start",
     "cmd_status",
+    "cmd_step_retry_fetch",
 ]

@@ -1,5 +1,5 @@
 """T17: cmd_runs_ls finds runs across projects; --project filters; per
-FLAG-P5-006 only 'aborted' and 'in-progress' are observable buckets in V1
+FLAG-P5-006 only 'aborted' and 'in-flight' are observable buckets in V1
 (natural completion does not clear active_run.json so 'complete' is not
 asserted as observable).
 """
@@ -47,17 +47,17 @@ def test_runs_ls_lists_both_projects(tmp_path: Path) -> None:
     from astrid.orchestrate.compile import compile_to_path
     compile_to_path("demo.appB", packs_root=packs)
 
-    # Project alpha: r1 in-progress + r2 aborted.
+    # Project alpha: r1 in-flight + r2 aborted.
     _start_one(packs, projects, "demo.appA", "alpha", "r1")
     _abort_one(projects, "alpha")
     _start_one(packs, projects, "demo.appA", "alpha", "r2")
-    # leave r2 in-progress
+    # leave r2 in-flight
 
-    # Project beta: r3 in-progress + r4 aborted.
+    # Project beta: r3 in-flight + r4 aborted.
     _start_one(packs, projects, "demo.appB", "beta", "r3")
     _abort_one(projects, "beta")
     _start_one(packs, projects, "demo.appB", "beta", "r4")
-    # leave r4 in-progress
+    # leave r4 in-flight
 
     buf = io.StringIO()
     with redirect_stdout(buf):
@@ -68,13 +68,13 @@ def test_runs_ls_lists_both_projects(tmp_path: Path) -> None:
     assert "alpha" in out
     assert "beta" in out
     assert "r1" in out and "r2" in out and "r3" in out and "r4" in out
-    # Status reflects abort vs in-progress correctly.
+    # Status reflects abort vs in-flight correctly.
     lines = [line for line in out.splitlines() if line.strip()]
     by_run = {line.split("\t")[1]: line for line in lines}
     assert "aborted" in by_run["r1"]
-    assert "in-progress" in by_run["r2"]
+    assert "in-flight" in by_run["r2"]
     assert "aborted" in by_run["r3"]
-    assert "in-progress" in by_run["r4"]
+    assert "in-flight" in by_run["r4"]
     # FLAG-P5-006: 'complete' bucket is mostly unobservable in V1; the lister
     # should NOT emit it for these runs (none reached natural completion AND
     # we haven't manually written run_completed events).
