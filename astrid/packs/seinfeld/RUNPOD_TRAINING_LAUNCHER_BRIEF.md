@@ -21,6 +21,48 @@ After this sprint:
 1. `python3 -m astrid orchestrators run seinfeld.lora_train --manifest runs/seinfeld-dataset/provisional.manifest.json --vocabulary astrid/packs/seinfeld/vocabulary.yaml --out runs/seinfeld-lora` provisions a pod, uploads dataset + config, starts the AI Toolkit UI, prints the URL, runs training, generates an eval-sample grid (baseline LTX vs each checkpoint on the same prompts), waits at the human checkpoint-selection gate, tears the pod down, and registers the chosen LoRA.
 2. A `--smoke` flag runs the same pipeline against a 5-clip subset for 100 steps so the wiring can be verified for ~$0.50 before committing $10+.
 
+## Brief amendments — must address (added after prep)
+
+These items were identified as gaps after the initial brief was written. The plan must address each; the critique should explicitly flag any that the plan misses.
+
+### Blockers (live run will fail without these)
+
+1. **`HF_TOKEN` secret**: LTX 2.3 weights are gated on HuggingFace (Lightricks). The orchestrator must:
+   - Validate `HF_TOKEN` is set in the local env at pre-flight time (fail with a clear error pointing at where to set it).
+   - Pass `HF_TOKEN` into the pod environment when launching ai-toolkit (via `external.runpod.exec`'s env-passthrough, or by writing a `.env` to `/workspace/` and sourcing it in `bootstrap.sh`).
+   - Document in STAGE.md that `HF_TOKEN` is required.
+
+2. **Image tag pinning**: `ostris/ai-toolkit:latest` is reproducibility quicksand. Prep must pick a specific tag (e.g., `ostris/ai-toolkit:0.X.Y`) or digest, and that pin must be hardcoded in `aitoolkit_stage`'s default. The latest tag is fine as an explicit override but not as the default.
+
+3. **Datacenter default**: Bake in a sensible default (one known to have RTX 6000 Ada / A100 80GB inventory — prep verifies by calling `runpod_lifecycle.api.get_gpu_types(datacenter_id=...)` or equivalent). Provide a small ordered fallback list in `lora_train`'s code so the first available DC wins. Don't silently choose a DC without the requested GPU.
+
+4. **Training-crash detection**: AI Toolkit can OOM, NaN out, or hit a Gemma3-OOM error (per hivemind: metaphysician). `seinfeld.aitoolkit_train` must:
+   - Poll the remote process exit status (not just wall-clock).
+   - Tail the remote training log for known failure patterns (`CUDA out of memory`, `NaN detected`, `RuntimeError`).
+   - On detection: capture the last 200 lines of log to `<out>/training.failure.log`, mark `checkpoint_manifest.json` with `status: "failed"`, and **return non-zero so the orchestrator can short-circuit to teardown** — don't proceed to eval grid against a broken training run.
+
+### Operational quality (will frustrate without these)
+
+5. **`.env` auto-loading**: Pre-flight validation should auto-source the first available of:
+   - `$PWD/.env.local`
+   - `$PWD/.env`
+   - `/Users/peteromalley/Documents/reigh-workspace/runpod-lifecycle/.env`
+   - `~/.config/astrid/.env`
+   
+   …before checking that `RUNPOD_API_KEY`, `HF_TOKEN` are set. On failure, print the exact set/source-from command for each missing var.
+
+6. **UI URL written to file**: After `seinfeld.aitoolkit_stage` returns the AI Toolkit UI URL, the orchestrator writes it to `<out>/ui_url.txt` and re-prints it on every subsequent step (so a user who closed the terminal can recover it from disk or from the live console).
+
+7. **Total cost summary at end**: After teardown, the orchestrator reads every `cost.json` artifact produced by child steps and prints a `Total spend: $X.YY` line. Also write a `<out>/cost_summary.json` aggregating per-step costs.
+
+8. **Concurrent-run guard + Ctrl-C cleanup**: 
+   - **Lock file**: At orchestrator start, acquire `<out>/.lock` exclusively. If already locked, exit with a clear "another seinfeld.lora_train run is in progress at PID <X>; remove <out>/.lock if stale" error.
+   - **Signal handling**: Register a SIGINT/SIGTERM handler in the orchestrator that, if a pod is alive (pod_handle.json exists and no teardown receipt), invokes `external.runpod.teardown` before exit. **Never** leave a pod running after the orchestrator dies. This is the same try/finally pattern `external.runpod.session` uses internally; we recreate it at the orchestrator level since we're not using `session`.
+
+9. **Trigger token convention**: Decide once. Recommend: prepend `seinfeld scene, ` to every caption at training time (so inference can use `seinfeld scene, jerry in his apartment, wide shot, ...` to invoke the LoRA). The prepend happens inside `aitoolkit_stage`'s config-generation step (not by mutating the on-disk caption files). Document this in STAGE.md so downstream (`script_to_shots`, `scene_render`) knows to emit the same prefix.
+
+10. **Reproducibility seed**: Default `seed: 42` in the ai-toolkit config. Expose `--seed` on `lora_train` so the human can vary it for the same dataset. Record the seed used in `registered_lora.json`.
+
 ## Architecture (aligned with `project.md` and the existing skeleton)
 
 `project.md` defines four seinfeld orchestrators (`dataset_build`,
@@ -277,6 +319,7 @@ child_executors:
 9. STAGE.md exists for every new executor + the updated orchestrator. Each has a one-paragraph description and a copy-pasteable invocation.
 10. `python3 scripts/gen_capability_index.py` is re-run; `AGENTS.md` capability index reflects the new executors.
 11. `.gitmodules` has the seinfeld/ai_toolkit/upstream submodule entry. Submodule SHA is pinned.
+12. **Brief amendments are all addressed**: HF_TOKEN validation + passthrough; image tag pinned (no `:latest` default); datacenter default with fallback list; training-crash detection short-circuits to teardown; `.env` auto-loading on pre-flight; UI URL written to `<out>/ui_url.txt`; cost summary printed and written to `<out>/cost_summary.json`; orchestrator-level lockfile + SIGINT-cleans-up-pod; trigger token (`seinfeld scene, `) is documented in STAGE.md; `seed: 42` default with `--seed` override, recorded in `registered_lora.json`.
 
 ## Out of scope (next sprints)
 
