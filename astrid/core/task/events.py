@@ -57,10 +57,12 @@ class StaleEpochError(EventLogError):
     """Raised when the on-disk ``writer_epoch`` differs from the writer's expectation.
 
     Carries the conflicting epochs in ``.expected`` / ``.actual``.
+    ``expected`` may be ``None`` when the caller intentionally bypasses
+    the epoch CAS (e.g. sweeper ``--hard`` mode).
     """
 
-    def __init__(self, *, expected: int, actual: int) -> None:
-        self.expected: int = expected
+    def __init__(self, *, expected: int | None, actual: int) -> None:
+        self.expected: int | None = expected
         self.actual: int = actual
         super().__init__(
             f"stale epoch: expected writer_epoch={expected!r} but lease.json holds {actual!r}"
@@ -93,7 +95,7 @@ def append_event_locked(
     run_dir: str | Path,
     event: dict[str, Any],
     *,
-    expected_writer_epoch: int,
+    expected_writer_epoch: int | None = None,
     expected_prev_hash: str,
 ) -> dict[str, Any]:
     """Atomically append ``event`` to ``run_dir/events.jsonl``.
@@ -101,12 +103,17 @@ def append_event_locked(
     Holds a single ``fcntl.flock(LOCK_EX)`` on the events file across:
       1. Tail re-read + CAS against ``expected_prev_hash`` → :class:`StaleTailError`.
       2. ``lease.json`` re-read + CAS against ``expected_writer_epoch`` →
-         :class:`StaleEpochError`.
+         :class:`StaleEpochError` (skipped when *expected_writer_epoch* is ``None``).
       3. New event hash computation, append, ``flush``+``os.fsync``.
 
     Raises :class:`StaleTailError` / :class:`StaleEpochError` on CAS failure
     with no retry. Callers (typically :class:`WriterContext`) decide whether
     to surface or rebind.
+
+    When *expected_writer_epoch* is ``None``, the epoch CAS check is
+    **skipped entirely** — only the tail-hash CAS runs.  This is safe
+    for the sweeper's ``--hard`` mode where the caller has already
+    decided to force-terminate and does not want to race on epoch.
     """
 
     run_path = Path(run_dir)
@@ -127,11 +134,12 @@ def append_event_locked(
                 if tail_hash != expected_prev_hash:
                     raise StaleTailError(expected=expected_prev_hash, actual=tail_hash)
 
-                actual_epoch = _read_lease_epoch(lease_path)
-                if actual_epoch != expected_writer_epoch:
-                    raise StaleEpochError(
-                        expected=expected_writer_epoch, actual=actual_epoch
-                    )
+                if expected_writer_epoch is not None:
+                    actual_epoch = _read_lease_epoch(lease_path)
+                    if actual_epoch != expected_writer_epoch:
+                        raise StaleEpochError(
+                            expected=expected_writer_epoch, actual=actual_epoch
+                        )
 
                 stored = dict(event)
                 stored.pop("hash", None)

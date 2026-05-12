@@ -19,8 +19,9 @@ orchestrator registry.
 
 from __future__ import annotations
 
+import json
 import sys
-from typing import Iterable
+from typing import Any, Iterable
 
 
 # Phase 5 lifecycle verbs short-circuit the implicit task-mode gate at the top
@@ -156,6 +157,19 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
         return True
     if top == "sessions" and len(raw) >= 2 and raw[1] in _UNBOUND_SESSIONS_SUBVERBS:
         return True
+    if top == "runpod":
+        # --help anywhere in the runpod subcommand tree is always allowed.
+        if "--help" in raw or "-h" in raw or len(raw) == 1:
+            return True
+        # `runpod volumes ls/create` and `runpod ensure-storage` operate on RunPod
+        # cloud state only — no Astrid run/lease/event mutation, so unbound is fine.
+        if len(raw) >= 2 and raw[1] == "volumes":
+            return True
+        if len(raw) >= 2 and raw[1] == "ensure-storage":
+            return True
+        # `runpod sweep` writes pod_terminated_by_sweep events to owning runs'
+        # events.jsonl — requires a bound session per the S4 brief.
+        return False
     # `author test --project <slug>` exception. The orchestrate.cli wires the
     # `test` sub-verb regardless of whether a session is bound, so we open the
     # gate explicitly to match.
@@ -257,6 +271,8 @@ def _dispatch(raw: list[str]) -> int:
         from . import modalities
 
         return modalities.main(raw[1:])
+    if raw and raw[0] == "runpod":
+        return _dispatch_runpod(raw[1:])
     if raw and raw[0] == "doctor":
         from . import doctor
 
@@ -342,6 +358,115 @@ def _dispatch_plan_verbs(args: list[str]) -> int:
     from .core.task.plan_verbs import cmd_plan
 
     return cmd_plan(args)
+
+
+def _dispatch_runpod(args: list[str]) -> int:
+    """Dispatch ``astrid runpod {sweep,volumes,ensure-storage} ...`` sub-verbs."""
+    if not args:
+        print(
+            "usage: astrid runpod {sweep,volumes,ensure-storage} ...",
+            file=sys.stderr,
+        )
+        return 2
+
+    sub = args[0]
+    if sub == "sweep":
+        from .core.runpod.sweeper import sweep as run_sweep
+
+        # Parse --hard and --dry-run from remaining args
+        mode: str = "default"
+        dry_run = False
+        projects_root_arg: str | None = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--hard":
+                mode = "hard"
+                i += 1
+            elif args[i] == "--dry-run":
+                dry_run = True
+                i += 1
+            elif args[i] == "--projects-root" and i + 1 < len(args):
+                projects_root_arg = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        from pathlib import Path
+
+        from .core.project.paths import resolve_projects_root
+
+        projects_root = Path(projects_root_arg) if projects_root_arg else resolve_projects_root()
+        summary = run_sweep(projects_root, mode=mode, dry_run=dry_run)  # type: ignore[arg-type]
+        print(json.dumps(summary, indent=2, default=str))
+        return 0
+
+    if sub == "volumes":
+        return _dispatch_runpod_volumes(args[1:])
+
+    if sub == "ensure-storage":
+        return _dispatch_runpod_ensure_storage(args[1:])
+
+    print(
+        f"runpod: unknown sub-verb {sub!r}; expected one of sweep / volumes / ensure-storage",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _dispatch_runpod_volumes(args: list[str]) -> int:
+    """Dispatch ``astrid runpod volumes ls``."""
+    if not args or args[0] != "ls":
+        print("usage: astrid runpod volumes ls", file=sys.stderr)
+        return 2
+    from .core.runpod.storage import list_volumes
+
+    try:
+
+        async def _volumes_ls() -> None:
+            volumes = await list_volumes()
+            print(json.dumps(volumes, indent=2, default=str))
+
+        import asyncio
+
+        asyncio.run(_volumes_ls())
+        return 0
+    except Exception as exc:
+        print(f"runpod volumes: {exc}", file=sys.stderr)
+        return 1
+
+
+def _dispatch_runpod_ensure_storage(args: list[str]) -> int:
+    """Dispatch ``astrid runpod ensure-storage <name> [--size <GB>] [--datacenter <id>]``."""
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="astrid runpod ensure-storage")
+    parser.add_argument("name", help="Volume name to find or create.")
+    parser.add_argument("--size", type=int, default=50, help="Size in GB for new volumes (default: 50).")
+    parser.add_argument("--datacenter", dest="datacenter_id", default=None, help="RunPod datacenter ID.")
+    try:
+        parsed = parser.parse_args(args)
+    except SystemExit:
+        return 2
+
+    from .core.runpod.storage import ensure_storage
+
+    try:
+
+        async def _ensure() -> None:
+            result = await ensure_storage(
+                parsed.name,
+                size_gb=parsed.size,
+                datacenter_id=parsed.datacenter_id,
+            )
+            print(json.dumps(result, indent=2, default=str))
+
+        import asyncio
+
+        asyncio.run(_ensure())
+        return 0
+    except Exception as exc:
+        print(f"ensure-storage: {exc}", file=sys.stderr)
+        return 1
 
 
 def _wait_adapter(decision: Any) -> int:
@@ -482,6 +607,9 @@ Usage:
   python3 -m astrid reigh-data --project-id PROJECT_ID [--out PATH]
   python3 -m astrid worker --pool banodoco [--worker-id ID] [--max-iterations N]
   python3 -m astrid audit --run RUN_DIR
+  python3 -m astrid runpod sweep [--hard] [--dry-run] [--projects-root PATH]
+  python3 -m astrid runpod volumes ls
+  python3 -m astrid runpod ensure-storage <name> [--size <GB>] [--datacenter <id>]
   python3 -m astrid --video SRC --brief BRIEF --out runs/name [--render]
   python3 -m astrid --brief BRIEF --out runs/name --target-duration SECONDS [--render]
 Start here:

@@ -8,6 +8,7 @@ import json
 import shutil
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -42,6 +43,7 @@ def run_checks(*, optional_binaries: tuple[str, ...] = ("ffmpeg", "npx", "uv", "
     checks.append(_capture_check("vibecomfy metadata", _check_vibecomfy_metadata))
     checks.append(_capture_check("remotion config", _check_remotion_config))
     checks.append(_capture_check("timeline catalog", _check_timeline_catalog))
+    checks.append(_check_runpod_stale_handles())
     checks.append(_check_projects_root())
     for binary in optional_binaries:
         checks.append(_check_optional_binary(binary))
@@ -209,6 +211,53 @@ def _check_timeline_catalog() -> str:
     if missing:
         raise RuntimeError(f"missing timeline catalog ids: {', '.join(missing)}")
     return f"effects={len(effects)}, animations={len(animations)}, transitions={len(transitions)}"
+
+
+def _check_runpod_stale_handles() -> DoctorCheck:
+    """Report stray ``pod_handle.json`` files whose ``terminate_at`` has passed.
+
+    Read-only — never calls ``terminate`` or ``append_event_locked``.
+    Does NOT add a symmetric runpod metadata check (out of scope).
+    """
+    from astrid.core.project.paths import resolve_projects_root
+    from astrid.core.runpod.sweeper import collect_handles
+
+    projects_root = resolve_projects_root()
+    if not projects_root.is_dir():
+        return DoctorCheck(
+            name="runpod stale handles",
+            status="ok",
+            detail="no projects root to scan",
+        )
+
+    handles = collect_handles(projects_root)
+    now_utc = datetime.now(timezone.utc)
+    stale_count = 0
+
+    for _path, handle in handles:
+        terminate_at_str = handle.get("terminate_at", "")
+        if not terminate_at_str:
+            continue
+        try:
+            terminate_at = datetime.fromisoformat(
+                terminate_at_str.replace("Z", "+00:00")
+            )
+            if terminate_at <= now_utc:
+                stale_count += 1
+        except (ValueError, TypeError):
+            pass
+
+    if stale_count > 0:
+        return DoctorCheck(
+            name="runpod stale handles",
+            status="warn",
+            detail=f"{stale_count} stale handle(s) found",
+        )
+    return DoctorCheck(
+        name="runpod stale handles",
+        status="ok",
+        detail="no stale handles detected",
+    )
 
 
 def _check_projects_root() -> DoctorCheck:

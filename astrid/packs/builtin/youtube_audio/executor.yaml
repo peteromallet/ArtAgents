@@ -3,15 +3,27 @@
   "name": "YouTube Audio",
   "kind": "built_in",
   "version": "0.1.0",
-  "short_description": "Search YouTube for a query and download the top hit's audio as MP3 via yt-dlp.",
-  "description": "Wraps yt-dlp's ytsearch1: selector and --extract-audio to fetch the best-matching YouTube result for a free-text query and write its audio as a standalone MP3 file. Useful for sourcing background tracks for video composites without leaving the Astrid CLI.",
-  "keywords": ["youtube", "audio", "download", "yt-dlp", "mp3", "music", "search"],
+  "short_description": "Download a YouTube video's audio (MP3) or video (MP4) — by search query or direct URL.",
+  "description": "Wraps yt-dlp to fetch a YouTube result by free-text search (top hit) or direct URL, in either audio-extraction mode (MP3) or raw-video mode (MP4). Useful for sourcing background tracks for composites OR for ingesting video files into dataset pipelines.",
+  "keywords": ["youtube", "audio", "video", "download", "yt-dlp", "mp3", "mp4", "music", "search"],
   "inputs": [
     {
       "name": "query",
       "type": "string",
-      "required": true,
-      "description": "Free-text YouTube search query. The top result's audio is downloaded."
+      "required": false,
+      "description": "Free-text YouTube search query (top hit is used). Mutually exclusive with url."
+    },
+    {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": "Direct YouTube URL. Mutually exclusive with query."
+    },
+    {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": "'audio' (default — extract to MP3) or 'video' (download MP4 without audio extraction)."
     }
   ],
   "outputs": [
@@ -50,6 +62,8 @@
       "astrid.packs.builtin.youtube_audio.run",
       "--query",
       "{query}",
+      "--mode",
+      "{mode}",
       "--out",
       "{output}"
     ]

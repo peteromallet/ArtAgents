@@ -286,9 +286,10 @@ def _call_responses_api(
     detail: str,
     max_output_tokens: int,
     timeout: int,
+    response_schema: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     media_type, data = _encode_image(image_path)
-    payload = {
+    payload: dict[str, Any] = {
         "model": model,
         "input": [
             {
@@ -305,6 +306,15 @@ def _call_responses_api(
         ],
         "max_output_tokens": max_output_tokens,
     }
+    if response_schema is not None:
+        payload["text"] = {
+            "format": {
+                "type": "json_schema",
+                "name": response_schema.get("name", "response"),
+                "schema": response_schema["schema"] if "schema" in response_schema else response_schema,
+                "strict": response_schema.get("strict", True),
+            }
+        }
     request = Request(
         API_URL,
         data=json.dumps(payload).encode("utf-8"),
@@ -390,6 +400,12 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     api_key = load_api_key(args.env_file)
+    response_schema: dict[str, Any] | None = None
+    if args.response_schema:
+        schema_path = args.response_schema.expanduser()
+        if not schema_path.is_file():
+            _die(f"--response-schema file not found: {schema_path}")
+        response_schema = json.loads(schema_path.read_text(encoding="utf-8"))
     results: list[dict[str, Any]] = []
     for model in models:
         print(f"querying={model} image={image_for_query}", file=sys.stderr)
@@ -403,6 +419,7 @@ def run(args: argparse.Namespace) -> int:
                 detail=args.detail,
                 max_output_tokens=args.max_output_tokens,
                 timeout=args.timeout,
+                response_schema=response_schema,
             )
             result = {
                 "model": model,
@@ -454,6 +471,8 @@ def build_parser() -> argparse.ArgumentParser:
     add("--crop-position", action="append", help="Crop alignment(s), e.g. left,center,right or top,center,bottom. Repeat or comma-separate.")
     add("--out-dir", type=Path, default=Path("runs/visual-understanding"))
     add("--out", type=Path, help="Optional JSON result path.")
+    add("--response-schema", type=Path,
+        help="Optional path to a JSON schema file. When provided, the model is constrained to emit JSON matching this schema (OpenAI Responses API text.format=json_schema). File may be either the raw schema or {name, schema, strict?}.")
     add("--env-file", type=Path)
     add("--max-output-tokens", type=int, default=700)
     add("--timeout", type=int, default=120)

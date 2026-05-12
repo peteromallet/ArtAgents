@@ -1,13 +1,16 @@
 ---
 name: youtube_audio
-description: Search YouTube for a query and download the top hit's audio as MP3 via yt-dlp.
+description: Download a YouTube video's audio (MP3) or video (MP4) — by search query or direct URL via yt-dlp.
 ---
 
-# YouTube Audio Executor
+# YouTube Audio/Video Executor
 
-Use `builtin.youtube_audio` to source background tracks for video composites
-without leaving the Astrid CLI. Wraps `yt-dlp`'s `ytsearch1:` selector
-plus `--extract-audio` so you give it a free-text query and get an MP3.
+Use `builtin.youtube_audio` to fetch one YouTube result as either an MP3
+(audio-extracted) or an MP4 (raw video), by free-text search or direct URL.
+
+The executor id is `youtube_audio` for historical reasons — it now handles
+video too. Treat it as "youtube download" and pass `--mode video` when you
+want the video file.
 
 ## Quick reference
 
@@ -22,15 +25,37 @@ automatically when no extension is given).
 
 ## Inputs
 
-| name  | type   | description |
-|-------|--------|-------------|
-| query | string | Free-text YouTube search query — top result's audio is downloaded. |
+| name  | type   | required | description |
+|-------|--------|----------|-------------|
+| query | string | one-of   | Free-text YouTube search query — top hit is used. Mutex with `url`. |
+| url   | string | one-of   | Direct YouTube URL. Mutex with `query`. |
+| mode  | string | no       | `audio` (default — MP3 extraction) or `video` (MP4 download, no extraction). |
 
 ## Outputs
 
 | name  | type | description |
 |-------|------|-------------|
-| audio | file | MP3 audio extracted from the top YouTube result. |
+| audio | file | MP3 audio (mode=audio) or MP4 video (mode=video) from the selected result. |
+
+## Video mode
+
+```bash
+python3 -m astrid executors run builtin.youtube_audio \
+  --input query="seinfeld jerry kramer apartment scene" \
+  --input mode=video \
+  --out runs/seinfeld/clip-01
+```
+
+Output is `runs/seinfeld/clip-01.mp4`. No ffmpeg needed in video mode.
+
+## Direct URL
+
+```bash
+python3 -m astrid executors run builtin.youtube_audio \
+  --input url="https://www.youtube.com/watch?v=..." \
+  --input mode=video \
+  --out runs/seinfeld/clip-02
+```
 
 ## Requirements
 

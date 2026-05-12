@@ -1,0 +1,29 @@
+{
+  "id": "seinfeld.lora_train",
+  "name": "Seinfeld LoRA Train",
+  "kind": "built_in",
+  "version": "0.0.1",
+  "short_description": "Train an LTX 2.3 LoRA on the Seinfeld dataset via ai-toolkit on RunPod.",
+  "description": "Provisions a RunPod GPU, stages the dataset_build manifest + an ai-toolkit (ostris) config, runs training, generates an eval sample grid, gates on human checkpoint selection, tears down the pod, registers the chosen LoRA. SKELETON — child executors not yet built.",
+  "keywords": ["seinfeld", "lora", "training", "ai-toolkit", "runpod", "ltx"],
+  "runtime": {
+    "kind": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.seinfeld.lora_train.run",
+        "{orchestrator_args}"
+      ]
+    }
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "cache": {
+    "mode": "none"
+  },
+  "metadata": {
+    "runtime_module": "astrid.packs.seinfeld.lora_train.run",
+    "runtime_file": "run.py"
+  }
+}

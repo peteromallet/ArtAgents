@@ -1,0 +1,37 @@
+{
+  "name": "bucket_judge",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "accept": {
+        "type": "boolean",
+        "description": "True iff this frame is a usable Seinfeld training clip for ONE of the listed scene buckets."
+      },
+      "bucket": {
+        "type": ["string", "null"],
+        "enum": ["jerrys_apt", "monks_diner", "other", null],
+        "description": "Scene bucket. 'jerrys_apt' = Jerry's apartment (kitchen/living room, beige cabinets, exposed brick, big window). 'monks_diner' = Monk's coffee shop booth (formica table, vinyl seats, diner counter). 'other' = recognisable Seinfeld scene but not in the locked vocabulary. null = not a Seinfeld scene at all."
+      },
+      "characters_visible": {
+        "type": "array",
+        "items": {"type": "string", "enum": ["jerry", "george", "elaine", "kramer", "none"]},
+        "description": "Which named characters are clearly visible in this frame. Use ['none'] if none of the four are clearly visible."
+      },
+      "shot_type": {
+        "type": ["string", "null"],
+        "enum": ["wide", "medium", "closeup", "reaction", null]
+      },
+      "confidence": {
+        "type": "number",
+        "description": "0 to 1, your confidence in this assessment."
+      },
+      "reasons": {
+        "type": "string",
+        "description": "One short sentence justifying the decision. Cite specific visual cues."
+      }
+    },
+    "required": ["accept", "bucket", "characters_visible", "shot_type", "confidence", "reasons"]
+  }
+}

@@ -9,7 +9,7 @@
       "astrid.packs.builtin.visual_understand.run"
     ]
   },
-  "description": "Inspect images or sampled video frames with a vision model.",
+  "description": "Inspect images or sampled video frames with an OpenAI vision model. Free-text queries or JSON-schema-constrained structured output for vocabulary-locked enums.",
   "id": "builtin.visual_understand",
   "inputs": [
     {
@@ -28,7 +28,10 @@
     "video",
     "understand",
     "llm",
-    "describe"
+    "describe",
+    "json_schema",
+    "structured_output",
+    "vocabulary"
   ],
   "kind": "built_in",
   "metadata": {
@@ -37,6 +40,6 @@
     "runtime_module": "astrid.packs.builtin.visual_understand.run"
   },
   "name": "Visual Understand",
-  "short_description": "Inspect images or sampled video frames with a vision LLM.",
+  "short_description": "Inspect images or sampled video frames with a vision LLM — free-text or JSON-schema-constrained.",
   "version": "1.0"
 }

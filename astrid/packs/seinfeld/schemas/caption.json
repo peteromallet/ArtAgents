@@ -1,0 +1,44 @@
+{
+  "name": "caption",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "scene": {
+        "type": "string",
+        "enum": ["jerrys_apt", "monks_diner"]
+      },
+      "shot_type": {
+        "type": "string",
+        "enum": ["wide", "medium", "closeup", "reaction"]
+      },
+      "characters": {
+        "type": "array",
+        "description": "Characters present, in left-to-right order if multiple.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "outfit"],
+          "properties": {
+            "name": {"type": "string", "enum": ["jerry", "george", "elaine", "kramer"]},
+            "outfit": {
+              "type": "string",
+              "description": "Outfit token. jerry: jeans_buttondown|sweater_jeans. george: polo_chinos|windbreaker. elaine: blazer_pants|floral_dress. kramer: vintage_shirt_pants. Pick the closest match.",
+              "enum": ["jeans_buttondown", "sweater_jeans", "polo_chinos", "windbreaker", "blazer_pants", "floral_dress", "vintage_shirt_pants"]
+            }
+          }
+        }
+      },
+      "action": {
+        "type": "string",
+        "description": "Short free-text describing what the character(s) are doing. 5-15 words. No proper nouns outside the character names."
+      },
+      "caption": {
+        "type": "string",
+        "description": "The full caption string assembled from the locked template: 'A {shot_type} shot in {scene}. {characters_clause}. {action}. Seinfeld sitcom style, 90s NBC sitcom lighting, multi-cam look.' Where characters_clause = '{name} in {outfit}' joined by ' and '."
+      }
+    },
+    "required": ["scene", "shot_type", "characters", "action", "caption"]
+  }
+}

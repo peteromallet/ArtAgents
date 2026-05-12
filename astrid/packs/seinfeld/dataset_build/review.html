@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seinfeld Dataset Review</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+#filters{width:100%;max-width:960px;padding:10px 16px;display:flex;gap:6px;align-items:center;flex-shrink:0;border-bottom:1px solid #1a1a1a;margin-bottom:8px;background:#000;position:relative;z-index:2}
+#filters button{padding:6px 14px;border:1px solid #333;background:#0f0f0f;color:#999;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit}
+#filters button:hover{background:#1a1a1a;color:#ddd}
+#filters button.active{background:#2a2a2a;color:#fff;border-color:#666}
+#filters .count{color:#666;font-size:11px;margin-left:auto}
+#vid-container{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;width:100%;max-width:960px}
+video{max-width:100%;max-height:70vh;border-radius:4px}
+#info{width:100%;max-width:960px;padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+#caption{font-size:15px;line-height:1.4;color:#ddd;min-height:42px}
+#confidence{font-size:13px;color:#888}
+#progress{font-size:13px;color:#666;display:flex;justify-content:space-between}
+#status{color:#ff0}
+#reject-tags{font-size:12px;color:#f66;min-height:18px}
+#shortcuts{font-size:11px;color:#444;padding:0 16px 12px;width:100%;max-width:960px;display:flex;gap:16px;flex-wrap:wrap}
+#buttons{width:100%;max-width:960px;padding:8px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#buttons button{padding:8px 14px;border:1px solid #555;background:#1a1a1a;color:#ddd;border-radius:4px;cursor:pointer;font-size:13px;font-family:inherit}
+#buttons button:hover{background:#2a2a2a}
+#buttons button.accept{border-color:#4a4;color:#7e7}
+#buttons button.reject{border-color:#a44;color:#f99}
+#buttons button.reason{font-size:11px;padding:6px 10px}
+#buttons button.submit{margin-left:auto;background:#2a3;color:#fff;border-color:#3b4}
+#buttons button.submit:hover{background:#3b4}
+#edit-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:10;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#edit-overlay textarea{width:100%;max-width:640px;height:200px;background:#222;color:#fff;border:1px solid #555;padding:12px;font-size:14px;font-family:inherit;resize:vertical;border-radius:4px}
+#edit-overlay .btns{margin-top:12px;display:flex;gap:12px}
+#edit-overlay button{padding:8px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px}
+#save-edit{background:#4a4}
+#cancel-edit{background:#555;color:#fff}
+</style>
+</head>
+<body>
+<div id="filters">
+<button data-filter="pending" class="active" id="flt-pending">Pending</button>
+<button data-filter="accepted" id="flt-accepted">Accepted</button>
+<button data-filter="rejected" id="flt-rejected">Rejected</button>
+<button data-filter="all" id="flt-all">All</button>
+<span class="count" id="flt-counts"></span>
+</div>
+<div id="vid-container"><video id="vid" controls autoplay loop muted></video></div>
+<div id="info">
+<div id="caption">Loading...</div>
+<div id="confidence"></div>
+<div id="progress"><span id="prog-text"></span><span id="status"></span></div>
+<div id="reject-tags"></div>
+</div>
+<div id="buttons">
+<button class="accept" id="btn-accept">✓ Accept (Y)</button>
+<button class="reject" id="btn-reject">✗ Reject (N)</button>
+<button id="btn-back">← Back</button>
+<button class="reason" id="btn-r1">1: watermark</button>
+<button class="reason" id="btn-r2">2: wrong_scene</button>
+<button class="reason" id="btn-r3">3: wrong_char</button>
+<button class="reason" id="btn-r4">4: bad_motion</button>
+<button id="btn-edit">E: edit caption</button>
+<button class="submit" id="btn-submit">Submit (Enter)</button>
+</div>
+<div id="shortcuts">
+<span>Y/Space/→ Accept</span><span>N/X Reject</span><span>← Back</span>
+<span>1 watermark</span><span>2 wrong_scene</span><span>3 wrong_ch</span><span>4 bad_motion</span>
+<span>E edit</span><span>Enter submit</span>
+</div>
+<div id="edit-overlay">
+<textarea id="edit-ta"></textarea>
+<div class="btns"><button id="save-edit">Save (Esc)</button><button id="cancel-edit">Cancel</button></div>
+</div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const S = id => document.getElementById(id);
+const REASONS = {1:'watermark',2:'wrong_scene',3:'wrong_character',4:'bad_motion'};
+let clips=[], visibleClips=[], decisions={}, cursor=0, lastReject=null, saveTimer=null, filter='pending';
+
+function hdr(){ return {'X-Session-Token':token,'Content-Type':'application/json'}; }
+
+function clipMatchesFilter(c, f){
+  const d = decisions[c.id];
+  if(f==='all') return true;
+  if(f==='pending') return !d;
+  if(f==='accepted') return d && d.decision==='accept';
+  if(f==='rejected') return d && d.decision==='reject';
+  return true;
+}
+
+function rebuildVisible(){
+  visibleClips = clips.filter(c=>clipMatchesFilter(c, filter));
+}
+
+function updateCounts(){
+  let pend=0, acc=0, rej=0;
+  for(const c of clips){
+    const d=decisions[c.id];
+    if(!d) pend++;
+    else if(d.decision==='accept') acc++;
+    else if(d.decision==='reject') rej++;
+  }
+  S('flt-counts').textContent = `${pend} pending · ${acc} accepted · ${rej} rejected`;
+}
+
+function setFilter(f){
+  filter = f;
+  for(const b of document.querySelectorAll('#filters button')){
+    b.classList.toggle('active', b.dataset.filter===f);
+  }
+  const prevId = visibleClips[cursor]?.id;
+  rebuildVisible();
+  // Try to keep the same clip in view if it still matches; otherwise reset to start.
+  const idx = prevId ? visibleClips.findIndex(c=>c.id===prevId) : -1;
+  cursor = idx>=0 ? idx : 0;
+  render();
+}
+
+async function init(){
+  const d = await fetch('/data.json').then(r=>r.json());
+  clips = d.clips || d;
+  try {
+    const r = await fetch('/state.json?token='+token);
+    if(r.ok){ const s=await r.json(); Object.assign(decisions,s.decisions||{}); }
+  }catch(e){}
+  rebuildVisible();
+  cursor = 0;
+  for(const b of document.querySelectorAll('#filters button')){
+    b.addEventListener('click',()=>setFilter(b.dataset.filter));
+  }
+  render();
+}
+
+function render(){
+  updateCounts();
+  if(!clips.length){ S('caption').textContent='No clips to review.'; S('vid').removeAttribute('src'); S('prog-text').textContent=''; S('status').textContent=''; S('reject-tags').textContent=''; S('confidence').textContent=''; return; }
+  if(!visibleClips.length){
+    S('vid').removeAttribute('src');
+    S('caption').textContent = `No clips match filter: ${filter}.`;
+    S('confidence').textContent = '';
+    const reviewed = Object.keys(decisions).length;
+    S('prog-text').textContent = reviewed+' / '+clips.length+' reviewed';
+    S('status').textContent = reviewed===clips.length ? 'All reviewed | Press Enter to submit' : '';
+    S('reject-tags').textContent = '';
+    return;
+  }
+  if(cursor>=visibleClips.length) cursor = visibleClips.length-1;
+  if(cursor<0) cursor = 0;
+  const c=visibleClips[cursor], d=decisions[c.id];
+  S('vid').src = '/clips/'+c.bucket+'/'+c.id+'.mp4';
+  S('caption').textContent = d?.edited_caption || c.caption || '';
+  S('confidence').textContent = 'Judge confidence: '+(c.judge_confidence!=null ? (c.judge_confidence*100).toFixed(0)+'%' : 'N/A');
+  const reviewed = Object.keys(decisions).length;
+  S('prog-text').textContent = `${cursor+1} / ${visibleClips.length} in view · ${reviewed} / ${clips.length} reviewed`;
+  S('status').textContent = d ? (d.decision==='accept' ? '✓ Accepted' : '✗ Rejected: '+(d.reject_reason||'')) : '— Pending';
+  S('reject-tags').textContent = d?.reject_reason ? 'Last reject reason: '+d.reject_reason : '';
+  if(reviewed===clips.length) S('status').textContent += ' | Press Enter to submit';
+}
+
+function decide(action){
+  const c=visibleClips[cursor]; if(!c) return;
+  const now=new Date().toISOString();
+  decisions[c.id] = {decision:action, reject_reason:null, edited_caption:null, reviewed_at:now};
+  if(action==='reject') lastReject=c.id;
+  save();
+  // If the just-decided clip no longer matches the active filter, drop it
+  // from the visible list and keep cursor in place (next item slides in).
+  if(!clipMatchesFilter(c, filter)){
+    visibleClips.splice(cursor, 1);
+    // cursor stays — clamped in render()
+    render();
+  } else {
+    advance();
+  }
+}
+
+function advance(){ if(cursor<visibleClips.length-1){ cursor++; render(); } else { render(); } }
+function back(){ if(cursor>0){ cursor--; render(); } }
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>fetch('/save',{method:'POST',headers:hdr(),body:JSON.stringify({decisions})}),250); }
+
+function tagReason(code){
+  if(!lastReject || !decisions[lastReject] || decisions[lastReject].decision!=='reject') return;
+  decisions[lastReject].reject_reason = REASONS[code];
+  save(); render();
+}
+
+function openEdit(){
+  const c=visibleClips[cursor]; if(!c) return;
+  const d=decisions[c.id];
+  S('edit-overlay').style.display='flex';
+  S('edit-ta').value = d?.edited_caption || c.caption || '';
+  S('edit-ta').focus();
+}
+function closeEdit(saveEdit){
+  const c=visibleClips[cursor];
+  if(saveEdit && c){
+    const val=S('edit-ta').value.trim();
+    if(!decisions[c.id]) decisions[c.id]={decision:'reject',reject_reason:null,edited_caption:val||null,reviewed_at:new Date().toISOString()};
+    else decisions[c.id].edited_caption = val||null;
+    save();
+  }
+  S('edit-overlay').style.display='none';
+  render();
+}
+
+async function submitAll(){
+  const unreviewed=clips.filter(c=>!decisions[c.id]);
+  if(unreviewed.length && !confirm(unreviewed.length+' clips unreviewed. Submit anyway?')) return;
+  for(const c of clips){ if(!decisions[c.id]) decisions[c.id]={decision:'reject',reject_reason:null,edited_caption:null,reviewed_at:new Date().toISOString()}; }
+  const body={decisions,completed_at:new Date().toISOString()};
+  const r=await fetch('/submit',{method:'POST',headers:hdr(),body:JSON.stringify(body)});
+  if(r.ok){ document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:18px;color:#4a4">Review submitted — you may close this tab.</div>'; }
+  else{ const e=await r.json(); alert('Submit failed: '+(e.detail||e.error||'Unknown error')); }
+}
+
+document.addEventListener('keydown',e=>{
+  if(S('edit-overlay').style.display==='flex'){
+    if(e.key==='Escape'){ closeEdit(false); e.preventDefault(); }
+    else if(e.key==='Enter' && e.ctrlKey){ closeEdit(true); e.preventDefault(); }
+    return;
+  }
+  const k=e.key;
+  if(k==='y'||k==='Y'||k===' '||k==='ArrowRight'){ decide('accept'); e.preventDefault(); }
+  else if(k==='n'||k==='N'||k==='x'||k==='X'){ decide('reject'); e.preventDefault(); }
+  else if(k==='ArrowLeft'){ back(); e.preventDefault(); }
+  else if(k>='1'&&k<='4'){ tagReason(parseInt(k)); e.preventDefault(); }
+  else if(k==='e'||k==='E'){ openEdit(); e.preventDefault(); }
+  else if(k==='Enter'){ submitAll(); e.preventDefault(); }
+});
+S('save-edit').addEventListener('click',()=>closeEdit(true));
+S('cancel-edit').addEventListener('click',()=>closeEdit(false));
+S('btn-accept').addEventListener('click',()=>decide('accept'));
+S('btn-reject').addEventListener('click',()=>decide('reject'));
+S('btn-back').addEventListener('click',back);
+S('btn-r1').addEventListener('click',()=>tagReason(1));
+S('btn-r2').addEventListener('click',()=>tagReason(2));
+S('btn-r3').addEventListener('click',()=>tagReason(3));
+S('btn-r4').addEventListener('click',()=>tagReason(4));
+S('btn-edit').addEventListener('click',openEdit);
+S('btn-submit').addEventListener('click',submitAll);
+init();
+</script>
+</body>
+</html>

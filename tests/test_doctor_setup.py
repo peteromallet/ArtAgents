@@ -35,6 +35,7 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertIn("[ok] vibecomfy metadata:", stdout)
         self.assertIn("[ok] remotion config:", stdout)
         self.assertIn("[ok] timeline catalog:", stdout)
+        self.assertIn("runpod stale handles:", stdout)
 
         result, stdout, stderr = self.capture(doctor.main, ["--json"])
         self.assertEqual(result, 0, stderr)

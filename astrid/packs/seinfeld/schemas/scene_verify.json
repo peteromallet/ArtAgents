@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "required": ["has_cut", "cut_at_s", "cut_kind", "confidence", "reasoning"],
+  "properties": {
+    "has_cut": {
+      "type": "boolean",
+      "description": "True iff this clip contains one or more scene changes (cuts between distinct shots). A change of camera angle that is clearly cut-on-action within the SAME continuous shot does count as a cut here."
+    },
+    "cut_at_s": {
+      "type": "number",
+      "description": "If has_cut is true, the approximate timestamp within this clip (seconds from clip start, NOT source) where the cut occurs. Use the most prominent cut if multiple. If has_cut is false, return 0."
+    },
+    "cut_kind": {
+      "type": "string",
+      "enum": ["none", "hard", "soft_dissolve", "fade", "multiple"],
+      "description": "Type of cut. 'none' iff has_cut=false. 'hard' for instant frame-to-frame change. 'soft_dissolve' for cross-dissolves. 'fade' for fade-through-black. 'multiple' if more than one cut in this clip."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence 0-1 that the has_cut classification is correct."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One short sentence justifying the decision. Reference what changes at the cut point (location, lighting, characters, framing)."
+    }
+  }
+}
