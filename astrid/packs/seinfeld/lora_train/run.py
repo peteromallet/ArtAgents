@@ -152,6 +152,7 @@ def _stage(args: argparse.Namespace, out: Path, pod_handle: Path) -> int:
         "--pod-handle", _abs(pod_handle),
         "--base-model", args.base_model_name,
         "--seed", str(args.seed),
+        "--dataset-remote-path", args.dataset_remote_path,
     ]
     if args.steps is not None:
         argv += ["--steps", str(args.steps)]
@@ -246,6 +247,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--storage-name", default=DEFAULT_STORAGE)
     p.add_argument("--container-disk-gb", type=int, default=DEFAULT_CONTAINER_DISK_GB)
     p.add_argument("--max-runtime-seconds", type=int, default=DEFAULT_MAX_RUNTIME)
+    p.add_argument("--dataset-remote-path", default="/workspace/dataset")
     p.add_argument("--smoke", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--produces-dir", dest="produces_dir", type=Path, default=None)
@@ -297,6 +299,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             "--produces-dir", _abs(produces),
             "--base-model", args.base_model_name,
             "--seed", str(args.seed),
+            "--dataset-remote-path", args.dataset_remote_path,
             "--dry-run",
         ]
         if args.steps is not None:

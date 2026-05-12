@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,7 @@ HIVEMIND_DEFAULTS = {
 }
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "lora_train" / "config_template.yaml"
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -153,23 +155,7 @@ if [ ! -f "$WORKSPACE/config.yaml" ]; then
   exit 3
 fi
 
-# Symlink uploaded dataset if the staging executor used dataset_src.
-if [ -d "$WORKSPACE/dataset_src" ] && [ ! -e "$WORKSPACE/dataset" ]; then
-  ln -s "$WORKSPACE/dataset_src" "$WORKSPACE/dataset"
-fi
-
-if [ ! -d "$WORKSPACE/dataset" ]; then
-  echo "ERROR: expected dataset directory at $WORKSPACE/dataset" >&2
-  exit 3
-fi
-
-clip_count=$(find -L "$WORKSPACE/dataset" -type f \\( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.mkv' -o -iname '*.webm' \\) | wc -l | tr -d ' ')
-caption_count=$(find -L "$WORKSPACE/dataset" -type f \\( -iname '*.txt' -o -iname '*.caption' -o -iname '*.json' \\) | wc -l | tr -d ' ')
-echo "Dataset sanity: $clip_count video clip(s), $caption_count caption/metadata file(s)"
-if [ "$clip_count" -eq 0 ] || [ "$caption_count" -eq 0 ]; then
-  echo "ERROR: dataset must contain at least one video clip and one caption/metadata file" >&2
-  exit 3
-fi
+# Dataset upload runs as the next stage exec call, after this bootstrap script.
 
 ui_up=0
 if command -v curl >/dev/null 2>&1; then
@@ -208,7 +194,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vocabulary", type=Path, required=True)
     p.add_argument("--produces-dir", type=Path, required=True)
     p.add_argument("--pod-handle", type=Path, default=None, help="pod_handle.json from external.runpod.provision")
-    p.add_argument("--dataset-dir", default="/workspace/dataset")
+    p.add_argument(
+        "--dataset-dir",
+        default=None,
+        help="Config dataset folder override. Defaults to --dataset-remote-path.",
+    )
+    p.add_argument(
+        "--dataset-remote-path",
+        default="/workspace/dataset",
+        help="Remote pod folder where manifest clips + captions are uploaded.",
+    )
     p.add_argument("--output-dir", default="/workspace/output")
     p.add_argument("--run-name", default="seinfeld-scene-v1")
     p.add_argument("--base-model", default=HIVEMIND_DEFAULTS["base_model_default"])
@@ -219,8 +214,119 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _resolve_manifest_path(path_value: str, manifest_dir: Path) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    repo_path = (REPO_ROOT / path).resolve()
+    if repo_path.exists():
+        return repo_path
+    return (manifest_dir / path).resolve()
+
+
+def _safe_path_part(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in ("-", "_", ".") else "_" for ch in value) or "clips"
+
+
+def _dataset_entries(manifest_path: Path, smoke: bool) -> list[tuple[str, Path, Path, str]]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest_dir = manifest_path.parent
+    clips = manifest.get("clips") or []
+    if smoke:
+        clips = clips[:5]
+
+    entries: list[tuple[str, Path, Path, str]] = []
+    for idx, clip in enumerate(clips):
+        clip_file = clip.get("clip_file") or clip.get("path")
+        clip_id = clip.get("clip_id") or clip.get("id") or (
+            Path(clip_file).stem if clip_file else f"clip_{idx:03d}"
+        )
+        if not clip_file:
+            raise ValueError(f"manifest clip {idx} is missing clip_file")
+
+        clip_path = _resolve_manifest_path(str(clip_file), manifest_dir)
+        caption_value = clip.get("caption_file")
+        caption_path = (
+            _resolve_manifest_path(str(caption_value), manifest_dir)
+            if caption_value
+            else clip_path.with_name(f"{clip_id}.caption.json")
+        )
+        if not clip_path.is_file():
+            raise FileNotFoundError(f"clip_file missing: {clip_path}")
+        if not caption_path.is_file():
+            raise FileNotFoundError(f"caption_file missing: {caption_path}")
+
+        bucket = _safe_path_part(str(clip.get("bucket") or clip_path.parent.name or "clips"))
+        entries.append((str(clip_id), clip_path, caption_path, bucket))
+    return entries
+
+
+def _upload_dataset(args: argparse.Namespace, produces: Path, pod_handle: dict) -> int:
+    """Copy manifest clips into a staging farm and upload them to the pod."""
+    try:
+        entries = _dataset_entries(args.manifest, args.smoke)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"aitoolkit_stage: dataset staging failed: {exc}", file=sys.stderr)
+        return 3
+
+    dataset_staging = produces / "_dataset_staging"
+    if dataset_staging.exists():
+        shutil.rmtree(dataset_staging)
+    dataset_staging.mkdir(parents=True, exist_ok=True)
+
+    for clip_id, clip_path, caption_path, bucket in entries:
+        bucket_dir = dataset_staging / bucket
+        bucket_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(clip_path, bucket_dir / f"{clip_id}{clip_path.suffix}")
+        shutil.copy2(caption_path, bucket_dir / f"{clip_id}.caption.json")
+
+    file_count = len(entries) * 2
+    result = {
+        "status": "dry_run" if args.dry_run else "staged",
+        "strategy": "copy_farm",
+        "clips": len(entries),
+        "files": file_count,
+        "local_root": str(dataset_staging.resolve()),
+        "remote_root": args.dataset_remote_path,
+        "pod_id": pod_handle.get("pod_id") or pod_handle.get("id"),
+    }
+    (produces / "dataset_upload.json").write_text(
+        json.dumps(result, indent=2) + "\n", encoding="utf-8"
+    )
+
+    if args.dry_run:
+        print(
+            "aitoolkit_stage: dry-run would upload "
+            f"{len(entries)} clips + captions from {dataset_staging} "
+            f"to {args.dataset_remote_path}"
+        )
+        return 0
+
+    exec_produces = produces / "_dataset_exec_produces"
+    exec_produces.mkdir(parents=True, exist_ok=True)
+    exec_argv = [
+        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        "--produces-dir", str(exec_produces),
+        "--pod-handle", str(args.pod_handle),
+        "--local-root", str(dataset_staging),
+        "--remote-root", args.dataset_remote_path,
+        "--upload-mode", "sftp_walk",
+        "--remote-script", f"echo dataset_staged {len(entries)} clips",
+    ]
+    rv = subprocess.run(exec_argv, cwd=REPO_ROOT)
+    if rv.returncode != 0:
+        print(f"aitoolkit_stage: dataset upload failed rc={rv.returncode}", file=sys.stderr)
+        return rv.returncode
+    print(f"aitoolkit_stage: uploaded {len(entries)} dataset clips to {args.dataset_remote_path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.dataset_dir is None:
+        args.dataset_dir = args.dataset_remote_path
+    else:
+        args.dataset_remote_path = args.dataset_dir
     produces = args.produces_dir
     produces.mkdir(parents=True, exist_ok=True)
 
@@ -250,6 +356,10 @@ def main(argv: list[str] | None = None) -> int:
     bootstrap_path.chmod(0o755)
 
     if args.dry_run or not args.pod_handle:
+        if args.dry_run:
+            rc = _upload_dataset(args, produces, {})
+            if rc != 0:
+                return rc
         ui_url = ""
         (produces / "ui_url.txt").write_text(ui_url + "\n", encoding="utf-8")
         result = {
@@ -273,8 +383,6 @@ def main(argv: list[str] | None = None) -> int:
     # Delegate file shipping + bootstrap exec to external.runpod.exec.
     # external.runpod.exec interface: --local-root <dir> + --remote-root <path>
     # + --remote-script <inline> + required --produces-dir.
-    import shutil
-    repo_root = Path(__file__).resolve().parents[4]
     upload_dir = produces / "_upload_staging"
     upload_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(staged_path, upload_dir / "config.yaml")
@@ -289,10 +397,13 @@ def main(argv: list[str] | None = None) -> int:
         "--remote-root", "/workspace",
         "--remote-script", "bash /workspace/bootstrap.sh",
     ]
-    rv = subprocess.run(exec_argv, cwd=repo_root)
+    rv = subprocess.run(exec_argv, cwd=REPO_ROOT)
     if rv.returncode != 0:
         print(f"aitoolkit_stage: external.runpod.exec failed rc={rv.returncode}", file=sys.stderr)
         return rv.returncode
+    rv_dataset = _upload_dataset(args, produces, pod_handle)
+    if rv_dataset != 0:
+        return rv_dataset
     return 0
 
 
