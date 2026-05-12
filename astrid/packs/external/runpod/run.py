@@ -122,6 +122,10 @@ def _load_handle_and_config(handle_path: Path) -> tuple[dict[str, Any], Any]:
         gpu_type=handle.get("gpu_type", "NVIDIA GeForce RTX 4090"),
         container_disk_gb=snap.get("container_disk_in_gb", 200),
         storage_name=snap.get("network_volume_id"),
+        ssh_public_key=os.environ.get("RUNPOD_SSH_PUBLIC_KEY"),
+        ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
+        ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
+        ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
     )
     return handle, config
 
@@ -163,6 +167,10 @@ def cmd_provision(args: argparse.Namespace, produces_dir: Path) -> int:
         storage_name=storage_name,
         name_prefix=name_prefix,
         ports=ports,
+        ssh_public_key=os.environ.get("RUNPOD_SSH_PUBLIC_KEY"),
+        ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
+        ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
+        ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
     )
 
     async def _provision() -> tuple[Any, dict[str, Any]]:
@@ -433,6 +441,10 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
         storage_name=storage_name,
         name_prefix=name_prefix,
         ports=ports,
+        ssh_public_key=os.environ.get("RUNPOD_SSH_PUBLIC_KEY"),
+        ssh_private_key=os.environ.get("RUNPOD_SSH_PRIVATE_KEY"),
+        ssh_public_key_path=os.environ.get("RUNPOD_SSH_PUBLIC_KEY_PATH"),
+        ssh_private_key_path=os.environ.get("RUNPOD_SSH_PRIVATE_KEY_PATH"),
     )
 
     t0 = time.monotonic()
