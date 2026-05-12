@@ -106,6 +106,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     repo_root = Path(__file__).resolve().parents[4]
+    # Prevent runpod exec from uploading the repository cwd for each eval sample.
+    empty_local_root = grid_dir / "_empty_local_root"
+    empty_local_root.mkdir(parents=True, exist_ok=True)
 
     # Run inference on the pod. The inference command is a placeholder; ai-toolkit
     # provides a `run.py` infer mode and an HTTP API — verify exact entrypoint at impl time.
@@ -125,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
                     sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
                     "--produces-dir", str(eval_produces),
                     "--pod-handle", str(args.pod_handle),
+                    "--local-root", str(empty_local_root),
                     "--remote-script", cmd,
                 ],
                 cwd=repo_root,
