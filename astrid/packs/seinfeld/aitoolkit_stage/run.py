@@ -118,24 +118,87 @@ def build_config(
 BOOTSTRAP_TEMPLATE = """#!/usr/bin/env bash
 set -euo pipefail
 
-# AI Toolkit bootstrap — runs on the RunPod pod.
+# AI Toolkit bootstrap - runs on the RunPod pod.
 WORKSPACE=/workspace
+TOOLKIT_ROOT=/app/ai-toolkit
+UI_ROOT="$TOOLKIT_ROOT/ui"
+UI_PORT=8675
+
 mkdir -p "$WORKSPACE"
 cd "$WORKSPACE"
 
-# Symlink uploaded dataset (the orchestrator uploads to $WORKSPACE/dataset_src)
+if [ -f /etc/rp_environment ]; then
+  set -a
+  # RunPod's image startup writes platform env here for later SSH sessions.
+  # shellcheck disable=SC1091
+  source /etc/rp_environment
+  set +a
+fi
+
+echo "Checking CUDA visibility..."
+nvidia-smi
+
+if [ ! -d "$TOOLKIT_ROOT" ]; then
+  echo "ERROR: AI Toolkit root not found at $TOOLKIT_ROOT" >&2
+  exit 2
+fi
+
+if [ ! -f "$TOOLKIT_ROOT/run.py" ]; then
+  echo "ERROR: AI Toolkit training entrypoint missing: $TOOLKIT_ROOT/run.py" >&2
+  exit 2
+fi
+
+if [ ! -f "$WORKSPACE/config.yaml" ]; then
+  echo "ERROR: expected config at $WORKSPACE/config.yaml" >&2
+  exit 3
+fi
+
+# Symlink uploaded dataset if the staging executor used dataset_src.
 if [ -d "$WORKSPACE/dataset_src" ] && [ ! -e "$WORKSPACE/dataset" ]; then
   ln -s "$WORKSPACE/dataset_src" "$WORKSPACE/dataset"
 fi
 
-# Config is uploaded to $WORKSPACE/config.yaml by the stage executor.
+if [ ! -d "$WORKSPACE/dataset" ]; then
+  echo "ERROR: expected dataset directory at $WORKSPACE/dataset" >&2
+  exit 3
+fi
 
-# Start AI Toolkit UI on port 8675 (background, log to /workspace/ui.log).
-# Verify entrypoint at impl time against the chosen ostris/ai-toolkit image.
-cd /app/ai-toolkit 2>/dev/null || cd /workspace/ai-toolkit
-nohup python3 ui/server.py --host 0.0.0.0 --port 8675 >/workspace/ui.log 2>&1 &
-echo $! >/workspace/ui.pid
-echo "AI Toolkit UI started on :8675 (pid=$(cat /workspace/ui.pid))"
+clip_count=$(find -L "$WORKSPACE/dataset" -type f \\( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.mkv' -o -iname '*.webm' \\) | wc -l | tr -d ' ')
+caption_count=$(find -L "$WORKSPACE/dataset" -type f \\( -iname '*.txt' -o -iname '*.caption' -o -iname '*.json' \\) | wc -l | tr -d ' ')
+echo "Dataset sanity: $clip_count video clip(s), $caption_count caption/metadata file(s)"
+if [ "$clip_count" -eq 0 ] || [ "$caption_count" -eq 0 ]; then
+  echo "ERROR: dataset must contain at least one video clip and one caption/metadata file" >&2
+  exit 3
+fi
+
+ui_up=0
+if command -v curl >/dev/null 2>&1; then
+  if curl -fsS "http://127.0.0.1:${UI_PORT}" >/dev/null 2>&1; then
+    ui_up=1
+  fi
+fi
+
+if [ "$ui_up" -eq 1 ]; then
+  echo "AI Toolkit UI already running on :${UI_PORT}"
+else
+  if [ ! -d "$UI_ROOT" ]; then
+    echo "ERROR: AI Toolkit UI root not found at $UI_ROOT" >&2
+    exit 4
+  fi
+  echo "Starting AI Toolkit UI on :${UI_PORT}..."
+  cd "$UI_ROOT"
+  nohup npm run start >"$WORKSPACE/ui.log" 2>&1 &
+  echo $! >"$WORKSPACE/ui.pid"
+  for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:${UI_PORT}" >/dev/null 2>&1; then
+      echo "AI Toolkit UI started on :${UI_PORT} (pid=$(cat "$WORKSPACE/ui.pid"))"
+      exit 0
+    fi
+    sleep 2
+  done
+  echo "ERROR: AI Toolkit UI did not become ready on :${UI_PORT}" >&2
+  exit 4
+fi
 """
 
 

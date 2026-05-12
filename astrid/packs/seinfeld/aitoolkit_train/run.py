@@ -70,8 +70,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Kick off training (blocking — ai-toolkit streams its log to stdout, which we capture).
     train_cmd = (
-        f"cd /app/ai-toolkit 2>/dev/null || cd /workspace/ai-toolkit; "
-        f"python3 run.py {args.config_path} 2>&1 | tee {args.remote_log}"
+        "cd /app/ai-toolkit && "
+        f"python3 run.py {args.config_path} --log {args.remote_log}"
     )
     exec_produces = produces / "_exec_train"
     exec_produces.mkdir(parents=True, exist_ok=True)
