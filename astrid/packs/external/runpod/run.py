@@ -253,8 +253,8 @@ def cmd_exec(args: argparse.Namespace, produces_dir: Path) -> int:
         pod = await get_pod(handle["pod_id"], config, name=handle.get("name"))
 
         result = await ship_and_run_detached(
-            config,
-            remote_script,
+            remote_script=remote_script,
+            pod=pod,
             local_root=local_root,
             remote_root=remote_root,
             exclude=excludes,
@@ -487,8 +487,8 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
 
                 pod_handle = await get_pod(pod_id, config, name=handle.get("name"))  # type: ignore[arg-type]
                 result = await ship_and_run_detached(
-                    config,
-                    remote_script,
+                    remote_script=remote_script,
+                    pod=pod_handle,
                     local_root=local_root,
                     remote_root=remote_root,
                     exclude=excludes,
