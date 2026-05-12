@@ -1,6 +1,6 @@
 # Brief — Fill in `seinfeld.lora_train` on RunPod via ai-toolkit
 
-**Megaplan profile**: `led//medium +prep`
+**Megaplan profile**: `thoughtful//medium +prep`
 
 Fill in the existing `astrid/packs/seinfeld/lora_train/` skeleton so that
 `python3 -m astrid orchestrators run seinfeld.lora_train` takes the
@@ -72,14 +72,39 @@ astrid/packs/seinfeld/
 
 The submodule lives under `seinfeld/ai_toolkit/upstream/` (not `external/`) because seinfeld is the only consumer for now. If a second domain needs ai-toolkit later, lift the submodule (and any shared executors) into a new `external/ai_toolkit/` pack at that time. YAGNI.
 
-## Patch to `external/runpod/`
+## Patch to `external/runpod/` (and `runpod-lifecycle` if needed)
 
 The existing `astrid/packs/external/runpod/run.py` hardcodes `"ports": "8888/http,22/tcp"` at lines 192 and 461. Expose `ports` as a configurable input:
 
 - Add `--ports` CLI argument to `provision` and `session` subparsers (default keeps current value, so existing callers are unaffected).
 - Thread it into `handle["config_snapshot"]["ports"]`.
-- Verify `runpod-lifecycle`'s `RunPodConfig` / `launch()` accepts a `ports` field. If not, the patch must include a small upstream PR to `peteromallet/runpod-lifecycle`. **Prep phase should resolve this** before committing to an implementation path.
+- Verify `runpod-lifecycle`'s `RunPodConfig` / `launch()` accepts a `ports` field. If not, **also patch `runpod-lifecycle`** — it's in scope for this sprint.
 - Update `astrid/packs/external/runpod/executor.yaml` to declare `ports` as an input on the `external.runpod.provision` and `external.runpod.session` executors.
+
+### `runpod-lifecycle` is in scope (sibling repo)
+
+The user owns `runpod-lifecycle` (origin: `banodoco/runpod-lifecycle`). It is checked out locally as a sibling repo at:
+
+```
+/Users/peteromalley/Documents/reigh-workspace/runpod-lifecycle
+```
+
+Current version: v0.2 (latest commit `61c7f5c`). The Astrid pack pins `runpod-lifecycle>=0.2`.
+
+**If prep determines `RunPodConfig` / `launch()` does not already accept a `ports` parameter:**
+
+1. Read `runpod-lifecycle/src/` to understand the `RunPodConfig` dataclass and the `launch()` flow.
+2. Add a `ports` parameter to `RunPodConfig` (e.g. `ports: str | None = None` with the existing `"8888/http,22/tcp"` as the implicit default if the field is None, so existing callers keep working).
+3. Thread it through `launch()` and any internal GraphQL pod-create call so the requested ports are declared at pod creation time.
+4. Add a unit test in `runpod-lifecycle/tests/` covering the new field.
+5. Bump the version in `runpod-lifecycle/pyproject.toml` (v0.2 → v0.3).
+6. Commit in `runpod-lifecycle/` with a clean message; do **not** push or tag — that's a manual user step after review.
+7. Update Astrid's pin: `astrid/packs/external/runpod/requirements.txt` → `runpod-lifecycle>=0.3`.
+8. Astrid-side: install the local sibling editable so the new code is picked up immediately for testing: `pip install -e /Users/peteromalley/Documents/reigh-workspace/runpod-lifecycle`.
+
+**If prep determines `RunPodConfig` / `launch()` already accept ports** (under a different name, or implicitly via kwargs): skip the upstream patch entirely. The Astrid-side `--ports` plumbing is enough.
+
+Either way: prep must read the upstream code, not guess. The patch should not be planned blind.
 
 ## The five new files in detail
 
@@ -217,6 +242,7 @@ child_executors:
 - `astrid/packs/external/runpod/run.py` — especially `cmd_provision`, `cmd_exec`, `cmd_teardown` (lines 130-376). The new seinfeld executors should call `external.runpod.exec`'s helpers; do not re-implement shipping.
 - `astrid/packs/external/runpod/executor.yaml` — schema for executor manifests.
 - `astrid/packs/external/runpod/STAGE.md` — short STAGE.md form.
+- `/Users/peteromalley/Documents/reigh-workspace/runpod-lifecycle/src/` — the upstream `RunPodConfig` and `launch()` you may need to patch. Read before deciding the patch shape.
 - `astrid/packs/external/vibecomfy/` — another external-service wrapper, cross-reference for unclear cases.
 - `astrid/packs/seinfeld/dataset_build/run.py` and `orchestrator.yaml` — pattern for seinfeld-internal orchestrators.
 - `astrid/packs/seinfeld/lora_train/STAGE.md` — the spec we're implementing.
@@ -246,10 +272,11 @@ child_executors:
 4. `python3 -m astrid orchestrators run seinfeld.lora_train --dry-run` runs pre-flight validation, generates a config locally, and exits 0 without touching RunPod.
 5. The generated config matches the schema of an ai-toolkit example config from `astrid/packs/seinfeld/ai_toolkit/upstream/config/examples/` (parses with the same YAML loader).
 6. `external/runpod/`'s `--ports` argument is wired into the produced `pod_handle.json`. Existing callers that don't pass `--ports` get the same default they had before.
-7. `pytest tests/packs/runpod/` still passes (no regressions in the existing RunPod test suite).
-8. STAGE.md exists for every new executor + the updated orchestrator. Each has a one-paragraph description and a copy-pasteable invocation.
-9. `python3 scripts/gen_capability_index.py` is re-run; `AGENTS.md` capability index reflects the new executors.
-10. `.gitmodules` has the seinfeld/ai_toolkit/upstream submodule entry. Submodule SHA is pinned.
+7. If the `runpod-lifecycle` upstream patch was needed: `runpod-lifecycle/pyproject.toml` reflects the bumped version; `runpod-lifecycle/tests/` has a new test covering `ports`; the change is committed in the sibling repo but not pushed; `astrid/packs/external/runpod/requirements.txt` pin is updated to match.
+8. `pytest tests/packs/runpod/` still passes (no regressions in the existing RunPod test suite).
+9. STAGE.md exists for every new executor + the updated orchestrator. Each has a one-paragraph description and a copy-pasteable invocation.
+10. `python3 scripts/gen_capability_index.py` is re-run; `AGENTS.md` capability index reflects the new executors.
+11. `.gitmodules` has the seinfeld/ai_toolkit/upstream submodule entry. Submodule SHA is pinned.
 
 ## Out of scope (next sprints)
 
@@ -279,9 +306,11 @@ child_executors:
 
 ```bash
 megaplan init astrid/packs/seinfeld/RUNPOD_TRAINING_LAUNCHER_BRIEF.md \
-  --profile led \
+  --profile thoughtful \
   --depth medium \
   --with-prep
 ```
 
-If during the run the plan keeps missing concerns (network volume not threaded through, port-forwarding fragile, etc.), escalate mid-flight rather than letting it grind: `megaplan override set-profile --profile thoughtful --plan <id>`.
+**Why `thoughtful` over `led`**: scope grew with the runpod-lifecycle patch path being in-scope (one repo to two), the eval-grid step, and the network-volume + port-forwarding plumbing. Cross-cutting enough that we want premium critique + review, not just a premium plan. Depth stays at `medium` (planner deliberates on architecture; critic and mechanical phases stay at `:low` per the asymmetry principle).
+
+If during the run the plan still misses concerns after escalation, override mid-flight: `megaplan override set-profile --profile premium --plan <id>` or `megaplan override set-robustness --robustness robust`.
