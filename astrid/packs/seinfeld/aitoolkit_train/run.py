@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -69,10 +70,12 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parents[4]
 
     # Kick off training (blocking — ai-toolkit streams its log to stdout, which we capture).
-    train_cmd = (
+    train_inner = (
+        "set -o pipefail; "
         "cd /app/ai-toolkit && "
-        f"python3 run.py {args.config_path} --log {args.remote_log}"
+        f"python3 run.py {shlex.quote(args.config_path)} 2>&1 | tee {shlex.quote(args.remote_log)}"
     )
+    train_cmd = f"bash -lc {shlex.quote(train_inner)}"
     exec_produces = produces / "_exec_train"
     exec_produces.mkdir(parents=True, exist_ok=True)
     # Use an empty staging dir as --local-root so cmd_exec doesn't upload the cwd
@@ -90,27 +93,42 @@ def main(argv: list[str] | None = None) -> int:
 
     # Mirror remote stdout into local training.log from exec_result.json.
     result_json = exec_produces / "exec_result.json"
+    result_data = {}
     if result_json.exists():
         try:
             result_data = json.loads(result_json.read_text(encoding="utf-8"))
-            training_log.write_text(result_data.get("stdout", "") + result_data.get("stderr", ""), encoding="utf-8")
-        except Exception:
+        except json.JSONDecodeError:
             pass
+    try:
+        remote_rc = int(result_data.get("returncode", -1))
+    except (TypeError, ValueError):
+        remote_rc = -1
+    training_log.write_text(
+        (result_data.get("stdout", "") or "") + (result_data.get("stderr", "") or ""),
+        encoding="utf-8",
+    )
     log_text = training_log.read_text(encoding="utf-8") if training_log.exists() else ""
     failure = _scan_failures(log_text)
 
-    if failure or rv.returncode != 0:
+    if failure or remote_rc != 0 or rv.returncode != 0:
         tail = "\n".join(log_text.splitlines()[-200:])
         (produces / "training.failure.log").write_text(tail, encoding="utf-8")
         manifest_path.write_text(
             json.dumps(
-                {"status": "failed", "reason": failure or f"exit_{rv.returncode}", "checkpoints": []},
+                {
+                    "status": "failed",
+                    "reason": failure or f"remote_exit_{remote_rc}_wrapper_{rv.returncode}",
+                    "checkpoints": [],
+                },
                 indent=2,
             ) + "\n",
             encoding="utf-8",
         )
-        print(f"aitoolkit_train: FAILED ({failure or f'exit {rv.returncode}'})", file=sys.stderr)
-        return rv.returncode or 4
+        print(
+            f"aitoolkit_train: FAILED (remote_rc={remote_rc} wrapper_rc={rv.returncode} pattern={failure})",
+            file=sys.stderr,
+        )
+        return remote_rc or rv.returncode or 4
 
     # Enumerate checkpoints on the pod.
     list_produces = produces / "_exec_list"
