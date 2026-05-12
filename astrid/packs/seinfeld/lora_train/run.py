@@ -179,6 +179,28 @@ def _train(args: argparse.Namespace, out: Path, pod_handle: Path) -> int:
     return _run(argv)
 
 
+def _samples_collage(
+    args: argparse.Namespace, out: Path, pod_handle: Path, staged_config: Path,
+) -> int:
+    """Pull training-time sample mp4s from the pod, optionally caption with video_understand,
+    build the per-step / per-prompt HTML grid the human gate uses to pick a checkpoint."""
+    produces = out / "samples_collage"
+    produces.mkdir(parents=True, exist_ok=True)
+    remote_output = f"/workspace/output/{args.lora_id}"
+    argv = [
+        sys.executable, "-m", "astrid.packs.seinfeld.samples_collage.run",
+        "--pod-handle", _abs(pod_handle),
+        "--remote-output-dir", remote_output,
+        "--out", _abs(produces),
+        "--staged-config", _abs(staged_config),
+        "--produces-dir", _abs(produces),
+    ]
+    if not args.skip_understand:
+        argv.append("--understand")
+        argv.extend(["--understand-mode", args.understand_mode])
+    return _run(argv)
+
+
 def _eval_grid(
     args: argparse.Namespace, out: Path, pod_handle: Path,
     checkpoint_manifest: Path, staged_config: Path,
@@ -249,6 +271,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--container-disk-gb", type=int, default=DEFAULT_CONTAINER_DISK_GB)
     p.add_argument("--max-runtime-seconds", type=int, default=DEFAULT_MAX_RUNTIME)
     p.add_argument("--dataset-remote-path", default="/workspace/dataset")
+    p.add_argument("--skip-understand", action="store_true",
+                   help="Skip video_understand calls on each sample (still pulls + collages).")
+    p.add_argument("--understand-mode", default="fast", choices=["fast", "best"],
+                   help="video_understand model: fast=Gemini Flash, best=Gemini Pro.")
     p.add_argument("--smoke", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--produces-dir", dest="produces_dir", type=Path, default=None)
@@ -337,6 +363,13 @@ def cmd_run(args: argparse.Namespace) -> int:
             return rc
         checkpoint_manifest = (out / "train" / "checkpoint_manifest.json").resolve()
 
+        # Pull training-time samples + (optionally) caption each with video_understand.
+        # Best-effort — collage failures should not block the human gate.
+        rc_collage = _samples_collage(args, out, pod_handle, staged_config)
+        collage_index = (out / "samples_collage" / "index.html").resolve()
+        if rc_collage != 0:
+            print(f"WARN: samples_collage rc={rc_collage} (continuing anyway)", file=sys.stderr)
+
         rc = _eval_grid(args, out, pod_handle, checkpoint_manifest, staged_config)
         if rc != 0:
             return rc
@@ -351,6 +384,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         "pod_handle": _abs(pod_handle),
         "staged_config": str(staged_config),
         "checkpoint_manifest": str(checkpoint_manifest),
+        "samples_collage_index": str(collage_index) if collage_index.exists() else None,
         "eval_grid_index": str(eval_index),
         "vocabulary": _abs(args.vocabulary),
         "base_model_name": args.base_model_name,
@@ -359,7 +393,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     })
     print(
         "\n========== HUMAN GATE ==========\n"
-        f"Eval grid: {eval_index}\n"
+        f"Training samples (per-step × per-prompt with auto-captions): {collage_index}\n"
+        f"Eval grid (inference clips on candidate checkpoints): {eval_index}\n"
         f"\nWhen ready, run:\n"
         f"  python3 -m astrid.packs.seinfeld.lora_train.run resume "
         f"--out {out} --pick <step> --notes '<why this step>'\n"
