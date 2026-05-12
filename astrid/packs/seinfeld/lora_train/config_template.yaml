@@ -59,6 +59,7 @@ config:
         walk_seed: true
         guidance_scale: 3.0
         sample_steps: 30
+        neg: ""
         prompts: "{{sample_prompts}}"
 meta:
   name: "{{run_name}}"
