@@ -45,8 +45,9 @@ def test_dry_run_writes_parseable_yaml_with_hivemind_keys(tmp_path: Path) -> Non
     assert proc["train"]["gradient_accumulation_steps"] == 4
     assert proc["train"]["lr"] == 2.0e-5
     assert proc["train"]["seed"] == 42
-    assert proc["model"]["is_ltx"] is True
-    assert proc["model"]["name_or_path"] == "Lightricks/LTX-2.3"
+    assert proc["model"]["arch"] == "ltx2.3"
+    assert proc["model"]["quantize"] is True
+    assert proc["model"]["name_or_path"] == "Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors"
     assert proc["sample"]["width"] == 512
     assert proc["sample"]["height"] == 768
     assert len(proc["sample"]["prompts"]) >= 3

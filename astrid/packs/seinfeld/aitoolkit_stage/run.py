@@ -29,7 +29,7 @@ HIVEMIND_DEFAULTS = {
     "grad_accum": 4,
     "seed_default": 42,
     "trigger_word": "seinfeld scene",
-    "base_model_default": "Lightricks/LTX-2.3",
+    "base_model_default": "Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors",
 }
 
 TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "lora_train" / "config_template.yaml"

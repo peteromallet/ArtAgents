@@ -28,7 +28,7 @@ DEFAULT_STORAGE = "seinfeld-dataset"
 DEFAULT_GPU = "NVIDIA RTX 6000 Ada Generation"
 DEFAULT_CONTAINER_DISK_GB = 200
 DEFAULT_MAX_RUNTIME = 43200  # 12h ceiling
-DEFAULT_BASE_MODEL = "Lightricks/LTX-2.3"
+DEFAULT_BASE_MODEL = "Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors"
 PACK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[4]
 

@@ -46,9 +46,8 @@ config:
         seed: "{{seed}}"
       model:
         name_or_path: "{{base_model}}"
-        is_flux: false
-        is_ltx: true
-        quantize: false
+        arch: "ltx2.3"
+        quantize: true
       sample:
         sampler: flowmatch
         sample_every: 250
