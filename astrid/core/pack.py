@@ -123,11 +123,11 @@ def validate_element_pack_id(pack_id: str | None, pack: PackDefinition, *, eleme
 
 
 def iter_executor_roots(pack: PackDefinition) -> tuple[Path, ...]:
-    return _content_roots(pack.root, EXECUTOR_MANIFEST_NAMES, excluded_parts={"elements"})
+    return _content_roots(pack.root, EXECUTOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"})
 
 
 def iter_orchestrator_roots(pack: PackDefinition) -> tuple[Path, ...]:
-    return _content_roots(pack.root, ORCHESTRATOR_MANIFEST_NAMES, excluded_parts={"elements"})
+    return _content_roots(pack.root, ORCHESTRATOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"})
 
 
 def iter_element_roots(pack: PackDefinition, *, kind: str | None = None) -> tuple[tuple[ElementKind, Path], ...]:

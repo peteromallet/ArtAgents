@@ -1,0 +1,32 @@
+{
+  "id": "seinfeld.aitoolkit_train",
+  "name": "Seinfeld AI Toolkit Train",
+  "kind": "built_in",
+  "version": "0.1.0",
+  "short_description": "Kick off ai-toolkit training on a pod and mirror remote logs locally.",
+  "description": "Starts `ai-toolkit run /workspace/config.yaml` on a live RunPod pod via external.runpod.exec, polls /workspace/output for checkpoints, mirrors the remote training log into <out>/training.log, and emits checkpoint_manifest.json. On detected crashes (CUDA OOM / NaN / RuntimeError) writes training.failure.log, marks status=failed, returns non-zero.",
+  "keywords": ["seinfeld", "ai-toolkit", "lora", "train"],
+  "inputs": [
+    {"name": "pod_handle", "type": "file"},
+    {"name": "config_path", "type": "string", "description": "Path on pod to the staged config.yaml (default /workspace/config.yaml)."}
+  ],
+  "outputs": [
+    {"name": "checkpoint_manifest", "type": "file", "path_template": "{out}/produces/checkpoint_manifest.json"},
+    {"name": "training_log", "type": "file", "path_template": "{out}/produces/training.log"}
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.seinfeld.aitoolkit_train.run",
+      "--pod-handle", "{pod_handle}",
+      "--produces-dir", "{out}/produces"
+    ]
+  },
+  "cache": {"mode": "none"},
+  "isolation": {"mode": "subprocess", "network": true},
+  "metadata": {
+    "runtime_module": "astrid.packs.seinfeld.aitoolkit_train.run",
+    "runtime_file": "run.py"
+  }
+}

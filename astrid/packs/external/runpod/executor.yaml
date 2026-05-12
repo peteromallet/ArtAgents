@@ -66,13 +66,19 @@
           "name": "datacenter_id",
           "required": false,
           "type": "string"
+        },
+        {
+          "description": "Comma-separated port spec for the pod (default: '8888/http,22/tcp').",
+          "name": "ports",
+          "required": false,
+          "type": "string"
         }
       ],
       "isolation": {
         "mode": "subprocess",
         "network": true,
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ]
       },
       "keywords": [
@@ -103,7 +109,7 @@
         "pack_id": "runpod",
         "prompts": [],
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",
@@ -193,7 +199,7 @@
         "mode": "subprocess",
         "network": true,
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ]
       },
       "keywords": [
@@ -224,7 +230,7 @@
         "pack_id": "runpod",
         "prompts": [],
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",
@@ -277,7 +283,7 @@
         "mode": "subprocess",
         "network": true,
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ]
       },
       "keywords": [
@@ -309,7 +315,7 @@
         "pack_id": "runpod",
         "prompts": [],
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",
@@ -388,6 +394,12 @@
           "type": "string"
         },
         {
+          "description": "Comma-separated port spec for the pod (default: '8888/http,22/tcp').",
+          "name": "ports",
+          "required": false,
+          "type": "string"
+        },
+        {
           "description": "Local directory to upload to the pod.",
           "name": "local_root",
           "required": false,
@@ -428,7 +440,7 @@
         "mode": "subprocess",
         "network": true,
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ]
       },
       "keywords": [
@@ -461,7 +473,7 @@
         "pack_id": "runpod",
         "prompts": [],
         "requirements": [
-          "runpod-lifecycle>=0.2"
+          "runpod-lifecycle>=0.3"
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",

@@ -43,11 +43,15 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
-def _get_hourly_rate(api_key: str, gpu_type: str) -> float:
+def _get_hourly_rate(api_key: str, gpu_type) -> float:
     """Resolve the hourly rate for *gpu_type*.
 
+    Accepts str or list[str]; for a list, uses the first element as the rate estimate
+    (auto-fallback's actual selection only known post-launch).
     Tries the RunPod GPU listing first; falls back to the pinned table.
     """
+    if isinstance(gpu_type, (list, tuple)):
+        gpu_type = gpu_type[0] if gpu_type else ""
     try:
         from runpod_lifecycle.api import find_gpu_type
 
@@ -137,12 +141,15 @@ def cmd_provision(args: argparse.Namespace, produces_dir: Path) -> int:
         return 1
 
     gpu_type = args.gpu_type or os.environ.get("RUNPOD_GPU_TYPE", "NVIDIA GeForce RTX 4090")
+    if isinstance(gpu_type, str) and "," in gpu_type:
+        gpu_type = [g.strip() for g in gpu_type.split(",") if g.strip()]
     name_prefix = args.name_prefix or os.environ.get("RUNPOD_NAME_PREFIX", "pod")
     image = args.image or os.environ.get("RUNPOD_WORKER_IMAGE", "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04")
     container_disk_gb = args.container_disk_gb or int(os.environ.get("RUNPOD_CONTAINER_DISK_GB", "200"))
     datacenter_id = args.datacenter_id or os.environ.get("RUNPOD_DATACENTER_ID")
     storage_name = args.storage_name or os.environ.get("RUNPOD_STORAGE_NAME")
     max_runtime = args.max_runtime_seconds or int(os.environ.get("RUNPOD_MAX_RUNTIME_SECONDS", "7200"))
+    ports = getattr(args, "ports", None) or os.environ.get("RUNPOD_PORTS")
 
     hourly_rate = _get_hourly_rate(api_key, gpu_type)
     provisioned_at = _utc_now_iso()
@@ -155,11 +162,12 @@ def cmd_provision(args: argparse.Namespace, produces_dir: Path) -> int:
         container_disk_gb=container_disk_gb,
         storage_name=storage_name,
         name_prefix=name_prefix,
+        ports=ports,
     )
 
     async def _provision() -> tuple[Any, dict[str, Any]]:
         pod = await launch(config, name=f"{name_prefix}-{int(time.time())}")
-        await pod.wait_ready(timeout=300)
+        await pod.wait_ready(timeout=900)
         ssh = await pod._ensure_ssh_details()
         return pod, ssh
 
@@ -189,7 +197,7 @@ def cmd_provision(args: argparse.Namespace, produces_dir: Path) -> int:
             "container_disk_in_gb": container_disk_gb,
             "volume_in_gb": config.disk_size_gb,
             "network_volume_id": pod._storage_volume,
-            "ports": "8888/http,22/tcp",
+            "ports": ports or "8888/http,22/tcp",
         },
     }
 
@@ -396,12 +404,15 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
         return 1
 
     gpu_type = args.gpu_type or os.environ.get("RUNPOD_GPU_TYPE", "NVIDIA GeForce RTX 4090")
+    if isinstance(gpu_type, str) and "," in gpu_type:
+        gpu_type = [g.strip() for g in gpu_type.split(",") if g.strip()]
     name_prefix = args.name_prefix or os.environ.get("RUNPOD_NAME_PREFIX", "pod")
     image = args.image or os.environ.get("RUNPOD_WORKER_IMAGE", "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04")
     container_disk_gb = args.container_disk_gb or int(os.environ.get("RUNPOD_CONTAINER_DISK_GB", "200"))
     datacenter_id = args.datacenter_id or os.environ.get("RUNPOD_DATACENTER_ID")
     storage_name = args.storage_name or os.environ.get("RUNPOD_STORAGE_NAME")
     max_runtime = args.max_runtime_seconds or int(os.environ.get("RUNPOD_MAX_RUNTIME_SECONDS", "7200"))
+    ports = getattr(args, "ports", None) or os.environ.get("RUNPOD_PORTS")
     remote_root = args.remote_root or "/workspace"
     remote_script = args.remote_script or ""
     local_root = Path(args.local_root) if args.local_root else Path.cwd()
@@ -421,6 +432,7 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
         container_disk_gb=container_disk_gb,
         storage_name=storage_name,
         name_prefix=name_prefix,
+        ports=ports,
     )
 
     t0 = time.monotonic()
@@ -432,7 +444,7 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
         # ---- provision -------------------------------------------------
         async def _provision() -> tuple[Any, dict[str, Any]]:
             pod = await launch(config, name=f"{name_prefix}-{int(time.time())}")
-            await pod.wait_ready(timeout=300)
+            await pod.wait_ready(timeout=900)
             ssh = await pod._ensure_ssh_details()
             return pod, ssh
 
@@ -458,7 +470,7 @@ def cmd_session(args: argparse.Namespace, produces_dir: Path) -> int:
                 "container_disk_in_gb": container_disk_gb,
                 "volume_in_gb": config.disk_size_gb,
                 "network_volume_id": pod._storage_volume,
-                "ports": "8888/http,22/tcp",
+                "ports": ports or "8888/http,22/tcp",
             },
         }
 
@@ -602,6 +614,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_prov.add_argument("--image", help="Docker image for the pod.")
     p_prov.add_argument("--container-disk-gb", type=int, help="Container disk size in GB.")
     p_prov.add_argument("--datacenter-id", help="RunPod datacenter ID.")
+    p_prov.add_argument("--ports", help="Comma-separated port spec for the pod (default: '8888/http,22/tcp').")
 
     # --- exec ---
     p_exec = sub.add_parser("exec", help="Execute a script on an existing pod.")
@@ -629,6 +642,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sess.add_argument("--image", help="Docker image for the pod.")
     p_sess.add_argument("--container-disk-gb", type=int, help="Container disk size in GB.")
     p_sess.add_argument("--datacenter-id", help="RunPod datacenter ID.")
+    p_sess.add_argument("--ports", help="Comma-separated port spec for the pod (default: '8888/http,22/tcp').")
     p_sess.add_argument("--local-root", help="Local directory to upload.")
     p_sess.add_argument("--remote-root", help="Remote path on the pod.")
     p_sess.add_argument("--remote-script", help="Script file path or inline command.")

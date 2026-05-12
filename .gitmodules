@@ -1,0 +1,3 @@
+[submodule "astrid/packs/seinfeld/ai_toolkit/upstream"]
+	path = astrid/packs/seinfeld/ai_toolkit/upstream
+	url = https://github.com/ostris/ai-toolkit.git

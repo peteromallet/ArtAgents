@@ -37,6 +37,7 @@ class ProducesEntry:
     name: str
     path: str
     check: Check
+    checksum: str | None = None
 
 
 @dataclass(frozen=True)
@@ -94,6 +95,8 @@ class Step:
     # Lets a group step publish a stable namespace over its descendants' produces without
     # the schema implying auto-aggregation. Leaf steps MUST leave this None.
     re_export: tuple[tuple[str, str], ...] | None = None
+    # Poll interval for remote-artifact status checks (seconds). Leaf steps only.
+    poll_interval_seconds: int = 30
 
     @property
     def plan(self) -> "TaskPlan | None":
@@ -307,13 +310,16 @@ def _step_to_dict(step: Step) -> dict[str, Any]:
         out["superseded_by"] = {"to_version": step.superseded_by.to_version, "scope": step.superseded_by.scope}
     if step.re_export is not None:
         out["re_export"] = {name: ref for name, ref in step.re_export}
+    if step.poll_interval_seconds != 30:
+        out["poll_interval_seconds"] = step.poll_interval_seconds
     return out
 
 
 def _produces_to_dict(produces: tuple[ProducesEntry, ...]) -> dict[str, Any]:
     sorted_entries = sorted(produces, key=lambda entry: entry.name)
-    return {
-        entry.name: {
+    result: dict[str, Any] = {}
+    for entry in sorted_entries:
+        item: dict[str, Any] = {
             "path": entry.path,
             "check": {
                 "check_id": entry.check.check_id,
@@ -321,8 +327,10 @@ def _produces_to_dict(produces: tuple[ProducesEntry, ...]) -> dict[str, Any]:
                 "sentinel": entry.check.sentinel,
             },
         }
-        for entry in sorted_entries
-    }
+        if entry.checksum is not None:
+            item["checksum"] = entry.checksum
+        result[entry.name] = item
+    return result
 
 
 def _repeat_to_dict(repeat: Repeat) -> dict[str, Any]:
@@ -497,6 +505,10 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
             entries.append((name, ref))
         re_export = tuple(entries)
 
+    poll_interval_seconds = step.get("poll_interval_seconds", 30)
+    if not isinstance(poll_interval_seconds, int) or isinstance(poll_interval_seconds, bool) or poll_interval_seconds < 1:
+        raise TaskPlanError(f"plan steps[{index}].poll_interval_seconds must be an int >= 1")
+
     new_step = Step(
         id=step_id,
         adapter=adapter,
@@ -512,6 +524,7 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
         superseded_by=superseded_by,
         ack=ack,
         re_export=re_export,
+        poll_interval_seconds=poll_interval_seconds,
     )
 
     # Post-construction adapter/command-shape checks. _reject_orchestrators_run
@@ -570,7 +583,12 @@ def _validate_produces(raw: Any, index: int, *, allow_legacy_list: bool) -> tupl
                     f"plan steps[{index}].produces[{name!r}].path must be a non-empty string"
                 )
             check = _validate_check(value.get("check"), index, name)
-            entries.append(ProducesEntry(name=name, path=path_value, check=check))
+            checksum = value.get("checksum")
+            if checksum is not None and not (isinstance(checksum, str) and checksum):
+                raise TaskPlanError(
+                    f"plan steps[{index}].produces[{name!r}].checksum must be a non-empty string when present"
+                )
+            entries.append(ProducesEntry(name=name, path=path_value, check=check, checksum=checksum))
         return tuple(entries)
     raise TaskPlanError(
         f"plan steps[{index}].produces must be a dict (or legacy list for local-adapter leaf steps)"

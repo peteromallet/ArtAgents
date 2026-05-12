@@ -87,6 +87,7 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `builtin.generate_image` | Generate image files with OpenAI GPT Image models from a prompt file. |
 | `builtin.html_canvas_effect` | Scaffold a local Remotion HTML-in-canvas effect element. |
 | `builtin.human_notes` | Convert human editorial notes into structured pipeline inputs. |
+| `builtin.human_review` | Serve a small HTML page locally, collect human decisions as JSON, block until submit. |
 | `builtin.inspect_cut` | Inspect a generated cut run directory and report timeline/asset health. |
 | `builtin.open_in_reigh` | Copy or stage generated timeline+assets for handoff into a Reigh project. |
 | `builtin.pool_build` | Build the candidate clip pool from triaged source-video scenes. |
@@ -108,13 +109,23 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `builtin.understand` | Dispatch to the audio, visual, or video understanding executor based on --mode. |
 | `builtin.validate` | Validate the rendered video against its declared timeline and metadata. |
 | `builtin.video_understand` | Inspect synchronized audio+video windows with a video-understanding model. |
-| `builtin.visual_understand` | Inspect images or sampled video frames with a vision LLM. |
+| `builtin.visual_understand` | Inspect images or sampled video frames with a vision LLM — free-text or JSON-schema-constrained. |
+| `builtin.youtube_audio` | Download a YouTube video's audio (MP3) or video (MP4) — by search query or direct URL. |
 | `external.fal_foley` | Generate Foley audio for one short video clip via fal.ai's hunyuan-video-foley model. |
 | `external.moirae` | Run a Moirae screenplay through the terminal-as-cinema renderer to produce a video. |
+| `external.runpod.exec` | Execute a script on an existing RunPod pod and download artifacts. |
+| `external.runpod.provision` | Provision a RunPod GPU pod and emit a pod handle for later exec/teardown. |
+| `external.runpod.session` | Composite provision → exec → teardown session with guaranteed cleanup. |
+| `external.runpod.teardown` | Terminate a RunPod pod. Idempotent. |
 | `external.vibecomfy.run` | Run a VibeComfy / ComfyUI workflow JSON through the VibeComfy CLI. |
 | `external.vibecomfy.validate` | Validate a VibeComfy / ComfyUI workflow JSON without executing it. |
 | `iteration.assemble` | Adapt prepared iteration data into canonical iteration artifacts and render-ready hype inputs. |
 | `iteration.prepare` | Collect thread provenance, quality scores, and candidate runs into iteration prepare artifacts. |
+| `seinfeld.aitoolkit_stage` | Generate ai-toolkit job config from manifest + vocabulary; upload to pod; start AI Toolkit UI on :8675. |
+| `seinfeld.aitoolkit_train` | Kick off ai-toolkit training on a pod and mirror remote logs locally. |
+| `seinfeld.lora_eval_grid` | Run baseline LTX + per-checkpoint inference samples, download MP4s, write static index.html viewer. |
+| `seinfeld.lora_register` | Pure-local: copy chosen .safetensors into registered/ and write registered_lora.json. |
+| `seinfeld.repo_setup` | Idempotent git submodule add + checkout of ostris/ai-toolkit for config-schema reference. |
 | `upload.youtube` | Upload a finished video to YouTube via the shared banodoco-social Zapier integration. |
 
 ### Orchestrators
@@ -129,6 +140,8 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `builtin.logo_ideas` | Generate a grid of distinct logo concepts via Kimi K2 prompts + GPT Image 2 (or z-image) renders. |
 | `builtin.thumbnail_maker` | Plan source evidence and thumbnail generation candidates for a video/query pair. |
 | `builtin.vary_grid` | Iterative grid editor: take an existing grid image and emit a new grid of variations via fal. |
+| `seinfeld.dataset_build` | Bucket-fill loop that builds the Seinfeld LoRA training set from YouTube. |
+| `seinfeld.lora_train` | Train an LTX 2.3 LoRA on the Seinfeld dataset via ai-toolkit on RunPod. |
 
 ### Elements
 
@@ -140,6 +153,8 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `animations/slide-left` | Slide left entrance animation. |
 | `animations/slide-up` | Slide up exit animation. |
 | `animations/type-on` | Typewriter-style text reveal animation. |
+| `effects/model-trends` | Animated stacked-area chart of model-family share-of-conversation, driven by Remotion frame. |
+| `effects/neon-orbit-card` | DOM-to-canvas Remotion effect for post-processed cards. |
 | `effects/text-card` | Anchored text card overlay with built-in fade in/out. |
 | `transitions/cross-fade` | Cross fade transition. |
 | `transitions/fade` | Fade-through-black transition. |

@@ -58,3 +58,6 @@ cache/
 
 # Generated orchestrator build artifacts (compiled DSL JSON)
 astrid/packs/*/build/
+
+# Megaplan working state
+plan_revision.json

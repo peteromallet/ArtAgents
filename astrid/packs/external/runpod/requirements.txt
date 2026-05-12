@@ -1,1 +1,1 @@
-runpod-lifecycle>=0.2
+runpod-lifecycle>=0.3

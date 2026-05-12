@@ -1,0 +1,1 @@
+# seinfeld.repo_setup — idempotent ai-toolkit submodule initializer

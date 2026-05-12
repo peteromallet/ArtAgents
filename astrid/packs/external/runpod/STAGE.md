@@ -27,5 +27,5 @@ those checks.
 
 ## Requirements
 
-Install `runpod-lifecycle>=0.2` before using these executors. The pack's
+Install `runpod-lifecycle>=0.3` before using these executors. The pack's
 `requirements.txt` pins the minimum version.

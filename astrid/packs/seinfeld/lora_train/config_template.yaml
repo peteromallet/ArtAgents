@@ -1,0 +1,66 @@
+---
+# ai-toolkit (ostris) job config template — LTX 2.3 scene LoRA.
+# Field names follow ostris/ai-toolkit config schema (config/examples/*).
+# Placeholders ({{...}}) are substituted by seinfeld.aitoolkit_stage at run time.
+
+job: extension
+config:
+  name: "{{run_name}}"
+  process:
+    - type: sd_trainer
+      training_folder: "{{output_dir}}"
+      device: cuda:0
+      trigger_word: "seinfeld scene"
+      network:
+        type: lora
+        linear: 32
+        linear_alpha: 32
+      save:
+        dtype: float16
+        save_every: 250
+        max_step_saves_to_keep: 8
+      datasets:
+        - folder_path: "{{dataset_dir}}"
+          caption_ext: caption.json
+          caption_dropout_rate: 0.0
+          shuffle_tokens: false
+          cache_latents_to_disk: false
+          resolution:
+            - 512
+          bucketing: true
+          num_frames: 97
+          fps: 24
+      train:
+        batch_size: 1
+        steps: "{{steps}}"
+        gradient_accumulation_steps: 4
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: flowmatch
+        optimizer: adamw8bit
+        lr: 2.0e-5
+        ema_config:
+          use_ema: false
+        dtype: bf16
+        seed: "{{seed}}"
+      model:
+        name_or_path: "{{base_model}}"
+        is_flux: false
+        is_ltx: true
+        quantize: false
+      sample:
+        sampler: flowmatch
+        sample_every: 250
+        width: 512
+        height: 768
+        num_frames: 97
+        fps: 24
+        seed: "{{seed}}"
+        walk_seed: true
+        guidance_scale: 3.0
+        sample_steps: 30
+        prompts: "{{sample_prompts}}"
+meta:
+  name: "{{run_name}}"
+  version: "1.0"

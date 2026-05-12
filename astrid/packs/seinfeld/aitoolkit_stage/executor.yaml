@@ -1,0 +1,35 @@
+{
+  "id": "seinfeld.aitoolkit_stage",
+  "name": "Seinfeld AI Toolkit Stage",
+  "kind": "built_in",
+  "version": "0.1.0",
+  "short_description": "Generate ai-toolkit job config from manifest + vocabulary; upload to pod; start AI Toolkit UI on :8675.",
+  "description": "Reads provisional.manifest.json + vocabulary.yaml, substitutes hivemind-validated LTX 2.3 defaults into config_template.yaml, writes a bootstrap.sh, and (unless --dry-run) ships them to a live RunPod pod via external.runpod.exec and starts the AI Toolkit UI on port 8675.",
+  "keywords": ["seinfeld", "ai-toolkit", "lora", "stage", "ltx"],
+  "inputs": [
+    {"name": "pod_handle", "type": "file", "description": "Path to pod_handle.json from external.runpod.provision (omit for --dry-run)."},
+    {"name": "manifest", "type": "file", "description": "provisional.manifest.json"},
+    {"name": "vocabulary", "type": "file", "description": "vocabulary.yaml"}
+  ],
+  "outputs": [
+    {"name": "staged_config", "type": "file", "path_template": "{out}/produces/staged_config.yaml"},
+    {"name": "bootstrap", "type": "file", "path_template": "{out}/produces/bootstrap.sh"},
+    {"name": "ui_url", "type": "file", "path_template": "{out}/produces/ui_url.txt"}
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.seinfeld.aitoolkit_stage.run",
+      "--manifest", "{manifest}",
+      "--vocabulary", "{vocabulary}",
+      "--produces-dir", "{out}/produces"
+    ]
+  },
+  "cache": {"mode": "none"},
+  "isolation": {"mode": "subprocess", "network": true},
+  "metadata": {
+    "runtime_module": "astrid.packs.seinfeld.aitoolkit_stage.run",
+    "runtime_file": "run.py"
+  }
+}
