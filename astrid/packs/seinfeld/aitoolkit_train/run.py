@@ -75,10 +75,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     exec_produces = produces / "_exec_train"
     exec_produces.mkdir(parents=True, exist_ok=True)
+    # Use an empty staging dir as --local-root so cmd_exec doesn't upload the cwd
+    # (training only needs to run a remote command; config + dataset are already on the pod).
+    empty_local_root = produces / "_empty_local_root"
+    empty_local_root.mkdir(parents=True, exist_ok=True)
     exec_argv = [
         sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
         "--produces-dir", str(exec_produces),
         "--pod-handle", str(args.pod_handle),
+        "--local-root", str(empty_local_root),
         "--remote-script", train_cmd,
     ]
     rv = subprocess.run(exec_argv, cwd=repo_root)
@@ -114,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
         "--produces-dir", str(list_produces),
         "--pod-handle", str(args.pod_handle),
+        "--local-root", str(empty_local_root),
         "--remote-script", f"ls -1 {args.output_dir}/*.safetensors 2>/dev/null || true",
     ]
     subprocess.run(list_argv, cwd=repo_root)
