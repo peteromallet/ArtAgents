@@ -16,6 +16,30 @@ from . import paths
 from .jsonio import read_json, write_json_atomic
 from .schema import build_project, utc_now_iso, validate_project
 
+# Skeleton for the per-project plan.md — a human/agent-readable working notes
+# doc at the project root.  This is DISTINCT from <project>/runs/<run-id>/plan.json
+# which is the executable runtime step tree; plan.md is project-level prose for
+# current focus, open threads, key decisions, and scratch notes.
+_PLAN_MD_SKELETON = """# {slug} — Plan
+
+_Live working notes for this project. Read on attach; keep updated as the plan evolves._
+
+## Current focus
+
+
+
+## Open threads
+
+
+
+## Key decisions
+
+
+
+## Notes
+
+"""
+
 
 class ProjectError(RuntimeError):
     """Raised when project persistence operations fail."""
@@ -48,7 +72,31 @@ def create_project(
         payload = validate_project(read_json(project_path))
     else:
         write_json_atomic(project_path, payload)
+    # plan.md: per-project human/agent working notes at the project root.
+    # Distinct from runs/<run-id>/plan.json (the runtime step tree).
+    # Idempotent — if it already exists, leave it alone.
+    plan_path = project_root / "plan.md"
+    if not plan_path.exists():
+        _write_text_atomic(plan_path, _PLAN_MD_SKELETON.format(slug=slug))
     return payload
+
+
+def _write_text_atomic(path: Path, content: str) -> None:
+    """Atomic text write — temp file in same dir, then rename."""
+    import os
+    import tempfile
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 def load_project(slug: str, *, root: str | Path | None = None) -> dict[str, Any]:
