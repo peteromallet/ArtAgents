@@ -33,12 +33,14 @@ def _clear_task_env() -> None:
 def test_produces_pass_interns_into_cas_and_links(tmp_projects_root: Path) -> None:
     plan = {
         "plan_id": "p",
-        "version": 1,
+        "version": 2,
         "steps": [
             {
                 "id": "step-1",
                 "kind": "code",
+                "adapter": "local",
                 "command": "echo go",
+                "cost": {"amount": 0, "currency": "USD", "source": "local"},
                 "produces": {
                     "out": {
                         "path": "out.json",

@@ -29,7 +29,7 @@ from typing import Any, Iterable
 # command to dispatch through plan[cursor]. cmd_ack approve re-enters the gate
 # explicitly (see lifecycle_ack._ack_approve), so the short-circuit only
 # bypasses the gate's command-match step.
-LIFECYCLE_VERBS = {"start", "next", "ack", "abort", "status", "runs", "hook", "plan", "claim", "unclaim", "step"}
+LIFECYCLE_VERBS = {"start", "next", "ack", "skip", "abort", "status", "runs", "hook", "plan", "claim", "unclaim", "step"}
 
 
 # Sprint 1 session-gate allowlist. A first-token (or two-token) match against
@@ -199,6 +199,10 @@ def _dispatch(raw: list[str]) -> int:
         from .core.task.lifecycle import cmd_ack
 
         return cmd_ack(raw[1:])
+    if raw and raw[0] == "skip":
+        from .core.task.lifecycle import cmd_skip
+
+        return cmd_skip(raw[1:])
     if raw and raw[0] == "abort":
         from .core.task.lifecycle import cmd_abort
 
@@ -263,6 +267,10 @@ def _dispatch(raw: list[str]) -> int:
         from .core.element import cli as elements_cli
 
         return elements_cli.main(raw[1:])
+    # TODO(Sprint 5b): astrid projects timeline is a legacy reigh-app subcommand
+    # that collides with the new Sprint 2 timeline concept.  Rename to
+    # `astrid projects reigh-timeline` or document the collision once the
+    # reigh-app integration path is clearer.  Deferred — out of scope for 5b.
     if raw and raw[0] == "projects":
         from .core.project import cli as projects_cli
 
@@ -289,6 +297,8 @@ def _dispatch(raw: list[str]) -> int:
         from . import audit
 
         return audit.main(raw[1:])
+    if raw and raw[0] == "events":
+        return _dispatch_events(raw[1:])
     if raw and raw[0] == "reigh-data":
         from .packs.builtin.reigh_data import run as reigh_data
 
@@ -413,6 +423,32 @@ def _dispatch_plan_verbs(args: list[str]) -> int:
     from .core.task.plan_verbs import cmd_plan
 
     return cmd_plan(args)
+
+
+def _dispatch_events(args: list[str]) -> int:
+    """Dispatch ``astrid events {verify,tail}`` top-level verbs (Sprint 5b).
+
+    Both verbs read run state (events.jsonl) and require ASTRID_SESSION_ID.
+    They are NOT listed in ``_verb_is_unbound_allowlisted``.
+    """
+    if not args:
+        print(
+            "usage: astrid events {verify,tail} ...",
+            file=sys.stderr,
+        )
+        return 2
+    from astrid.core.task.run_audit import cmd_events_verify, cmd_events_tail
+
+    sub = args[0]
+    if sub == "verify":
+        return cmd_events_verify(args[1:])
+    if sub == "tail":
+        return cmd_events_tail(args[1:])
+    print(
+        f"events: unknown sub-verb {sub!r}; expected one of verify / tail",
+        file=sys.stderr,
+    )
+    return 2
 
 
 def _dispatch_runpod(args: list[str]) -> int:
@@ -732,6 +768,7 @@ Usage:
   python3 -m astrid modalities {list,inspect} ...
   python3 -m astrid reigh-data --project-id PROJECT_ID [--out PATH]
   python3 -m astrid worker --pool banodoco [--worker-id ID] [--max-iterations N]
+  python3 -m astrid events {verify,tail} --run <id> --project <slug>
   python3 -m astrid audit --run RUN_DIR
   python3 -m astrid runpod sweep [--hard] [--dry-run] [--projects-root PATH]
   python3 -m astrid runpod volumes ls

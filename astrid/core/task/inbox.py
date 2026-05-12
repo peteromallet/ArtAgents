@@ -27,7 +27,9 @@ from astrid.core.task.active_run import clear_active_run
 from astrid.core.task.events import (
     append_event,
     make_cursor_rewind_event,
+    make_item_skipped_event,
     make_run_aborted_event,
+    make_step_skipped_event,
 )
 from astrid.core.task.gate import (
     AttestedArgs,
@@ -48,7 +50,7 @@ INBOX_DIR_NAME = "inbox"
 CONSUMED_DIR_NAME = ".consumed"
 REJECTED_DIR_NAME = ".rejected"
 
-_VALID_DECISIONS = ("approve", "retry", "abort")
+_VALID_DECISIONS = ("approve", "retry", "abort", "skip")
 _VALID_SUBMITTED_BY_KINDS = ("agent", "actor")
 
 _LOGGER = logging.getLogger("astrid.core.task.inbox")
@@ -414,6 +416,73 @@ def consume_inbox_entry(
             make_run_aborted_event(run_id, reason=f"inbox abort by {entry.submitted_by}"),
         )
         clear_active_run(slug, root=projects_root)
+        _move_to(entry.path, consumed_dir)
+        return True
+
+    if entry.decision == "skip":
+        # Resolve the cursor frontier step (un-traversed — group steps with
+        # optional=True must be skippable as a unit, mirroring cmd_skip).
+        from astrid.core.task.gate import derive_cursor as _derive_cursor
+        cursor = _derive_cursor(plan, events)
+        if cursor.pinned_failure is not None or cursor.at_root_done:
+            _LOGGER.warning(
+                "inbox: rejecting %s: run is exhausted, nothing to skip",
+                entry.path.name,
+            )
+            _move_to(entry.path, rejected_dir)
+            return False
+        top = cursor.frames[-1]
+        if top.child_index >= len(top.plan.steps):
+            _LOGGER.warning(
+                "inbox: rejecting %s: cursor frame exhausted", entry.path.name
+            )
+            _move_to(entry.path, rejected_dir)
+            return False
+        cur_step = top.plan.steps[top.child_index]
+        cur_path = top.path_prefix + (cur_step.id,)
+        entry_path_tuple = _resolve_plan_step_path(entry)
+        if entry_path_tuple != cur_path:
+            _LOGGER.warning(
+                "inbox: rejecting %s: plan_step_path %s does not match cursor frontier %s",
+                entry.path.name,
+                "/".join(entry_path_tuple),
+                "/".join(cur_path),
+            )
+            _move_to(entry.path, rejected_dir)
+            return False
+        if entry.item_id is not None:
+            repeat = getattr(cur_step, "repeat", None)
+            from astrid.core.task.plan import RepeatForEach as _RepeatForEach
+            if not isinstance(repeat, _RepeatForEach):
+                _LOGGER.warning(
+                    "inbox: rejecting %s: --item skip requires repeat.for_each",
+                    entry.path.name,
+                )
+                _move_to(entry.path, rejected_dir)
+                return False
+            skip_event = make_item_skipped_event(
+                cur_path,
+                entry.item_id,
+                actor_kind=entry.submitted_by_kind or "agent",
+                actor_id=entry.submitted_by,
+                reason=f"inbox skip by {entry.submitted_by}",
+            )
+        else:
+            if not cur_step.optional:
+                _LOGGER.warning(
+                    "inbox: rejecting %s: target step %s is not optional",
+                    entry.path.name,
+                    "/".join(cur_path),
+                )
+                _move_to(entry.path, rejected_dir)
+                return False
+            skip_event = make_step_skipped_event(
+                "/".join(cur_path),
+                actor_kind=entry.submitted_by_kind or "agent",
+                actor_id=entry.submitted_by,
+                reason=f"inbox skip by {entry.submitted_by}",
+            )
+        append_event(events_path, skip_event)
         _move_to(entry.path, consumed_dir)
         return True
 

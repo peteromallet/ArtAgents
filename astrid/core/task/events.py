@@ -403,6 +403,58 @@ def make_step_attested_event(
     }
 
 
+def make_step_skipped_event(
+    path: str,
+    *,
+    actor_kind: str,
+    actor_id: str,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Emit a ``step_skipped`` event for an ``optional=True`` step.
+
+    *None-valued kwargs (reason) are OMITTED* (never ``null``), matching the
+    convention used by ``make_step_completed_event`` and friends.
+    """
+    if actor_kind not in ("agent", "actor"):
+        raise ValueError(f"actor_kind must be 'agent' or 'actor', got {actor_kind!r}")
+    payload: dict[str, Any] = {
+        "actor_id": actor_id,
+        "actor_kind": actor_kind,
+        "kind": "step_skipped",
+        "plan_step_path": path.split("/") if "/" in path else [path],
+        "ts": _utc_now_iso(),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    return payload
+
+
+def make_item_skipped_event(
+    plan_step_path: tuple[str, ...],
+    item_id: str,
+    *,
+    actor_kind: str,
+    actor_id: str,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Emit an ``item_skipped`` event for one iteration of a for_each host
+    whose body is ``optional=True``. Mirrors :func:`make_item_attested_event`.
+    """
+    if actor_kind not in ("agent", "actor"):
+        raise ValueError(f"actor_kind must be 'agent' or 'actor', got {actor_kind!r}")
+    payload: dict[str, Any] = {
+        "actor_id": actor_id,
+        "actor_kind": actor_kind,
+        "item_id": item_id,
+        "kind": "item_skipped",
+        "plan_step_path": list(plan_step_path),
+        "ts": _utc_now_iso(),
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    return payload
+
+
 def make_nested_entered_event(plan_step_path: str, child_plan_hash: str) -> dict[str, Any]:
     return {
         "child_plan_hash": child_plan_hash,
@@ -622,7 +674,7 @@ def _run_is_complete(plan: Any, events: list[dict[str, Any]]) -> bool:
             return False
         if latest_kind == "step_dispatched":
             return False
-        if latest_kind not in {"step_completed", "step_failed"}:
+        if latest_kind not in {"step_completed", "step_failed", "step_skipped"}:
             return False
 
     return True
@@ -768,6 +820,7 @@ __all__ = [
     "make_for_each_expanded_event",
     "make_item_attested_event",
     "make_item_completed_event",
+    "make_item_skipped_event",
     "make_item_started_event",
     "make_iteration_exhausted_event",
     "make_iteration_failed_event",
@@ -784,6 +837,7 @@ __all__ = [
     "make_step_completed_event",
     "make_step_dispatched_event",
     "make_step_failed_event",
+    "make_step_skipped_event",
     "read_events",
     "verify_chain",
     "_run_is_complete",

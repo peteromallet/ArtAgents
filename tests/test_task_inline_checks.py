@@ -22,28 +22,29 @@ from astrid.core.task.plan import (
 # DO NOT regenerate; if the canonicalization drifts, fix the canonicalization, not this fixture.
 LEGACY_FIXTURE_PLAN: dict = {
     "plan_id": "p1",
-    "version": 1,
+    "version": 2,
     "steps": [
-        {"id": "s1", "kind": "code", "command": "echo one"},
+        {"id": "s1", "kind": "code", "adapter": "local", "command": "echo one", "cost": {"amount": 0, "currency": "USD", "source": "local"}},
         {
             "id": "s2",
             "kind": "attested",
+            "adapter": "manual",
             "command": "ack --project demo --step s2",
             "instructions": "review",
             "ack": {"kind": "agent"},
+            "cost": {"amount": 0, "currency": "USD", "source": "local"},
         },
         {
             "id": "s3",
-            "kind": "nested",
-            "plan": {
-                "plan_id": "c",
-                "version": 1,
-                "steps": [{"id": "c1", "kind": "code", "command": "echo c1"}],
-            },
+            "kind": "group",
+            "adapter": "local",
+            "children": [{"id": "c1", "kind": "code", "adapter": "local", "command": "echo c1", "cost": {"amount": 0, "currency": "USD", "source": "local"}}],
+            "cost": {"amount": 0, "currency": "USD", "source": "local"},
         },
     ],
 }
-FROZEN_LEGACY_HASH = "sha256:0049398e632120dc7771ce3fe9280c76beff9311dc4920d7d2f6bda711f167ab"
+# V2 frozen hash computed after Sprint 5b v1→v2 fixture migration.
+FROZEN_LEGACY_HASH = "sha256:5436253677a6d349d75d42eec6d58c480b8bddbfccc781c3d274ce3dcf297eab"
 
 
 def _setup_run(tmp_projects_root: Path, plan: dict, *, slug: str = "demo", run_id: str = "run-1") -> Path:
@@ -61,12 +62,14 @@ def _events_path(tmp_projects_root: Path, slug: str, run_id: str) -> Path:
 def test_code_produces_check_fails_rewinds_cursor(tmp_projects_root: Path) -> None:
     plan = {
         "plan_id": "p",
-        "version": 1,
+        "version": 2,
         "steps": [
             {
                 "id": "step-1",
                 "kind": "code",
+                "adapter": "local",
                 "command": "echo go",
+                "cost": {"amount": 0, "currency": "USD", "source": "local"},
                 "produces": {
                     "out": {
                         "path": "out.json",
@@ -113,12 +116,14 @@ def test_code_produces_check_fails_rewinds_cursor(tmp_projects_root: Path) -> No
 def test_code_produces_check_passes_advances(tmp_projects_root: Path) -> None:
     plan = {
         "plan_id": "p",
-        "version": 1,
+        "version": 2,
         "steps": [
             {
                 "id": "step-1",
                 "kind": "code",
+                "adapter": "local",
                 "command": "echo go",
+                "cost": {"amount": 0, "currency": "USD", "source": "local"},
                 "produces": {
                     "out": {
                         "path": "out.json",
@@ -126,7 +131,7 @@ def test_code_produces_check_passes_advances(tmp_projects_root: Path) -> None:
                     }
                 },
             },
-            {"id": "step-2", "kind": "code", "command": "echo two"},
+            {"id": "step-2", "kind": "code", "adapter": "local", "command": "echo two", "cost": {"amount": 0, "currency": "USD", "source": "local"}},
         ],
     }
     _setup_run(tmp_projects_root, plan)
@@ -155,14 +160,16 @@ def test_attested_sentinel_only_check_rejected_at_load(tmp_path: Path) -> None:
     plan_path.write_text(
         json.dumps({
             "plan_id": "p",
-            "version": 1,
+            "version": 2,
             "steps": [
                 {
                     "id": "s1",
                     "kind": "attested",
+                    "adapter": "manual",
                     "command": "ack --project demo --step s1",
                     "instructions": "review",
                     "ack": {"kind": "agent"},
+                    "cost": {"amount": 0, "currency": "USD", "source": "local"},
                     "produces": {
                         "out": {
                             "path": "out.bin",
@@ -183,14 +190,16 @@ def test_attested_with_all_of_semantic_check_accepts(tmp_path: Path) -> None:
     plan_path.write_text(
         json.dumps({
             "plan_id": "p",
-            "version": 1,
+            "version": 2,
             "steps": [
                 {
                     "id": "s1",
                     "kind": "attested",
+                    "adapter": "manual",
                     "command": "ack --project demo --step s1",
                     "instructions": "review",
                     "ack": {"kind": "agent"},
+                    "cost": {"amount": 0, "currency": "USD", "source": "local"},
                     "produces": {
                         "out": {
                             "path": "out.json",
@@ -221,12 +230,14 @@ def test_code_with_sentinel_only_check_accepts(tmp_path: Path) -> None:
     plan_path.write_text(
         json.dumps({
             "plan_id": "p",
-            "version": 1,
+            "version": 2,
             "steps": [
                 {
                     "id": "s1",
                     "kind": "code",
+                    "adapter": "local",
                     "command": "echo go",
+                    "cost": {"amount": 0, "currency": "USD", "source": "local"},
                     "produces": {
                         "out": {
                             "path": "out.bin",
@@ -246,12 +257,14 @@ def test_legacy_produces_list_normalizes_to_sentinel_dict(tmp_path: Path) -> Non
     plan_path = tmp_path / "plan.json"
     legacy_dict = {
         "plan_id": "p",
-        "version": 1,
+        "version": 2,
         "steps": [
             {
                 "id": "s1",
                 "kind": "code",
+                "adapter": "local",
                 "command": "echo go",
+                "cost": {"amount": 0, "currency": "USD", "source": "local"},
                 "produces": ["a.json", "subdir/b.json"],
             }
         ],

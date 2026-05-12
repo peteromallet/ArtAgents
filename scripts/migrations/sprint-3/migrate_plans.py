@@ -28,9 +28,20 @@ def _read_legacy_plan_payload(path: str | Path) -> Any:
 
     Public load_plan() rejects version != 2; this private reader bypasses
     the gate so we can inspect and rewrite v1 plans.
+
+    Sprint 5b T4: inlined from astrid.core.task.plan._read_legacy_plan_payload
+    so the migration script survives the legacy reader removal.
     """
-    from astrid.core.task.plan import _read_legacy_plan_payload as _impl
-    return _impl(path)
+    import json as _json
+    p = Path(path)
+    try:
+        return _json.loads(p.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise
+    except _json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON in {p}: {exc.msg}") from exc
+    except OSError as exc:
+        raise ValueError(f"failed to read {p}: {exc}") from exc
 
 
 def _migrate_step(step: dict[str, Any]) -> dict[str, Any]:

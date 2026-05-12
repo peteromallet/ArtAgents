@@ -32,12 +32,14 @@ def _clear_task_env() -> None:
 def _run_one_step(tmp_projects_root: Path, slug: str, payload: bytes) -> None:
     plan = {
         "plan_id": "p",
-        "version": 1,
+        "version": 2,
         "steps": [
             {
                 "id": "step-1",
                 "kind": "code",
+                "adapter": "local",
                 "command": "echo go",
+                "cost": {"amount": 0, "currency": "USD", "source": "local"},
                 "produces": {
                     "out": {
                         "path": "out.json",

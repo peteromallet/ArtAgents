@@ -1,17 +1,26 @@
-"""Command-line interface for Astrid timelines (Sprint 2)."""
+"""Command-line interface for Astrid timelines (Sprint 2 / extended Sprint 5b)."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import os
+import shutil
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from astrid.core.project.current_run import read_current_run
+from astrid.core.project.paths import project_dir, resolve_projects_root, validate_project_slug
 from astrid.core.session.binding import (
     SessionBindingError,
     resolve_current_session,
 )
+from astrid.core.task.events import read_events
+from astrid.core.task.run_audit import _cost_by_source, _run_status
 
 from . import crud
 from .defaults import read_project_default, write_project_default
@@ -71,6 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Recompute integrity (sha256) for each final output.",
     )
+    show_parser.add_argument(
+        "--json",
+        dest="json_out",
+        action="store_true",
+        help="Emit structured JSON instead of pretty-print.",
+    )
     show_parser.set_defaults(handler=cmd_show)
 
     # --- rename ---
@@ -120,6 +135,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     set_default_parser.add_argument("slug", help="Timeline slug.")
     set_default_parser.set_defaults(handler=cmd_set_default)
+
+    # --- export (Sprint 5b) ---
+    export_parser = subparsers.add_parser("export", help="Export a timeline bundle.")
+    export_parser.add_argument("slug", help="Timeline slug.")
+    export_parser.add_argument("--out", required=True, help="Output tarball path (.tar.gz).")
+    export_parser.add_argument(
+        "--include-aborted",
+        action="store_true",
+        help="Include aborted runs in the export bundle.",
+    )
+    export_parser.set_defaults(handler=cmd_export)
+
+    # --- cost (Sprint 5b) ---
+    cost_parser = subparsers.add_parser("cost", help="Show cost rollup for a timeline.")
+    cost_parser.add_argument("slug", help="Timeline slug.")
+    cost_parser.add_argument(
+        "--json",
+        dest="json_out",
+        action="store_true",
+        help="Emit structured JSON instead of pretty-print.",
+    )
+    cost_parser.add_argument(
+        "--include-aborted",
+        action="store_true",
+        help="Include aborted runs in the cost rollup.",
+    )
+    cost_parser.set_defaults(handler=cmd_cost)
 
     return parser
 
@@ -196,6 +238,38 @@ def cmd_show(args: argparse.Namespace) -> int:
     assembly = data["assembly"]
     ulid = data["ulid"]
 
+    if getattr(args, "json_out", False):
+        import json as _json
+
+        outputs = []
+        for fo in manifest.final_outputs:
+            if getattr(args, "verify", False):
+                status = verify(fo)
+            else:
+                status = fo.check_status
+            outputs.append({
+                "kind": fo.kind,
+                "path": fo.path,
+                "sha256": fo.sha256,
+                "size": fo.size,
+                "check_status": status,
+                "from_run": fo.from_run,
+                "recorded_at": fo.recorded_at,
+                "recorded_by": fo.recorded_by,
+            })
+        payload = {
+            "ulid": ulid,
+            "slug": display.slug,
+            "name": display.name,
+            "is_default": display.is_default,
+            "tombstoned_at": manifest.tombstoned_at,
+            "contributing_runs": manifest.contributing_runs,
+            "assembly": dict(assembly.assembly),
+            "final_outputs": outputs,
+        }
+        print(_json.dumps(payload, indent=2, default=str))
+        return 0
+
     print(f"Timeline: {display.name}")
     print(f"  slug:      {display.slug}")
     print(f"  ulid:      {ulid}")
@@ -207,7 +281,7 @@ def cmd_show(args: argparse.Namespace) -> int:
 
     print("Assembly:")
     if assembly.assembly:
-        import json
+        import json as _json
 
         print(f"  keys: {sorted(assembly.assembly.keys())}")
     else:
@@ -340,6 +414,170 @@ def cmd_set_default(args: argparse.Namespace) -> int:
     print(
         f"timeline '{result['slug']}' is now the default for project '{session.project}'"
     )
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Handler: export (Sprint 5b)
+# ---------------------------------------------------------------------------
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    """Export a timeline as a self-contained tarball bundle."""
+    session = _require_session()
+    data = crud.show_timeline(session.project, args.slug)
+    if data is None:
+        print(f"timeline '{args.slug}' not found", file=sys.stderr)
+        return 1
+
+    ulid = data["ulid"]
+    manifest = data["manifest"]
+    proj_root = project_dir(session.project)
+    timelines_dir = proj_root / "timelines" / ulid
+    runs_dir = proj_root / "runs"
+
+    include_aborted = bool(getattr(args, "include_aborted", False))
+    out_path = Path(args.out).expanduser().resolve()
+
+    with tempfile.TemporaryDirectory() as tmpdir_str:
+        tmpdir = Path(tmpdir_str)
+        manifest_entries: list[tuple[str, str]] = []
+
+        def _add_file(src: Path, rel: str) -> None:
+            dst = tmpdir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+            manifest_entries.append((rel, sha))
+
+        # Copy timeline container files
+        for name in ("assembly.json", "manifest.json", "display.json"):
+            src = timelines_dir / name
+            if src.is_file():
+                _add_file(src, name)
+
+        # Copy contributing runs
+        for run_id in manifest.contributing_runs:
+            run_root = runs_dir / run_id
+            if not run_root.is_dir():
+                continue
+
+            # Filter aborted runs
+            events_path = run_root / "events.jsonl"
+            if events_path.exists():
+                events = read_events(events_path)
+                status = _run_status(events)
+                if status == "aborted" and not include_aborted:
+                    continue
+
+            # Copy plan.json (from project root)
+            plan_path = proj_root / "plan.json"
+            if plan_path.is_file():
+                _add_file(plan_path, f"runs/{run_id}/plan.json")
+
+            # Copy events.jsonl
+            if events_path.is_file():
+                _add_file(events_path, f"runs/{run_id}/events.jsonl")
+
+            # Copy produces/ tree
+            produces_root = run_root / "produces"
+            if produces_root.is_dir():
+                for src_file in produces_root.rglob("*"):
+                    if src_file.is_file():
+                        rel = str(Path("runs") / run_id / "produces" / src_file.relative_to(produces_root))
+                        _add_file(src_file, rel)
+
+            # Copy run.json if present
+            run_json = run_root / "run.json"
+            if run_json.is_file():
+                _add_file(run_json, f"runs/{run_id}/run.json")
+
+        # Write MANIFEST.txt
+        manifest_txt = tmpdir / "MANIFEST.txt"
+        lines = [f"{sha}  {rel}" for rel, sha in sorted(manifest_entries)]
+        manifest_txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # Build tarball
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(out_path, "w:gz") as tar:
+            for member in sorted(tmpdir.iterdir()):
+                tar.add(member, arcname=member.name)
+
+    print(f"exported timeline '{args.slug}' to {out_path}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Handler: cost (Sprint 5b)
+# ---------------------------------------------------------------------------
+
+
+def cmd_cost(args: argparse.Namespace) -> int:
+    """Aggregate cost across all contributing runs in a timeline."""
+    session = _require_session()
+    data = crud.show_timeline(session.project, args.slug)
+    if data is None:
+        print(f"timeline '{args.slug}' not found", file=sys.stderr)
+        return 1
+
+    manifest = data["manifest"]
+    proj_root = project_dir(session.project)
+    runs_dir = proj_root / "runs"
+    include_aborted = bool(getattr(args, "include_aborted", False))
+
+    # Aggregate costs across all contributing runs
+    by_source: dict[str, float] = {}
+    grand_total = 0.0
+    run_count = 0
+
+    for run_id in manifest.contributing_runs:
+        run_root = runs_dir / run_id
+        if not run_root.is_dir():
+            continue
+        events_path = run_root / "events.jsonl"
+        if not events_path.exists():
+            continue
+        events = read_events(events_path)
+
+        # Filter aborted runs
+        status = _run_status(events)
+        if status == "aborted" and not include_aborted:
+            continue
+
+        run_count += 1
+        cost_summary = _cost_by_source(events)
+        for source, info in cost_summary.items():
+            if isinstance(info, dict):
+                amt = info.get("amount", 0)
+                by_source[source] = by_source.get(source, 0.0) + float(amt)
+                grand_total += float(amt)
+
+    json_out = bool(getattr(args, "json_out", False))
+    if json_out:
+        payload: dict[str, Any] = {
+            "slug": args.slug,
+            "project": session.project,
+            "contributing_runs": run_count,
+            "total_runs_in_manifest": len(manifest.contributing_runs),
+            "include_aborted": include_aborted,
+            "grand_total": round(grand_total, 6),
+            "by_source": {
+                source: round(amt, 6) for source, amt in sorted(by_source.items())
+            },
+        }
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"Cost rollup for timeline '{args.slug}' ({run_count} contributing runs):")
+    print()
+    if not by_source:
+        print("  (no cost data)")
+    else:
+        for source in sorted(by_source):
+            amt = by_source[source]
+            print(f"  {source:<20} ${amt:>10.4f}")
+    print(f"  {'─' * 32}")
+    print(f"  {'TOTAL':<20} ${grand_total:>10.4f}")
     return 0
 
 

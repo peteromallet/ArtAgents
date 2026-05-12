@@ -5,11 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
 from astrid.core.project.paths import project_dir, resolve_projects_root, validate_project_slug
-from astrid.core.task.events import read_events
+from astrid.core.task.events import read_events, verify_chain
 from astrid.core.task.plan import STEP_PATH_SEP, CostEntry, Step, load_plan
 
 
@@ -52,7 +53,10 @@ def cmd_run_show(
     # Plan info
     plan_hash_val = plan.plan_id if plan else "unknown"
     initial_steps = len(plan.steps) if plan else 0
-    mutation_count = sum(1 for e in events if e.get("kind") in {"step_superseded", "step_added", "step_removed"})
+    mutation_count = sum(1 for e in events if e.get("kind") in {"plan_mutated"})
+    skipped_steps = sum(
+        1 for e in events if e.get("kind") in {"step_skipped", "item_skipped"}
+    )
 
     # Step list
     step_rows = _build_step_rows(events, run_root)
@@ -95,6 +99,7 @@ def cmd_run_show(
             "plan_hash": plan_hash_val,
             "initial_steps": initial_steps,
             "mutations": mutation_count,
+            "skipped_steps": skipped_steps,
             "effective_steps": len(step_rows),
             "total_cost": total_cost,
             "cost_by_source": cost_summary,
@@ -139,6 +144,8 @@ def cmd_run_show(
         print("Steps: (none)")
     print()
     print(f"Acks: {ack_count} events; {attested_decisions} attested decisions")
+    if skipped_steps:
+        print(f"Skipped: {skipped_steps} step/item skip events")
     if consumes:
         print(f"Consumes: {len(consumes)} input dependencies")
         for c in consumes:
@@ -382,8 +389,274 @@ def cmd_run_cost(
 
 
 # ---------------------------------------------------------------------------
+# events verify (Sprint 5b T5)
+# ---------------------------------------------------------------------------
+
+
+def cmd_events_verify(
+    argv: Sequence[str],
+    *,
+    projects_root: Optional[Path] = None,
+) -> int:
+    """Verify the hash chain for a run's events.jsonl.
+
+    Thin CLI wrapper around :func:`astrid.core.task.events.verify_chain`.
+    On success prints ``verified: N events, plan_hash=<...>``.
+    On failure prints ``broken at line N: <reason>`` and exits 1.
+
+    ``--strict`` additionally replays ``plan_mutated`` events through
+    :func:`astrid.core.task.validator.validate_mutation` to check that
+    every mutation passes the six-invariant gate.
+    """
+    parser = argparse.ArgumentParser(prog="astrid events verify", add_help=True)
+    parser.add_argument("--run", required=True, dest="run_id", help="run identifier")
+    parser.add_argument("--project", required=True, help="project slug")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="also validate plan_mutated events against the six-invariant validator",
+    )
+    try:
+        args = parser.parse_args(list(argv))
+    except SystemExit as exc:
+        return int(exc.code or 2)
+
+    try:
+        slug = validate_project_slug(args.project)
+    except Exception as exc:
+        print(f"events verify: {exc}", file=sys.stderr)
+        return 1
+
+    proj_root = project_dir(slug, root=projects_root)
+    run_root = proj_root / "runs" / args.run_id
+    if not run_root.is_dir():
+        print(
+            f"events verify: run {args.run_id!r} not found in project {slug!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    events_path = run_root / "events.jsonl"
+    if not events_path.exists():
+        print("verified: 0 events, plan_hash=(no events)")
+        return 0
+
+    ok, line_idx, err_msg = verify_chain(events_path)
+
+    events = read_events(events_path)
+    n_events = len(events)
+
+    # Extract plan_hash from run_started event
+    plan_hash = "unknown"
+    for e in events:
+        if e.get("kind") == "run_started":
+            plan_hash = str(e.get("plan_hash", "unknown"))
+            break
+
+    if not ok:
+        if line_idx == -1:
+            print(f"broken: {err_msg}")
+        else:
+            print(f"broken at line {line_idx + 1}: {err_msg}")
+        return 1
+
+    # ── --strict: replay plan mutations through the validator ──────────
+    strict_failures = 0
+    if args.strict:
+        plan_path = proj_root / "plan.json"
+        if not plan_path.exists():
+            print("strict: plan.json not found; cannot validate mutations")
+        else:
+            try:
+                from astrid.core.task.plan_verbs import (
+                    PLAN_MUTATED_KIND,
+                    _apply_diff as plan_apply_diff,
+                )
+                from astrid.core.task.validator import (
+                    MutationInvariantError,
+                    validate_mutation,
+                )
+
+                plan = load_plan(plan_path)
+                current = plan
+                mutation_events = [
+                    e for e in events if e.get("kind") == PLAN_MUTATED_KIND
+                ]
+                for i, ev in enumerate(mutation_events):
+                    diff = ev.get("diff")
+                    if not isinstance(diff, dict):
+                        strict_failures += 1
+                        print(
+                            f"strict: mutation event {i + 1} missing diff field"
+                        )
+                        continue
+                    try:
+                        proposed = plan_apply_diff(current, diff)
+                        # lease_epoch is not recoverable from event log;
+                        # pass epoch=0,0 as a best-effort audit check
+                        # (I6 is skipped in audit mode)
+                        validate_mutation(
+                            prior=current,
+                            proposed=proposed,
+                            lease_epoch_actual=0,
+                            lease_epoch_expected=0,
+                        )
+                        current = proposed
+                    except (MutationInvariantError, Exception) as exc:
+                        strict_failures += 1
+                        print(
+                            f"strict: mutation event {i + 1} failed: {exc}"
+                        )
+
+                # Sprint 5b: reject skip events whose target step is not
+                # optional=True in the effective (post-mutation) plan tree.
+                # This is defence-in-depth on already-written event logs.
+                from astrid.core.task.plan import (
+                    iter_steps_with_path as _iter_steps,
+                )
+                effective_index = {
+                    path: step for path, step in _iter_steps(current)
+                }
+                for i, ev in enumerate(events):
+                    if ev.get("kind") not in {"step_skipped", "item_skipped"}:
+                        continue
+                    path_list = ev.get("plan_step_path")
+                    if not isinstance(path_list, list) or not path_list:
+                        strict_failures += 1
+                        print(
+                            f"strict: skip event {i + 1} missing plan_step_path"
+                        )
+                        continue
+                    target_path = tuple(str(p) for p in path_list)
+                    target = effective_index.get(target_path)
+                    if target is None:
+                        strict_failures += 1
+                        print(
+                            f"strict: skip event {i + 1} references unknown "
+                            f"step path {'/'.join(target_path)!r}"
+                        )
+                        continue
+                    # item_skipped is allowed even if the host is not optional
+                    # (per-item skip is independent of host optionality).
+                    if ev.get("kind") == "item_skipped":
+                        continue
+                    if not getattr(target, "optional", False):
+                        strict_failures += 1
+                        print(
+                            f"strict: skip event {i + 1} targets non-optional "
+                            f"step {'/'.join(target_path)!r}"
+                        )
+            except Exception as exc:
+                print(f"strict: error loading plan: {exc}", file=sys.stderr)
+
+    print(f"verified: {n_events} events, plan_hash={plan_hash}")
+    if args.strict:
+        if strict_failures == 0:
+            print("strict: all mutation events pass invariant checks")
+        else:
+            print(
+                f"strict: {strict_failures} mutation event(s) failed validation"
+            )
+            return 1
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# events tail (Sprint 5b T6)
+# ---------------------------------------------------------------------------
+
+
+def cmd_events_tail(
+    argv: Sequence[str],
+    *,
+    projects_root: Optional[Path] = None,
+) -> int:
+    """Print the last *N* events from a run's ``events.jsonl``.
+
+    ``-f`` polls the file every second for new lines (follow mode).
+    ``-n`` controls how many lines to show (default: 20).
+    """
+    parser = argparse.ArgumentParser(prog="astrid events tail", add_help=True)
+    parser.add_argument("--run", required=True, dest="run_id", help="run identifier")
+    parser.add_argument("--project", required=True, help="project slug")
+    parser.add_argument(
+        "-n",
+        type=int,
+        default=20,
+        help="number of lines to print (default: 20)",
+    )
+    parser.add_argument(
+        "-f",
+        dest="follow",
+        action="store_true",
+        help="follow the file, polling every second for new lines",
+    )
+    try:
+        args = parser.parse_args(list(argv))
+    except SystemExit as exc:
+        return int(exc.code or 2)
+
+    try:
+        slug = validate_project_slug(args.project)
+    except Exception as exc:
+        print(f"events tail: {exc}", file=sys.stderr)
+        return 1
+
+    proj_root = project_dir(slug, root=projects_root)
+    run_root = proj_root / "runs" / args.run_id
+    if not run_root.is_dir():
+        print(
+            f"events tail: run {args.run_id!r} not found in project {slug!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    events_path = run_root / "events.jsonl"
+    if not events_path.exists():
+        print("(no events)")
+        return 0
+
+    _print_tail(events_path, n=args.n)
+    if args.follow:
+        last_mtime = events_path.stat().st_mtime
+        try:
+            while True:
+                time.sleep(1)
+                try:
+                    cur_mtime = events_path.stat().st_mtime
+                except FileNotFoundError:
+                    break
+                if cur_mtime > last_mtime:
+                    last_mtime = cur_mtime
+                    _print_tail(events_path, n=args.n)
+        except KeyboardInterrupt:
+            pass  # quiet exit on SIGINT
+    return 0
+
+
+def _print_tail(events_path: Path, *, n: int) -> None:
+    """Print the last *n* events as one-line summaries."""
+    events = read_events(events_path)
+    tail = events[-n:] if len(events) > n else events
+    for ev in tail:
+        ts = str(ev.get("ts", ""))[:19]  # truncate fractional seconds
+        kind = ev.get("kind", "?")
+        plan_step_path = ev.get("plan_step_path")
+        step_id = ""
+        if isinstance(plan_step_path, list) and plan_step_path:
+            step_id = str(plan_step_path[-1])
+        elif isinstance(plan_step_path, str):
+            step_id = plan_step_path
+        rc = ev.get("returncode")
+        rc_str = f" rc={rc}" if rc is not None else ""
+        line = f"{ts}  {kind:24s}  {step_id}{rc_str}"
+        print(line)
+
+
+# ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
 
 def _run_status(events: list[dict[str, Any]]) -> str:
     """Derive run status from terminal events."""
@@ -489,6 +762,8 @@ def _cost_by_source(events: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 __all__ = [
+    "cmd_events_tail",
+    "cmd_events_verify",
     "cmd_run_artifacts",
     "cmd_run_cost",
     "cmd_run_show",

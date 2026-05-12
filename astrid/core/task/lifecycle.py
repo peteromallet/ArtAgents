@@ -500,6 +500,16 @@ def cmd_next(
 ) -> int:
     parser = argparse.ArgumentParser(prog="astrid next", add_help=True)
     parser.add_argument("--project", required=True, help="project slug")
+    parser.add_argument(
+        "--skip",
+        action="store_true",
+        help="skip the next step if it is optional=True (loops until a non-optional or exhausted)",
+    )
+    parser.add_argument(
+        "--reason",
+        default=None,
+        help="optional reason recorded with each --skip event",
+    )
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
@@ -549,6 +559,46 @@ def cmd_next(
     peek = peek_current_step(
         plan, events, slug, project_root=proj_root, run_id=run_id
     )
+
+    # --skip: emit step_skipped events for optional leaves until either the
+    # next leaf is non-optional or the cursor exhausts. The very first
+    # peek MUST be optional — refusing to start otherwise — but subsequent
+    # iterations naturally stop at the first non-optional leaf and fall
+    # through to print its dispatch.
+    if args.skip:
+        if peek.exhausted or peek.step is None:
+            _print_err(
+                f"next --skip: run is exhausted; recovery: astrid abort --project {slug}"
+            )
+            return 1
+        if not peek.step.optional:
+            _print_err(
+                f"next --skip: cursor step {STEP_PATH_SEP.join(peek.path_tuple)!r} "
+                f"is not optional; remove --skip to dispatch it"
+            )
+            return 1
+        from astrid.core.task.events import make_step_skipped_event
+        while (
+            not (peek.exhausted or peek.step is None)
+            and peek.step.optional
+        ):
+            skip_event = make_step_skipped_event(
+                STEP_PATH_SEP.join(peek.path_tuple),
+                actor_kind="agent",
+                actor_id="cli",
+                reason=args.reason,
+            )
+            append_event(events_path, skip_event)
+            print(f"skipped {STEP_PATH_SEP.join(peek.path_tuple)}")
+            events = read_events(events_path)
+            peek = peek_current_step(
+                plan, events, slug, project_root=proj_root, run_id=run_id
+            )
+        if peek.exhausted or peek.step is None:
+            if _run_is_complete(plan, events):
+                append_event(events_path, make_run_completed_event(run_id))
+            return 0
+        # Fall through into normal print of the now-non-optional step.
 
     if peek.exhausted or peek.step is None:
         if _run_is_complete(plan, events):
@@ -945,12 +995,14 @@ def _latest_event_for_step(
 
 
 from astrid.core.task.lifecycle_ack import cmd_ack  # noqa: E402
+from astrid.core.task.lifecycle_skip import cmd_skip  # noqa: E402
 
 __all__ = [
     "cmd_abort",
     "cmd_ack",
     "cmd_next",
     "cmd_runs_ls",
+    "cmd_skip",
     "cmd_start",
     "cmd_status",
     "cmd_step_retry_fetch",

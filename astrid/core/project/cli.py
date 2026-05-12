@@ -18,12 +18,20 @@ itself uses a separate code path (``astrid.core.worker.banodoco_worker``).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
 from typing import Any
+
+from astrid.core.session.binding import (
+    SessionBindingError,
+    resolve_current_session,
+)
 
 from . import paths
 from .project import ProjectError, create_project, require_project, show_project
@@ -117,6 +125,32 @@ def build_parser() -> argparse.ArgumentParser:
     set_theme = edit_subparsers.add_parser("set-theme", help="Set the active theme via timeline-ops.setTimelineTheme.")
     set_theme.add_argument("--theme-id", required=True)
     set_theme.set_defaults(handler=_cmd_edit, edit_op_name="set-theme")
+
+    # --- cost (Sprint 5b) ---
+    cost_parser = subparsers.add_parser("cost", help="Show cost rollup for a project.")
+    _add_project_arg(cost_parser)
+    cost_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit structured JSON instead of pretty-print.",
+    )
+    cost_parser.add_argument(
+        "--include-aborted",
+        action="store_true",
+        help="Include aborted runs in the cost rollup.",
+    )
+    cost_parser.set_defaults(handler=_cmd_project_cost)
+
+    # --- export (Sprint 5b) ---
+    export_parser = subparsers.add_parser("export", help="Export a project bundle.")
+    _add_project_arg(export_parser)
+    export_parser.add_argument("--out", required=True, help="Output tarball path (.tar.gz).")
+    export_parser.add_argument(
+        "--include-aborted",
+        action="store_true",
+        help="Include aborted runs in the export bundle.",
+    )
+    export_parser.set_defaults(handler=_cmd_project_export)
 
     return parser
 
@@ -308,6 +342,230 @@ def _run_ops_helper(
     if not isinstance(timeline_out, dict):
         raise ProjectError("ops_helper response missing .timeline object")
     return timeline_out
+
+
+# ---------------------------------------------------------------------------
+# Handler: project cost (Sprint 5b T8)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_project_cost(args: argparse.Namespace) -> int:
+    """Aggregate cost across all timelines in a project."""
+    _require_project_session(args.project)
+
+    from astrid.core.project.paths import project_dir
+    from astrid.core.task.events import read_events
+    from astrid.core.task.run_audit import _cost_by_source, _run_status
+    from astrid.core.timeline.crud import list_timelines
+
+    include_aborted = bool(getattr(args, "include_aborted", False))
+    json_out = bool(getattr(args, "json", False))
+
+    proj_root = project_dir(args.project)
+    runs_dir = proj_root / "runs"
+
+    timelines = list_timelines(args.project)
+    if not timelines:
+        if json_out:
+            _print_json({"project": args.project, "grand_total": 0.0, "by_source": {}, "timeline_count": 0})
+            return 0
+        print(f"Project cost for '{args.project}': no timelines found")
+        return 0
+
+    # Collect unique contributing runs across all timelines
+    seen_runs: set[str] = set()
+    run_ids: list[str] = []
+    for ts in timelines:
+        try:
+            from astrid.core.timeline.model import Manifest as TLManifest
+            mp = project_dir(args.project) / "timelines" / ts.ulid / "manifest.json"
+            if mp.is_file():
+                manifest = TLManifest.from_json(mp)
+                for rid in manifest.contributing_runs:
+                    if rid not in seen_runs:
+                        seen_runs.add(rid)
+                        run_ids.append(rid)
+        except Exception:
+            continue
+
+    # Aggregate costs across runs
+    by_source: dict[str, float] = {}
+    grand_total = 0.0
+    run_count = 0
+
+    for run_id in run_ids:
+        run_root = runs_dir / run_id
+        if not run_root.is_dir():
+            continue
+        events_path = run_root / "events.jsonl"
+        if not events_path.exists():
+            continue
+        events = read_events(events_path)
+
+        status = _run_status(events)
+        if status == "aborted" and not include_aborted:
+            continue
+
+        run_count += 1
+        cost_summary = _cost_by_source(events)
+        for source, info in cost_summary.items():
+            if isinstance(info, dict):
+                amt = info.get("amount", 0)
+                by_source[source] = by_source.get(source, 0.0) + float(amt)
+                grand_total += float(amt)
+
+    if json_out:
+        payload: dict[str, Any] = {
+            "project": args.project,
+            "timeline_count": len(timelines),
+            "contributing_runs": run_count,
+            "include_aborted": include_aborted,
+            "grand_total": round(grand_total, 6),
+            "by_source": {
+                source: round(amt, 6) for source, amt in sorted(by_source.items())
+            },
+        }
+        _print_json(payload)
+        return 0
+
+    print(f"Cost rollup for project '{args.project}' ({len(timelines)} timelines, {run_count} contributing runs):")
+    print()
+    if not by_source:
+        print("  (no cost data)")
+    else:
+        for source in sorted(by_source):
+            amt = by_source[source]
+            print(f"  {source:<20} ${amt:>10.4f}")
+    print(f"  {'─' * 32}")
+    print(f"  {'TOTAL':<20} ${grand_total:>10.4f}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Handler: project export (Sprint 5b T9)
+# ---------------------------------------------------------------------------
+
+
+def _cmd_project_export(args: argparse.Namespace) -> int:
+    """Export a project as a self-contained tarball bundle."""
+    _require_project_session(args.project)
+
+    from astrid.core.project.paths import project_dir
+    from astrid.core.task.events import read_events
+    from astrid.core.task.run_audit import _run_status
+    from astrid.core.timeline.crud import list_timelines
+
+    include_aborted = bool(getattr(args, "include_aborted", False))
+    out_path = Path(args.out).expanduser().resolve()
+    proj_root = project_dir(args.project)
+    runs_dir = proj_root / "runs"
+
+    timelines = list_timelines(args.project)
+
+    with tempfile.TemporaryDirectory() as tmpdir_str:
+        tmpdir = Path(tmpdir_str)
+        manifest_entries: list[tuple[str, str]] = []
+
+        def _add_file(src: Path, rel: str) -> None:
+            dst = tmpdir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+            manifest_entries.append((rel, sha))
+
+        # Collect unique contributing runs across all timelines
+        seen_runs: set[str] = set()
+        all_run_ids: list[str] = []
+        for ts in timelines:
+            # Copy timeline container files
+            tdir = proj_root / "timelines" / ts.ulid
+            for name in ("assembly.json", "manifest.json", "display.json"):
+                src = tdir / name
+                if src.is_file():
+                    _add_file(src, f"timelines/{ts.ulid}/{name}")
+
+            # Collect run IDs
+            try:
+                from astrid.core.timeline.model import Manifest as TLManifest
+                mp = tdir / "manifest.json"
+                if mp.is_file():
+                    manifest = TLManifest.from_json(mp)
+                    for rid in manifest.contributing_runs:
+                        if rid not in seen_runs:
+                            seen_runs.add(rid)
+                            all_run_ids.append(rid)
+            except Exception:
+                continue
+
+        # Copy project-level files
+        project_json = proj_root / "project.json"
+        if project_json.is_file():
+            _add_file(project_json, "project.json")
+
+        # Copy contributing runs
+        for run_id in all_run_ids:
+            run_root = runs_dir / run_id
+            if not run_root.is_dir():
+                continue
+
+            events_path = run_root / "events.jsonl"
+            if events_path.exists():
+                events = read_events(events_path)
+                status = _run_status(events)
+                if status == "aborted" and not include_aborted:
+                    continue
+
+            # Copy plan.json
+            plan_path = proj_root / "plan.json"
+            if plan_path.is_file():
+                _add_file(plan_path, f"runs/{run_id}/plan.json")
+
+            # Copy events.jsonl
+            if events_path.is_file():
+                _add_file(events_path, f"runs/{run_id}/events.jsonl")
+
+            # Copy produces/ tree
+            produces_root = run_root / "produces"
+            if produces_root.is_dir():
+                for src_file in produces_root.rglob("*"):
+                    if src_file.is_file():
+                        rel = str(Path("runs") / run_id / "produces" / src_file.relative_to(produces_root))
+                        _add_file(src_file, rel)
+
+            # Copy run.json if present
+            run_json = run_root / "run.json"
+            if run_json.is_file():
+                _add_file(run_json, f"runs/{run_id}/run.json")
+
+        # Write MANIFEST.txt
+        manifest_txt = tmpdir / "MANIFEST.txt"
+        lines = [f"{sha}  {rel}" for rel, sha in sorted(manifest_entries)]
+        manifest_txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        # Build tarball
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(out_path, "w:gz") as tar:
+            for member in sorted(tmpdir.iterdir()):
+                tar.add(member, arcname=member.name)
+
+    print(f"exported project '{args.project}' to {out_path}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+_SESSION_GATE_HINT = (
+    "A project command requires a bound session. "
+    "Run 'astrid attach <project>' first."
+)
+
+
+def _require_project_session(project_slug: str) -> None:
+    session = resolve_current_session()
+    if session is None:
+        raise SessionBindingError(_SESSION_GATE_HINT)
 
 
 def _print_project_header(slug: str) -> None:

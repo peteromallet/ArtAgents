@@ -251,7 +251,7 @@ def derive_cursor(plan: TaskPlan, events: Sequence[dict[str, Any]], *, slug: str
                 continue
             frames.append(_make_item_frame(host_step, top.path_prefix, item_id))
             pending.append(None)
-        elif kind in ("item_completed", "item_attested"):
+        elif kind in ("item_completed", "item_attested", "item_skipped"):
             host_path = _path_str_from_event(event)
             item_id = event.get("item_id")
             if not isinstance(item_id, str):
@@ -272,13 +272,16 @@ def derive_cursor(plan: TaskPlan, events: Sequence[dict[str, Any]], *, slug: str
                         if host_segments and candidate.id == host_segments[-1]:
                             frames[-1].child_index += 1
                             pending[-1] = None
-        elif kind in ("step_completed", "step_attested"):
+        elif kind in ("step_completed", "step_attested", "step_skipped"):
             top = frames[-1]
             if top.child_index >= len(top.plan.steps):
                 continue
             step = top.plan.steps[top.child_index]
             produces = getattr(step, "produces", ())
-            if not produces:
+            # Skipped steps bypass produces-check gating entirely — the
+            # cursor advances on the skip event without waiting for any
+            # produces_check_passed coverage.
+            if kind == "step_skipped" or not produces:
                 top.child_index += 1
                 pending[-1] = None
             else:

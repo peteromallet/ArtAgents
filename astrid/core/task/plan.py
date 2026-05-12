@@ -97,6 +97,10 @@ class Step:
     re_export: tuple[tuple[str, str], ...] | None = None
     # Poll interval for remote-artifact status checks (seconds). Leaf steps only.
     poll_interval_seconds: int = 30
+    # Sprint 5b: optional steps can be skipped via `astrid skip` / `astrid next --skip`
+    # without aborting the run. Allowed on both leaf and group steps, including
+    # those with `repeat`. Incompatible with `requires_ack=True`.
+    optional: bool = False
 
     @property
     def plan(self) -> "TaskPlan | None":
@@ -124,6 +128,12 @@ class Step:
         if self.version < 1:
             raise TaskPlanError(
                 f"step {self.id!r}: version must be >= 1 (got {self.version})"
+            )
+        # Sprint 5b: optional + requires_ack is a contradiction — an attested
+        # step that demands an ack cannot also be skip-without-event.
+        if self.optional and self.requires_ack:
+            raise TaskPlanError(
+                f"step {self.id!r}: optional=True is incompatible with requires_ack=True"
             )
 
 
@@ -312,6 +322,8 @@ def _step_to_dict(step: Step) -> dict[str, Any]:
         out["re_export"] = {name: ref for name, ref in step.re_export}
     if step.poll_interval_seconds != 30:
         out["poll_interval_seconds"] = step.poll_interval_seconds
+    if step.optional:
+        out["optional"] = True
     return out
 
 
@@ -362,11 +374,6 @@ def _read_plan_payload(plan_path: str | Path) -> Any:
         raise TaskPlanError(f"failed to read {path}: {exc}") from exc
 
 
-def _read_legacy_plan_payload(plan_path: str | Path) -> Any:
-    """Private accessor used by migrate_plans.py to load v1 plans bypassing validation."""
-    return _read_plan_payload(plan_path)
-
-
 def _validate_plan(payload: Any, *, _is_root: bool = True) -> TaskPlan:
     if not isinstance(payload, dict):
         raise TaskPlanError("plan must be an object")
@@ -376,7 +383,10 @@ def _validate_plan(payload: Any, *, _is_root: bool = True) -> TaskPlan:
     if not isinstance(plan_id, str) or not plan_id:
         raise TaskPlanError("plan plan_id must be a non-empty string")
     if version != 2 or isinstance(version, bool):
-        raise TaskPlanError("plan version must be 2")
+        raise TaskPlanError(
+            "plan version must be 2; if you have a legacy v1 plan, "
+            "run scripts/migrations/sprint-3/migrate_plans.py to migrate it"
+        )
     if not isinstance(steps, list):
         raise TaskPlanError("plan steps must be a list")
 
@@ -509,6 +519,14 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
     if not isinstance(poll_interval_seconds, int) or isinstance(poll_interval_seconds, bool) or poll_interval_seconds < 1:
         raise TaskPlanError(f"plan steps[{index}].poll_interval_seconds must be an int >= 1")
 
+    optional = step.get("optional", False)
+    if not isinstance(optional, bool):
+        raise TaskPlanError(f"plan steps[{index}].optional must be a bool")
+    if optional and requires_ack:
+        raise TaskPlanError(
+            f"plan steps[{index}]: optional=True is incompatible with requires_ack=True"
+        )
+
     new_step = Step(
         id=step_id,
         adapter=adapter,
@@ -525,6 +543,7 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
         ack=ack,
         re_export=re_export,
         poll_interval_seconds=poll_interval_seconds,
+        optional=optional,
     )
 
     # Post-construction adapter/command-shape checks. _reject_orchestrators_run
