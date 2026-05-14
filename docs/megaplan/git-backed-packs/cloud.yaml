@@ -1,0 +1,45 @@
+# Megaplan Cloud runner for the Git-backed packs chain.
+#
+# This spec is intentionally idle at boot. Launch the chain with
+# `megaplan cloud chain ...` so cloud stages the local chain.yaml and idea files
+# into the remote workspace before starting the persistent tmux run.
+
+provider: railway
+
+repo:
+  url: https://github.com/peteromallet/Astrid.git
+  branch: megaplan/git-backed-packs-chain-setup
+  workspace: /workspace/astrid
+
+agents:
+  default: codex
+
+codex:
+  model: gpt-5.4
+  reasoning: medium
+
+mode: idle
+
+megaplan:
+  ref: main
+
+resources:
+  volume: astrid-git-backed-packs-megaplan
+  port: 8080
+
+railway:
+  service: astrid-git-backed-packs
+  session: astrid-git-backed-packs
+
+toolchains:
+  - name: astrid-video-tools
+    install: |
+      RUN apt-get update \
+        && apt-get install -y --no-install-recommends ffmpeg \
+        && rm -rf /var/lib/apt/lists/*
+
+secrets:
+  - GITHUB_TOKEN
+  - ANTHROPIC_API_KEY
+  - DEEPSEEK_API_KEY
+  - OPENAI_API_KEY
