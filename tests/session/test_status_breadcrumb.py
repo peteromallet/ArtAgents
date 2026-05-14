@@ -68,13 +68,51 @@ def test_unbound_no_identity_triggers_bootstrap_then_lists_projects(
     assert "astrid attach beta" in out
 
 
+def test_unbound_status_start_uses_single_concrete_project(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_project("demo")
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    buf = StringIO()
+    rc = cli.cmd_status(argparse.Namespace(), out=buf)
+    assert rc == 0
+    out = buf.getvalue()
+    assert "start:\n  astrid attach demo" in out
+    assert "after attach:" in out
+    assert "astrid skills list" in out
+    assert "astrid orchestrators list" in out
+    assert "astrid executors list" in out
+    assert "astrid elements list" in out
+
+
 def test_unbound_no_projects_under_root_prints_no_projects(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
     buf = StringIO()
     cli.cmd_status(argparse.Namespace(), out=buf)
-    assert cli.NO_PROJECTS_FOUND in buf.getvalue()
+    out = buf.getvalue()
+    assert cli.NO_PROJECTS_FOUND in out
+    assert "astrid projects create <slug>" in out
+
+
+def test_unbound_status_warns_when_default_project_is_not_discoverable(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from astrid.core.session import config
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    config.set_default_project("missing")
+    create_project("demo")
+    buf = StringIO()
+    cli.cmd_status(argparse.Namespace(), out=buf)
+    out = buf.getvalue()
+    assert "configured default project: missing (not found under current projects root)" in out
+    assert "astrid attach              # attach default project" not in out
+    assert "astrid attach demo" in out
 
 
 def test_bound_writer_breadcrumb_template(
@@ -115,8 +153,30 @@ def test_bound_writer_breadcrumb_template(
     assert "step_dispatched" in out
     assert "inbox: 1" in out
     assert "role: writer" in out
+    assert "task:" in out
+    assert "astrid next --project demo" in out
+    assert "discover:" in out
+    assert "astrid skills list" in out
+    assert "astrid orchestrators list" in out
+    assert "astrid executors list" in out
+    assert "astrid elements list" in out
     # No takeover hint for the writer.
     assert "astrid sessions takeover" not in out
+
+
+def test_bound_status_without_run_includes_start_hint(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_project("demo")
+    sess = _mint_session(env["home"], "S-NO-RUN", project="demo", run_id=None)
+    monkeypatch.setenv(ASTRID_SESSION_ID_ENV, sess.id)
+    buf = StringIO()
+    rc = cli.cmd_status(argparse.Namespace(), out=buf)
+    assert rc == 0
+    out = buf.getvalue()
+    assert "run: (none)" in out
+    assert "task:" in out
+    assert "astrid start <orchestrator-id> --project demo" in out
 
 
 def test_bound_reader_breadcrumb_includes_takeover_hint(

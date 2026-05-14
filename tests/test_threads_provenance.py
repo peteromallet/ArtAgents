@@ -147,7 +147,7 @@ def test_provenance_excludes_def_trimmed_fields(tmp_path: Path, monkeypatch: pyt
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     thread_id = generate_thread_id()
     # The tests overwrite this id when needed; keeping one thread here ensures
     # helper code always has a valid index to read.

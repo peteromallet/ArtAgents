@@ -36,8 +36,8 @@ class _Tmp:
         self._patches = [
             mock.patch.dict("os.environ", {
                 "HOME": str(self.home),
-                "ARTAGENTS_STATE_HOME": str(self.tmp / "_state"),
-                "ARTAGENTS_NO_NUDGE": "",
+                "ASTRID_STATE_HOME": str(self.tmp / "_state"),
+                "ASTRID_NO_NUDGE": "",
             }, clear=False),
             mock.patch.object(Path, "home", return_value=self.home),
         ]
@@ -340,7 +340,7 @@ class NudgeTest(unittest.TestCase):
     def test_nudge_suppressed_by_env(self) -> None:
         fx = _Tmp()
         try:
-            with mock.patch.dict("os.environ", {"ARTAGENTS_NO_NUDGE": "1"}):
+            with mock.patch.dict("os.environ", {"ASTRID_NO_NUDGE": "1"}):
                 stream = io.StringIO()
                 fired = skills.nudge_if_needed(argv=["doctor"], stream=stream)
                 self.assertFalse(fired)

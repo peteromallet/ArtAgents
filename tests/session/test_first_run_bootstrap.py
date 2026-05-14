@@ -1,4 +1,4 @@
-"""First-run bootstrap path: ``astrid status`` with no identity triggers prompt."""
+"""First-run status remains discoverable even when identity is absent."""
 
 from __future__ import annotations
 
@@ -21,23 +21,23 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     return {"home": tmp_path / "home", "projects": tmp_path / "projects"}
 
 
-def test_status_fires_bootstrap_when_identity_absent(
+def test_status_does_not_bootstrap_when_identity_absent(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # No identity file exists.
     assert read_identity() is None
-    replies = iter(["claude-1"])
-    monkeypatch.setattr("builtins.input", lambda _prompt: next(replies))
+
+    def _trap(_prompt: str) -> str:  # pragma: no cover - asserted by exception
+        raise AssertionError("status should not prompt for identity")
+
+    monkeypatch.setattr("builtins.input", _trap)
     buf = StringIO()
     rc = cli.cmd_status(argparse.Namespace(), out=buf)
     assert rc == 0
-    # Bootstrap header was printed BEFORE the unbound listing.
     output = buf.getvalue()
-    assert cli.FIRST_RUN_PROMPT_HEADER in output
-    # Identity file written.
-    on_disk = read_identity()
-    assert on_disk is not None
-    assert on_disk.agent_id == "claude-1"
+    assert cli.FIRST_RUN_PROMPT_HEADER not in output
+    assert cli.STATUS_UNBOUND_HEADER in output
+    assert read_identity() is None
 
 
 def test_status_does_not_bootstrap_when_identity_present(

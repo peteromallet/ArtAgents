@@ -13,7 +13,7 @@ from astrid.threads.record import build_run_record, write_run_record
 def test_lazy_reaper_marks_abandoned_running_run_orphaned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     out = repo / "runs" / "stale"
     record = build_run_record(
         run_id=generate_run_id(),

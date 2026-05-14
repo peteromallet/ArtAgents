@@ -568,7 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "candidates": results,
     }
     write_json(layout["root"] / "logo-manifest.json", manifest)
-    run_id = os.environ.get("ARTAGENTS_RUN_ID", "").strip()
+    run_id = os.environ.get("ASTRID_RUN_ID", "").strip()
     if grid_mode:
         artifacts = _variant_artifacts_for_grid(grid_generated, results, run_id=run_id)
     else:

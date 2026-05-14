@@ -90,7 +90,7 @@ gate rather than create a parallel ingestion path.
 
 What shipped: `astrid author test --pack <p> --orchestrator <o> --fixture
 <f>`; runs a compiled plan in a scratch dir with auto-approval gated on
-`ARTAGENTS_AUTHOR_TEST=1`, normalizes `events.jsonl`, diffs against committed
+`ASTRID_AUTHOR_TEST=1`, normalizes `events.jsonl`, diffs against committed
 golden, `--regenerate` to rewrite. Adjacent `_ack_approve` shlex-split bug also
 fixed. 4 new test files (one removed), 725 passing.
 

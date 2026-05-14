@@ -300,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--root",
         default=None,
-        help="Override ARTAGENTS_PROJECTS_ROOT (default: ~/Documents/reigh-workspace/astrid-projects)",
+        help="Override ASTRID_PROJECTS_ROOT (default: ~/Documents/reigh-workspace/astrid-projects)",
     )
     parser.add_argument(
         "--apply",

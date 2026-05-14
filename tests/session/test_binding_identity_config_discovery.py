@@ -172,6 +172,18 @@ def test_bootstrap_identity_gives_up_after_three_invalid(
         identity.bootstrap_identity(prompt=fake_prompt)
 
 
+def test_bootstrap_identity_noninteractive_eof_is_clear(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(paths.ASTRID_HOME_ENV, str(tmp_path))
+
+    def eof_prompt(_prompt: str) -> str:
+        raise EOFError
+
+    with pytest.raises(IdentityError, match="stdin is not interactive"):
+        identity.bootstrap_identity(prompt=eof_prompt)
+
+
 # ----- config ------------------------------------------------------------
 
 
@@ -199,6 +211,18 @@ def test_workspace_config_overrides_user(
         json.dumps({"default_project": "workspace-pick"}), encoding="utf-8"
     )
     assert config.resolve_default_project(tmp_path / "ws") == "workspace-pick"
+
+
+def test_set_default_project_writes_workspace_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(paths.ASTRID_HOME_ENV, str(tmp_path / "home"))
+    ws = tmp_path / "ws"
+    path = config.set_default_project("demo", cwd=ws)
+    assert path == ws / ".astrid" / "config.json"
+    assert config.resolve_default_project(ws) == "demo"
+    config.set_default_project(None, cwd=ws)
+    assert config.resolve_default_project(ws) is None
 
 
 def test_config_rejects_non_object(

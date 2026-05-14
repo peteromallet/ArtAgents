@@ -40,7 +40,7 @@ Sprint 1 split the legacy single `active_run.json` into a pair: `current_run.jso
 
 `code` is deterministic argv subprocess execution. It is a strict superset of `RUNTIME_KINDS={python,command}` in `astrid/core/orchestrator/schema.py`, may call `python3 -m astrid executors run <name> ...`, and must not call `astrid orchestrators run`.
 
-`attested` is agent or human work with instructions, produces, identity-pinned ack, and evidence. Agent attestations require `--agent <id>`. Human attestations require `--actor <name>` matching `ARTAGENTS_ACTOR`. Self-acks and unpinned actors are rejected.
+`attested` is agent or human work with instructions, produces, identity-pinned ack, and evidence. Agent attestations require `--agent <id>`. Human attestations require `--actor <name>` matching `ASTRID_ACTOR`. Self-acks and unpinned actors are rejected.
 
 `nested` is the only sub-orchestrator delegation mechanism. The child plan is data in the compiled tree so the gate can hash, pin, and derive cursors from its structure.
 
@@ -80,12 +80,12 @@ V1 nudge is out-of-process and Claude Code only. A Stop hook runs `astrid next`;
 
 ## 12. Phasing
 
-Phase 1 - Kernel + `ARTAGENTS_TASK_RUN_ID` env contract
+Phase 1 - Kernel + `ASTRID_TASK_RUN_ID` env contract
 
 - Scope: hash-chained `events.jsonl`, plan hash pin, active run pointer, gate above dispatch, and env contract.
 - Files touched: `astrid/core/task/{gate.py,events.py,active_run.py,env.py}`, `astrid/pipeline.py:15`, `astrid/core/orchestrator/runner.py:132`, `astrid/core/orchestrator/runner.py:135`, `astrid/core/orchestrator/runner.py:136`, `astrid/core/executor/runner.py`, `astrid/packs/builtin/hype/run.py`, `astrid/core/project/run.py`, `astrid/threads/wrapper.py:21-26`.
 - Classification: additive.
-- Exit criteria: hand-authored `plan.json` runs end-to-end; rejected command writes zero project-run files; all three `prepare_project_run()` callers honor `ARTAGENTS_TASK_RUN_ID`; `tests/test_project_runs.py` still passes for standalone runs.
+- Exit criteria: hand-authored `plan.json` runs end-to-end; rejected command writes zero project-run files; all three `prepare_project_run()` callers honor `ASTRID_TASK_RUN_ID`; `tests/test_project_runs.py` still passes for standalone runs.
 - Test strategy: hash/gate unit tests, `pytest tests/test_project_runs.py`, and one golden code-step event run.
 
 Phase 2 - Three step kinds
@@ -107,7 +107,7 @@ Phase 3 - Produces + repeat
 Phase 4 - Authoring + structure guardrails
 
 - Scope: DSL, verify helpers, `author new/check/describe`, and static guardrails.
-- Files touched: `astrid/orchestrate/`, `astrid/verify/`, `astrid/pipeline.py:15`, `astrid/structure.py:27` (`TOP_LEVEL_ARTAGENTS_DIRS += orchestrate, verify`), `tests/test_doctor_setup.py`, root `.gitignore` excluding `<pack>/build/`.
+- Files touched: `astrid/orchestrate/`, `astrid/verify/`, `astrid/pipeline.py:15`, `astrid/structure.py:27` (`TOP_LEVEL_ASTRID_DIRS += orchestrate, verify`), `tests/test_doctor_setup.py`, root `.gitignore` excluding `<pack>/build/`.
 - Classification: additive.
 - Exit criteria: `python3 -m astrid doctor` accepts new packages; `author check` rejects code argv to orchestrators; build JSON is gitignored.
 - Test strategy: `pytest tests/test_doctor_setup.py`, author-check tests, describe snapshots.
@@ -168,7 +168,7 @@ hype = plan("builtin.hype", [
 ])
 ```
 
-Sub-orchestrator delegation appears only as `nested`. Child `prepare_project_run()` calls inherit `ARTAGENTS_TASK_RUN_ID`, skip child `run.json`, and mirror produces under parent `runs/<task-run-id>/steps/<step-id>/produces/`; standalone behavior stays unchanged.
+Sub-orchestrator delegation appears only as `nested`. Child `prepare_project_run()` calls inherit `ASTRID_TASK_RUN_ID`, skip child `run.json`, and mirror produces under parent `runs/<task-run-id>/steps/<step-id>/produces/`; standalone behavior stays unchanged.
 
 ## 14. Documentation Deliverables
 
@@ -203,7 +203,7 @@ Phase 3 ships a useful frozen-plan runner: gate, three step kinds, produces chec
 - A6 Confirmed: `code` is deterministic argv subprocess execution, may target `astrid executors run <name>`, and must not target `astrid orchestrators run`.
 - A7 Confirmed: the gate runs before both `_prepare_project_request()` and `thread_wrapper.begin_orchestrator_run()`, with zero project-run side effects on rejection.
 - A8 Confirmed: root `.gitignore` excludes pack-local `<pack>/build/` outputs.
-- A9 Confirmed: `ARTAGENTS_TASK_RUN_ID` is the inheritance env surface across orchestrator, executor, hype, project-run, and thread-wrapper code paths.
+- A9 Confirmed: `ASTRID_TASK_RUN_ID` is the inheritance env surface across orchestrator, executor, hype, project-run, and thread-wrapper code paths.
 - A10 Confirmed: task mode skips child `run.json` records but preserves child output dirs and hype artifact mirroring under parent step produces.
 - A11 Confirmed: `astrid/orchestrate/` and `astrid/verify/` are new top-level packages accepted by structure checks.
 
@@ -239,13 +239,13 @@ SD-014 lifecycle dispatch: Task-mode lifecycle verbs extend `astrid/pipeline.py:
 
 SD-015 task kernel namespace: New kernel modules live in `astrid/core/task/` to isolate gate, events, active-run, and env logic from legacy runners.
 
-SD-016 structure guardrails: `TOP_LEVEL_ARTAGENTS_DIRS` adds `orchestrate` and `verify`, with `tests/test_doctor_setup.py` updated so doctor accepts the new packages.
+SD-016 structure guardrails: `TOP_LEVEL_ASTRID_DIRS` adds `orchestrate` and `verify`, with `tests/test_doctor_setup.py` updated so doctor accepts the new packages.
 
-SD-017 task run env: `ARTAGENTS_TASK_RUN_ID` is the integration surface for orchestrator, executor, and hype child calls to attach to the parent task run.
+SD-017 task run env: `ASTRID_TASK_RUN_ID` is the integration surface for orchestrator, executor, and hype child calls to attach to the parent task run.
 
 SD-018 child output preservation: Task mode preserves child output dirs and mirrors hype artifacts under `runs/<task-run-id>/steps/<step-id>/produces/` while standalone behavior stays unchanged so `tests/test_project_runs.py` keeps passing.
 
-SD-019 attestor identity: Agent attestations require `--agent`, human attestations require `--actor` matching `ARTAGENTS_ACTOR`, and self-acks are rejected.
+SD-019 attestor identity: Agent attestations require `--agent`, human attestations require `--actor` matching `ASTRID_ACTOR`, and self-acks are rejected.
 
 SD-020 ack rules: `approve` advances, `retry` is only valid after verifier failure, `iterate --feedback` is only valid for `repeat.until=user_approves`, and `abort` ends the run.
 
@@ -273,7 +273,7 @@ Kernel modules under `astrid/core/task/`: `events.py`, `active_run.py`, `plan.py
 
 Gate is decorated above dispatch at four entry points: `astrid/pipeline.py` (top-level `main`, fresh dispatch), and defensive reentry checks in `astrid/core/orchestrator/runner.py:run_orchestrator`, `astrid/core/executor/runner.py:run_executor`, and `astrid/packs/builtin/hype/run.py:main` — each placed strictly before `_prepare_project_request()` / `thread_wrapper.begin_orchestrator_run()` so a rejected command writes zero project-run files (SD-012).
 
-Three `prepare_project_run` callers (orchestrator runner, executor runner, hype direct entry) honor the env contract via the centralized branch inside `prepare_project_run` keyed on `is_in_task_run(slug)`; `ARTAGENTS_TASK_RUN_ID` / `ARTAGENTS_TASK_PROJECT` / `ARTAGENTS_TASK_STEP_ID` redirect run output under `<projects_root>/<slug>/runs/<task-run-id>/steps/<step-id>/` and suppress child `run.json` / cumulative `runs.json` writes; hype artifacts mirror under `<step_dir>/produces/` (SD-018). `ARTAGENTS_TASK_STEP_ID` is a Phase 1-introduced sibling env var the design doc names alongside `ARTAGENTS_TASK_RUN_ID`. `command_for_argv(argv)` produces the canonical command-string form that authored `plan.json` step commands must match exactly, including the `--project <slug>` token.
+Three `prepare_project_run` callers (orchestrator runner, executor runner, hype direct entry) honor the env contract via the centralized branch inside `prepare_project_run` keyed on `is_in_task_run(slug)`; `ASTRID_TASK_RUN_ID` / `ASTRID_TASK_PROJECT` / `ASTRID_TASK_STEP_ID` redirect run output under `<projects_root>/<slug>/runs/<task-run-id>/steps/<step-id>/` and suppress child `run.json` / cumulative `runs.json` writes; hype artifacts mirror under `<step_dir>/produces/` (SD-018). `ASTRID_TASK_STEP_ID` is a Phase 1-introduced sibling env var the design doc names alongside `ASTRID_TASK_RUN_ID`. `command_for_argv(argv)` produces the canonical command-string form that authored `plan.json` step commands must match exactly, including the `--project <slug>` token.
 
 Recovery strings are emitted verbatim per SD-011 (`astrid abort --project <slug>` for active-run / plan-hash / chain / exhausted; `astrid next --project <slug>` for off-cursor), even though those verbs ship in Phase 5.
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import secrets
 import sys
 from datetime import UTC, datetime
@@ -18,6 +19,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from astrid.core.project.jsonio import write_json_atomic
+from astrid.core.project.project import ProjectError, require_project
 from astrid.core.project.paths import (
     project_dir,
     resolve_projects_root,
@@ -121,6 +123,10 @@ def _print_err(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
+def _system_exit_code(exc: SystemExit) -> int:
+    return int(exc.code) if isinstance(exc.code, int) else 2
+
+
 def _resolve_packs_root(packs_root: Optional[Path]) -> Path:
     if packs_root is not None:
         return Path(packs_root)
@@ -165,59 +171,21 @@ def cmd_start(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     try:
         slug = validate_project_slug(args.project)
     except Exception as exc:
         _print_err(f"start: {exc}")
         return 1
-
-    # Resolve timeline ULID (timeline_id) and slug for display.
-    timeline_id: str | None = None
-    timeline_slug: str | None = None
-    if args.timeline is not None:
-        found = find_timeline_by_slug(slug, args.timeline, root=projects_root)
-        if found is None:
-            _print_err(
-                f"start: timeline {args.timeline!r} not found in project {slug!r}"
-            )
-            return 1
-        timeline_id = found[0]
-        timeline_slug = args.timeline
-    else:
-        default_ulid = read_project_default(slug, root=projects_root)
-        if default_ulid is not None:
-            resolved_slug = find_timeline_slug_for_ulid(slug, default_ulid, root=projects_root)
-            if resolved_slug is not None:
-                timeline_id = default_ulid
-                timeline_slug = resolved_slug
-                _print_err(
-                    f"Using default timeline: {timeline_slug}. "
-                    f"Use --timeline to override."
-                )
-    # If still no timeline, list available timelines and error — but allow the
-    # bootstrap case (project.json absent) to proceed unbound, mirroring
-    # ``astrid attach``'s zero-timeline handling. This keeps legacy callers
-    # that pre-date Sprint 2's container model working until the project is
-    # explicitly initialized.
-    if timeline_id is None:
-        from astrid.core.timeline.crud import list_timelines
-        from astrid.core.project.paths import project_json_path
-        available = list_timelines(slug, root=projects_root)
-        if available:
-            _print_err("No default timeline; pass --timeline <slug>. Available:")
-            for ts in available:
-                _print_err(f"  {ts.slug}  ({ts.name})")
-            return 1
-        if project_json_path(slug, root=projects_root).exists():
-            _print_err(
-                f"start: no timelines exist for project {slug!r}; "
-                f"create one with `astrid timelines create <slug>`"
-            )
-            return 1
-        # Bootstrap: project.json doesn't exist yet — proceed without a timeline
-        # binding. The run record will carry timeline_id=None.
+    try:
+        require_project(slug, root=projects_root)
+    except ProjectError:
+        _print_err(
+            f"start: project {slug!r} not found; "
+            f"create one with `astrid projects create {slug}`"
+        )
+        return 1
 
     try:
         pack, name = _qualified_split(args.orchestrator_id)
@@ -246,6 +214,45 @@ def cmd_start(
     except (OSError, json.JSONDecodeError) as exc:
         _print_err(f"start: failed to read {build_path}: {exc}")
         return 1
+
+    # Resolve timeline ULID (timeline_id) and slug for display.
+    timeline_id: str | None = None
+    timeline_slug: str | None = None
+    if args.timeline is not None:
+        found = find_timeline_by_slug(slug, args.timeline, root=projects_root)
+        if found is None:
+            _print_err(
+                f"start: timeline {args.timeline!r} not found in project {slug!r}"
+            )
+            return 1
+        timeline_id = found[0]
+        timeline_slug = args.timeline
+    else:
+        default_ulid = read_project_default(slug, root=projects_root)
+        if default_ulid is not None:
+            resolved_slug = find_timeline_slug_for_ulid(slug, default_ulid, root=projects_root)
+            if resolved_slug is not None:
+                timeline_id = default_ulid
+                timeline_slug = resolved_slug
+                _print_err(
+                    f"Using default timeline: {timeline_slug}. "
+                    f"Use --timeline to override."
+                )
+    # If still no timeline, list available timelines and error when a choice is
+    # needed; a project with zero timelines can still start a task run.
+    if timeline_id is None:
+        from astrid.core.timeline.crud import list_timelines
+        available = list_timelines(slug, root=projects_root)
+        if available:
+            _print_err("No default timeline; pass --timeline <slug>. Available:")
+            for ts in available:
+                _print_err(f"  {ts.slug}  ({ts.name})")
+            return 1
+        _print_err(
+            f"start: no timelines exist for project {slug!r}; "
+            "starting without a timeline. "
+            f"Create one later with `astrid timelines create <slug>`."
+        )
 
     proj_root = project_dir(slug, root=projects_root)
     proj_root.mkdir(parents=True, exist_ok=True)
@@ -334,7 +341,7 @@ def cmd_abort(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     try:
         slug = validate_project_slug(args.project)
@@ -377,7 +384,7 @@ def cmd_status(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     try:
         slug = validate_project_slug(args.project)
@@ -473,6 +480,16 @@ def _find_step_by_path(plan, path_tuple):
     return next((s for s in steps if s.id == path_tuple[-1]), None)
 
 
+def _command_has_project_arg(command: str | None) -> bool:
+    if not command:
+        return False
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return False
+    return any(part == "--project" or part.startswith("--project=") for part in parts)
+
+
 def _completed_items_from_events(events, host_path):
     """Return the set of item ids that have a completed/attested event under
     ``host_path``. ``host_path`` is the STEP_PATH_SEP-joined string form.
@@ -513,7 +530,7 @@ def cmd_next(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     try:
         slug = validate_project_slug(args.project)
@@ -614,6 +631,13 @@ def cmd_next(
 
     if is_code_kind(peek.step):
         print(f"run: {peek.step.command}")
+        if not _command_has_project_arg(peek.step.command):
+            print(
+                "warning: this code-step command has no --project argument, so running it "
+                "directly will not re-enter the Astrid task gate or advance the run. "
+                "Fix the authored plan so the step runs through `python3 -m astrid ... --project "
+                f"{slug}`."
+            )
         print(
             "(rerun the same command if it failed; the gate detects re-entry "
             "and skips a duplicate step_dispatched event.)"
@@ -768,7 +792,7 @@ def cmd_runs_ls(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     if args.project is not None:
         try:
@@ -821,7 +845,7 @@ def cmd_step_retry_fetch(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     if args.project is not None:
         try:

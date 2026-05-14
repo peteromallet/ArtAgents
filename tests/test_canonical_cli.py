@@ -189,6 +189,13 @@ class CapabilityDiscoveryTest(unittest.TestCase):
         ids = [hit["id"] for hit in payload["hits"]]
         self.assertIn("builtin.transcribe", ids)
 
+    def test_executor_run_inputs_normalize_dashes_and_combine_repeats(self) -> None:
+        parsed = executors_cli._parse_input_values(
+            ["match-mode=any", "match=photo", "match=realism"]
+        )
+        self.assertEqual(parsed["match_mode"], "any")
+        self.assertEqual(parsed["match"], "photo,realism")
+
     def test_orchestrators_search_finds_foley_pipeline(self) -> None:
         result, stdout, stderr = self.capture(
             orchestrators_cli.main, ["search", "foley", "spatial"]

@@ -167,7 +167,7 @@ def _writer_executor(executor_id: str) -> ExecutorDefinition:
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
-    for name in ("ARTAGENTS_THREADS_OFF", "ARTAGENTS_THREAD_INHERITED", "ARTAGENTS_THREAD_ID", "ARTAGENTS_RUN_ID", "ARTAGENTS_PARENT_RUN_ID"):
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
+    for name in ("ASTRID_THREADS_OFF", "ASTRID_THREAD_INHERITED", "ASTRID_THREAD_ID", "ASTRID_RUN_ID", "ASTRID_PARENT_RUN_ID"):
         monkeypatch.delenv(name, raising=False)
     return repo

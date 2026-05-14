@@ -24,11 +24,12 @@ config:
           caption_ext: caption.json
           caption_dropout_rate: 0.0
           shuffle_tokens: false
-          cache_latents_to_disk: false
+          cache_latents_to_disk: true
           resolution:
             - 512
+            - 768
           bucketing: true
-          num_frames: 97
+          num_frames: 121
           fps: 24
       train:
         batch_size: 1
@@ -53,7 +54,7 @@ config:
         sample_every: 250
         width: 512
         height: 768
-        num_frames: 97
+        num_frames: 121
         fps: 24
         seed: "{{seed}}"
         walk_seed: true

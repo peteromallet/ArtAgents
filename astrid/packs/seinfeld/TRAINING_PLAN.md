@@ -171,6 +171,42 @@ Stitch in editor or with Jonathan's multi-shot workflow.
 - Lower priority — only train if multi-shot generation needs
   scene-level transitions vs same-moment angle changes
 
+### Ostris tutorial findings (LTX-2.3 character LoRA, YouTube `JQIl8DFTL1M`)
+
+Ostris's own end-to-end recipe for an LTX-2.3 character LoRA in AI Toolkit
+(the same workflow behind his George Costanza LoRA). Cross-checked against
+our hivemind defaults; deltas folded into `aitoolkit_stage/run.py`:
+
+- **`cache_latents_to_disk: true` — non-negotiable for video LoRAs.** Ostris:
+  "+9 seconds extra to the training step" without it. Applied.
+- **Multi-bucket resolution `[512, 768]` from the start**, add `1024` for a
+  later/overnight pass. Applied (was `[512]`).
+- **121 frames @ 24fps** (`frames = sec*24 + 1`), matching our 5s clip length.
+  Was 97. Applied.
+- **Timestep schedule: high-noise first, switch to balanced near the end** —
+  "don't go to low-noise, it'll break down your high-noise." Our template
+  uses `noise_scheduler: flowmatch` with no explicit timestep weighting;
+  TODO: verify whether ai-toolkit's LTX2 backend exposes a `timestep_type`
+  / high-noise toggle and wire it in.
+- **Steps**: he sampled to 5000, said 3000 already looked good. Our default
+  is 2000 — fine for smoke, but plan to bump to 3000 for full runs and
+  validate at 1500/2000/3000.
+- **Quantization**: `float8` (our template has `quantize: true` — verify the
+  active dtype on a real run).
+- **Burn-in vs describe** (caption principle): omitted things get burned
+  into the LoRA; described things stay free. He omits clothing/scene to
+  burn them in. **We deliberately do the opposite** — describing scene
+  and outfit keeps `jerrys_apt`/`monks_diner` as inference-time switches.
+  See `CAPTIONING.md`.
+- **Inference**: train on base LTX 2.3, generate with **distilled (turbo)**.
+  Captions also influence: don't normalize "gonna" → "going to", caption
+  verbatim so disfluencies can be prompted out later.
+
+Transcript reference: video ID `JQIl8DFTL1M` ("How to Train a LTX-2.3
+Character LoRA with AI Toolkit"). Auto-captions can be re-pulled with
+`PYENV_VERSION=3.11.11 yt-dlp --write-auto-sub --sub-lang en --skip-download
+--convert-subs srt -o ostris.%(ext)s "https://www.youtube.com/watch?v=JQIl8DFTL1M"`.
+
 ### Reference-side augmentation (Kijai: "the main win")
 
 Per Kijai (2026-05-06 daily summary): *"dataset augmentation on the

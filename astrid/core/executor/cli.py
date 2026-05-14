@@ -401,10 +401,13 @@ def _parse_input_values(raw_values: list[str]) -> dict[str, str]:
         if "=" not in raw:
             raise ValueError(f"invalid --input value {raw!r}; expected NAME=VALUE")
         key, value = raw.split("=", 1)
-        key = key.strip()
+        key = key.strip().replace("-", "_")
         if not key:
             raise ValueError(f"invalid --input value {raw!r}; expected NAME=VALUE")
-        values[key] = value
+        if key in values:
+            values[key] = f"{values[key]},{value}"
+        else:
+            values[key] = value
     return values
 
 
@@ -438,7 +441,7 @@ def _print_active_thread_footer() -> None:
         from astrid._paths import REPO_ROOT
         from astrid.threads.index import ThreadIndexStore
 
-        index = ThreadIndexStore(Path(os.environ.get("ARTAGENTS_REPO_ROOT", REPO_ROOT))).read()
+        index = ThreadIndexStore(Path(os.environ.get("ASTRID_REPO_ROOT", REPO_ROOT))).read()
     except Exception:
         print("active_thread: unavailable")
         print("thread_details: python3 -m astrid thread show @active")

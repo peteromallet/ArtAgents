@@ -17,7 +17,7 @@ from .schema import (
 )
 
 
-_RESULT_PREFIX = "__ARTAGENTS_EXECUTOR_METADATA__="
+_RESULT_PREFIX = "__ASTRID_EXECUTOR_METADATA__="
 
 
 class FolderExecutorError(ExecutorValidationError):
@@ -182,7 +182,7 @@ import traceback
 from astrid.core.executor.api import ExecutorSpec
 from astrid.core.executor.schema import ExecutorDefinition, validate_executor_definition
 
-PREFIX = "__ARTAGENTS_EXECUTOR_METADATA__="
+PREFIX = "__ASTRID_EXECUTOR_METADATA__="
 
 
 def normalize(raw):

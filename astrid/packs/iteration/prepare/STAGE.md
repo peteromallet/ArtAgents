@@ -19,7 +19,7 @@ The OQ-6 quality score is:
 
 `max_iterations` is enforced before any uncached summary dispatch. The default
 cap is 200 and can be changed with `--max-iterations` or
-`ARTAGENTS_ITERATION_MAX`.
+`ASTRID_ITERATION_MAX`.
 
 Gateway form:
 

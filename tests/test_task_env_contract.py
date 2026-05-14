@@ -57,7 +57,7 @@ def test_task_env_missing_step_id_rejects(tmp_projects_root: Path, monkeypatch: 
     monkeypatch.setenv(TASK_PROJECT_ENV, "demo")
     monkeypatch.delenv(TASK_STEP_ID_ENV, raising=False)
 
-    with pytest.raises(ProjectRunError, match="ARTAGENTS_TASK_STEP_ID must be set"):
+    with pytest.raises(ProjectRunError, match="ASTRID_TASK_STEP_ID must be set"):
         prepare_project_run("demo", root=tmp_projects_root)
 
 

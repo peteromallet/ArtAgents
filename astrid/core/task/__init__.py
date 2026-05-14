@@ -10,7 +10,7 @@ on-disk shape).
 """
 
 from .env import (
-    ARTAGENTS_ACTOR,
+    ASTRID_ACTOR,
     TASK_ITEM_ID_ENV,
     TASK_ITERATION_ENV,
     TASK_PROJECT_ENV,
@@ -70,7 +70,7 @@ from .gate import (
 from .plan import compute_plan_hash, load_plan, step_dir_for, step_dir_for_path
 
 __all__ = [
-    "ARTAGENTS_ACTOR",
+    "ASTRID_ACTOR",
     "AttestedArgs",
     "PROHIBITION_PREAMBLE",
     "TASK_ITEM_ID_ENV",

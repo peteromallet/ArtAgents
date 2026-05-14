@@ -1,10 +1,10 @@
 """Phase 9 author-test auto-approval mode (FLAG-P9-001 + FLAG-P9-002).
 
 Behavior under test:
-  * cmd_start succeeds with ARTAGENTS_AUTHOR_TEST=1 (FLAG-P9-001 — no guard).
-  * Without ARTAGENTS_AUTHOR_TEST, an ack with --actor mismatching
-    ARTAGENTS_ACTOR is rejected (existing self-ack-prep guard fires).
-  * With ARTAGENTS_AUTHOR_TEST=1, the same mismatched ack succeeds. The
+  * cmd_start succeeds with ASTRID_AUTHOR_TEST=1 (FLAG-P9-001 — no guard).
+  * Without ASTRID_AUTHOR_TEST, an ack with --actor mismatching
+    ASTRID_ACTOR is rejected (existing self-ack-prep guard fires).
+  * With ASTRID_AUTHOR_TEST=1, the same mismatched ack succeeds. The
     resulting step_attested event keeps the canonical attestor_kind='actor'
     (NOT 'author_test' — FLAG-P9-002) and gains source='author_test' on the
     way through _dispatch_attested.
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from astrid.core.task.env import ARTAGENTS_ACTOR, ARTAGENTS_AUTHOR_TEST
+from astrid.core.task.env import ASTRID_ACTOR, ASTRID_AUTHOR_TEST
 from astrid.core.task.events import read_events
 from astrid.core.task.lifecycle import cmd_start
 from astrid.core.task.lifecycle_ack import cmd_ack
@@ -57,22 +57,22 @@ def test_author_test_env_var_unlocks_attested_auto_approval(
     packs = _make_demo_pack(tmp_path)
     slug = "auto_approval_demo"
 
-    # FLAG-P9-001: cmd_start must succeed even when ARTAGENTS_AUTHOR_TEST=1.
+    # FLAG-P9-001: cmd_start must succeed even when ASTRID_AUTHOR_TEST=1.
     # Compile the demo pack first (cmd_start expects build/<orch>.json).
     from astrid.orchestrate.compile import compile_to_path
     compile_to_path("demo.app", packs_root=packs)
 
-    monkeypatch.setenv(ARTAGENTS_ACTOR, "alice")
-    monkeypatch.setenv(ARTAGENTS_AUTHOR_TEST, "1")
+    monkeypatch.setenv(ASTRID_ACTOR, "alice")
+    monkeypatch.setenv(ASTRID_AUTHOR_TEST, "1")
     rc_start = cmd_start(
         ["demo.app", "--project", slug, "--name", "r1"],
         packs_root=packs,
         projects_root=tmp_projects_root,
     )
-    assert rc_start == 0, "cmd_start must not gate on ARTAGENTS_AUTHOR_TEST (FLAG-P9-001)"
+    assert rc_start == 0, "cmd_start must not gate on ASTRID_AUTHOR_TEST (FLAG-P9-001)"
 
-    # Without ARTAGENTS_AUTHOR_TEST, --actor mismatch must be rejected.
-    monkeypatch.delenv(ARTAGENTS_AUTHOR_TEST, raising=False)
+    # Without ASTRID_AUTHOR_TEST, --actor mismatch must be rejected.
+    monkeypatch.delenv(ASTRID_AUTHOR_TEST, raising=False)
     rc_reject = cmd_ack(
         [
             "review",
@@ -85,7 +85,7 @@ def test_author_test_env_var_unlocks_attested_auto_approval(
         ],
         projects_root=tmp_projects_root,
     )
-    assert rc_reject != 0, "actor mismatch must be rejected without ARTAGENTS_AUTHOR_TEST"
+    assert rc_reject != 0, "actor mismatch must be rejected without ASTRID_AUTHOR_TEST"
 
     events_path = tmp_projects_root / slug / "runs" / "r1" / "events.jsonl"
     events_before = read_events(events_path)
@@ -93,8 +93,8 @@ def test_author_test_env_var_unlocks_attested_auto_approval(
         ev.get("kind") == "step_attested" for ev in events_before
     ), "rejected ack must not write step_attested"
 
-    # With ARTAGENTS_AUTHOR_TEST=1, the same mismatched --actor is accepted.
-    monkeypatch.setenv(ARTAGENTS_AUTHOR_TEST, "1")
+    # With ASTRID_AUTHOR_TEST=1, the same mismatched --actor is accepted.
+    monkeypatch.setenv(ASTRID_AUTHOR_TEST, "1")
     rc_accept = cmd_ack(
         [
             "review",
@@ -107,7 +107,7 @@ def test_author_test_env_var_unlocks_attested_auto_approval(
         ],
         projects_root=tmp_projects_root,
     )
-    assert rc_accept == 0, "actor mismatch must be accepted with ARTAGENTS_AUTHOR_TEST=1"
+    assert rc_accept == 0, "actor mismatch must be accepted with ASTRID_AUTHOR_TEST=1"
 
     events = read_events(events_path)
     last = events[-1]

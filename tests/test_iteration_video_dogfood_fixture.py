@@ -22,7 +22,7 @@ TARGET_RUN_ID = "01ARZ3NDEKTSV4RRFFQ69G5FX4"
 
 def test_dogfood_fixture_backfill_active_thread_no_content_and_local_path_policy(tmp_path: Path, monkeypatch) -> None:
     repo = _install_fixture(tmp_path)
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
 
     stdout = io.StringIO()
     with contextlib.redirect_stdout(stdout):

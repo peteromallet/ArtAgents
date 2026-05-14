@@ -27,6 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config-path", default="/workspace/config.yaml")
     p.add_argument("--output-dir", default="/workspace/output")
     p.add_argument("--remote-log", default="/workspace/training.log")
+    p.add_argument(
+        "--timeout",
+        type=int,
+        default=28800,
+        help="RunPod exec wait timeout in seconds. Default 8h; LTX LoRA runs can exceed 4h.",
+    )
     p.add_argument("--dry-run", action="store_true")
     return p
 
@@ -87,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         "--produces-dir", str(exec_produces),
         "--pod-handle", str(args.pod_handle),
         "--local-root", str(empty_local_root),
+        "--timeout", str(args.timeout),
         "--remote-script", train_cmd,
     ]
     rv = subprocess.run(exec_argv, cwd=repo_root)

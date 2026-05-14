@@ -34,7 +34,7 @@ def test_iteration_video_renders_hype_adapter_and_records_five_output_variant_gr
         hype_mp4.write_bytes(b"rendered-mp4")
         return hype_mp4
 
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     monkeypatch.setattr(iteration_video.prepare, "prepare_iteration", fake_prepare_iteration)
     monkeypatch.setattr(iteration_video, "run_builtin_render", fake_render)
 

@@ -143,5 +143,5 @@ def test_attribute_falls_back_to_new_thread(tmp_path: Path, monkeypatch: pytest.
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     return repo

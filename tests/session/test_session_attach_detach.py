@@ -82,6 +82,8 @@ def _args(**kw: object) -> argparse.Namespace:
         "timeline": None,
         "session": None,
         "as_agent": None,
+        "set_default": False,
+        "user_default": False,
     }
     defaults.update(kw)
     return argparse.Namespace(**defaults)
@@ -103,6 +105,88 @@ def test_attach_no_current_run_role_is_writer(env: dict[str, Path]) -> None:
     # A session file was written.
     sessions = list((env["home"] / "sessions").iterdir())
     assert len(sessions) == 1
+
+
+def test_attach_noninteractive_identity_bootstrap_errors_cleanly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(session_paths.ASTRID_HOME_ENV, str(tmp_path / "home"))
+    monkeypatch.setenv(project_paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
+    _seed_project(tmp_path / "projects", "demo")
+
+    def eof_input(_prompt: str) -> str:
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", eof_input)
+    rc = cli.cmd_attach(_args(), out=StringIO())
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "attach: agent identity is not configured" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_attach_without_project_uses_default(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    _seed_project(env["projects"], "demo")
+    (env["home"] / "config.json").write_text(json.dumps({"default_project": "demo"}), encoding="utf-8")
+    buf = StringIO()
+    rc = cli.cmd_attach(_args(project=None), out=buf)
+    assert rc == 0
+    output = buf.getvalue()
+    assert "project: demo" in output
+    assert "export ASTRID_SESSION_ID=" in output
+
+
+def test_attach_without_project_rejects_missing_default(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    _seed_project(env["projects"], "demo")
+    (workspace / ".astrid").mkdir()
+    (workspace / ".astrid" / "config.json").write_text(
+        json.dumps({"default_project": "missing"}), encoding="utf-8"
+    )
+    rc = cli.cmd_attach(_args(project=None), out=StringIO())
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "configured default project 'missing' was not found" in captured.err
+    assert "astrid attach demo --default" in captured.err
+
+
+def test_attach_uses_only_timeline_when_no_default_timeline(
+    env: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    from astrid.core.project.project import create_project
+    from astrid.core.timeline.crud import create_timeline
+
+    create_project("demo")
+    create_timeline("demo", "main")
+    buf = StringIO()
+    rc = cli.cmd_attach(_args(), out=buf)
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "Using only timeline: main" in captured.err
+    assert "timeline: main" in buf.getvalue()
+
+
+def test_attach_with_default_flag_writes_workspace_default(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _seed_project(env["projects"], "demo")
+    buf = StringIO()
+    rc = cli.cmd_attach(_args(set_default=True), out=buf)
+    assert rc == 0
+    assert "saved default project (workspace): demo" in buf.getvalue()
+    config_path = tmp_path / ".astrid" / "config.json"
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert payload["default_project"] == "demo"
 
 
 def test_attach_to_held_run_yields_reader_role_with_takeover_hint(

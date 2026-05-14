@@ -200,4 +200,4 @@ def _load_run(repo_root: Path, run_id: str) -> dict[str, Any] | None:
 
 
 def _repo_root() -> Path:
-    return Path(os.environ.get("ARTAGENTS_REPO_ROOT", REPO_ROOT)).expanduser().resolve()
+    return Path(os.environ.get("ASTRID_REPO_ROOT", REPO_ROOT)).expanduser().resolve()

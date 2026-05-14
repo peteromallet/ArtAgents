@@ -17,13 +17,13 @@ from .prefix import emit_prefix, format_prefix_lines
 from .record import build_run_record, finalize_run_record, write_run_record
 from .variants import resolve_group_for_selection, update_groups_for_run, variant_prefix_message
 
-THREAD_ID_ENV = "ARTAGENTS_THREAD_ID"
-RUN_ID_ENV = "ARTAGENTS_RUN_ID"
-PARENT_RUN_ID_ENV = "ARTAGENTS_PARENT_RUN_ID"
-INHERITED_ENV = "ARTAGENTS_THREAD_INHERITED"
-THREADS_OFF_ENV = "ARTAGENTS_THREADS_OFF"
-REPO_ROOT_ENV = "ARTAGENTS_REPO_ROOT"
-PROJECT_RUN_ENV = "ARTAGENTS_PROJECT_RUN"
+THREAD_ID_ENV = "ASTRID_THREAD_ID"
+RUN_ID_ENV = "ASTRID_RUN_ID"
+PARENT_RUN_ID_ENV = "ASTRID_PARENT_RUN_ID"
+INHERITED_ENV = "ASTRID_THREAD_INHERITED"
+THREADS_OFF_ENV = "ASTRID_THREADS_OFF"
+REPO_ROOT_ENV = "ASTRID_REPO_ROOT"
+PROJECT_RUN_ENV = "ASTRID_PROJECT_RUN"
 
 _ACTIVE_CONTEXT: contextvars.ContextVar["RunContext | None"] = contextvars.ContextVar("astrid_thread_context", default=None)
 

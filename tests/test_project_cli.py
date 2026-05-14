@@ -54,7 +54,7 @@ def _canonical_timeline() -> dict[str, Any]:
 
 
 class _ProjectsRoot:
-    """Per-test helper that points ARTAGENTS_PROJECTS_ROOT at a temp dir."""
+    """Per-test helper that points ASTRID_PROJECTS_ROOT at a temp dir."""
 
     def __init__(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="t12-cli-", dir=ROOT))

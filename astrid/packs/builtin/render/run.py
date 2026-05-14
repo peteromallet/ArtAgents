@@ -311,7 +311,7 @@ def _regenerate_element_registries(project_dir: Path, theme_path: Path | None) -
     env = os.environ.copy()
     composition_src = project_dir / "node_modules" / "@banodoco" / "timeline-composition" / "typescript" / "src"
     if composition_src.is_dir():
-        env.setdefault("ARTAGENTS_TIMELINE_COMPOSITION_SRC", str(composition_src))
+        env.setdefault("ASTRID_TIMELINE_COMPOSITION_SRC", str(composition_src))
     subprocess.run(
         cmd,
         cwd=str(REPO_ROOT),

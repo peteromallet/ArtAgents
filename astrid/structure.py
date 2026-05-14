@@ -13,7 +13,7 @@ from astrid.core.orchestrator.folder import load_folder_orchestrators
 LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives", "executors", "orchestrators")
 LEGACY_LOCAL_DIRS = ("performers", "conductors", "nodes", "instruments", "primitives")
 INTERNAL_PACK_DIRS = {"__pycache__"}
-TOP_LEVEL_ARTAGENTS_FILES = {
+TOP_LEVEL_ASTRID_FILES = {
     "__init__.py",
     "__main__.py",
     "_paths.py",
@@ -24,7 +24,7 @@ TOP_LEVEL_ARTAGENTS_FILES = {
     "theme_schema.py",
     "timeline.py",
 }
-TOP_LEVEL_ARTAGENTS_DIRS = {
+TOP_LEVEL_ASTRID_DIRS = {
     "__pycache__",
     "audit",
     "contracts",
@@ -88,9 +88,9 @@ def _validate_top_level_astrid(package_root: Path) -> list[str]:
     for child in sorted(package_root.iterdir()):
         if child.name.startswith("."):
             continue
-        if child.is_file() and child.suffix == ".py" and child.name not in TOP_LEVEL_ARTAGENTS_FILES:
+        if child.is_file() and child.suffix == ".py" and child.name not in TOP_LEVEL_ASTRID_FILES:
             errors.append(f"top-level astrid module must move to a canonical package: {child.relative_to(package_root.parents[0])}")
-        if child.is_dir() and child.name not in TOP_LEVEL_ARTAGENTS_DIRS:
+        if child.is_dir() and child.name not in TOP_LEVEL_ASTRID_DIRS:
             errors.append(f"top-level astrid directory is not a canonical concept: {child.relative_to(package_root.parents[0])}")
     return errors
 

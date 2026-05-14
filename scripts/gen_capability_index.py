@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from astrid._paths import REPO_ROOT as ARTAGENTS_REPO_ROOT  # noqa: E402
+from astrid._paths import REPO_ROOT as ASTRID_REPO_ROOT  # noqa: E402
 from astrid.core._search import short_description_or_truncated  # noqa: E402
 from astrid.core.element.registry import load_default_registry as load_elements  # noqa: E402
 from astrid.core.executor.registry import load_default_registry as load_executors  # noqa: E402
@@ -61,7 +61,7 @@ def _orchestrator_rows() -> list[tuple[str, str]]:
 
 
 def _element_rows() -> list[tuple[str, str]]:
-    registry = load_elements(active_theme=None, project_root=ARTAGENTS_REPO_ROOT)
+    registry = load_elements(active_theme=None, project_root=ASTRID_REPO_ROOT)
     return [
         (
             f"{element.kind}/{element.id}",

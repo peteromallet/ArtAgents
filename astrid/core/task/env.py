@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
-TASK_RUN_ID_ENV = "ARTAGENTS_TASK_RUN_ID"
-TASK_PROJECT_ENV = "ARTAGENTS_TASK_PROJECT"
-TASK_STEP_ID_ENV = "ARTAGENTS_TASK_STEP_ID"
-TASK_ITEM_ID_ENV = "ARTAGENTS_TASK_ITEM_ID"
-TASK_ITERATION_ENV = "ARTAGENTS_TASK_ITERATION"
-ARTAGENTS_ACTOR = "ARTAGENTS_ACTOR"
-ARTAGENTS_AUTHOR_TEST = "ARTAGENTS_AUTHOR_TEST"
+TASK_RUN_ID_ENV = "ASTRID_TASK_RUN_ID"
+TASK_PROJECT_ENV = "ASTRID_TASK_PROJECT"
+TASK_STEP_ID_ENV = "ASTRID_TASK_STEP_ID"
+TASK_ITEM_ID_ENV = "ASTRID_TASK_ITEM_ID"
+TASK_ITERATION_ENV = "ASTRID_TASK_ITERATION"
+ASTRID_ACTOR = "ASTRID_ACTOR"
+ASTRID_AUTHOR_TEST = "ASTRID_AUTHOR_TEST"
 
 
 def task_project_env() -> str | None:
@@ -35,11 +35,11 @@ def task_iteration_env() -> str | None:
 
 
 def task_actor_env() -> str | None:
-    return os.environ.get(ARTAGENTS_ACTOR)
+    return os.environ.get(ASTRID_ACTOR)
 
 
 def is_author_test_mode() -> bool:
-    return os.environ.get(ARTAGENTS_AUTHOR_TEST) == "1"
+    return os.environ.get(ASTRID_AUTHOR_TEST) == "1"
 
 
 def is_in_task_run(slug: str | None = None) -> bool:
@@ -72,7 +72,7 @@ def apply_task_run_env(
 
 def child_subprocess_env(*, base: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ if base is None else base)
-    env.pop(ARTAGENTS_ACTOR, None)
+    env.pop(ASTRID_ACTOR, None)
     for key in (
         TASK_RUN_ID_ENV,
         TASK_PROJECT_ENV,

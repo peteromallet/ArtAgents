@@ -1,0 +1,143 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.search_loras.run",
+      "--mode",
+      "{mode}",
+      "--base-model",
+      "{base_model}",
+      "--query",
+      "{query}",
+      "--match",
+      "{match}",
+      "--match-mode",
+      "{match_mode}",
+      "--limit",
+      "{limit}",
+      "--fetch-limit",
+      "{fetch_limit}",
+      "--sort",
+      "{sort}",
+      "--direction",
+      "{direction}",
+      "--base-model-match",
+      "{base_model_match}",
+      "--out",
+      "{out}/search-loras.json"
+    ]
+  },
+  "description": "Search Hugging Face Hub for LoRA adapter repositories associated with a provided base model.",
+  "id": "builtin.search_loras",
+  "inputs": [
+    {
+      "description": "Hugging Face base model repo id, for example stabilityai/stable-diffusion-xl-base-1.0.",
+      "name": "base_model",
+      "default": "",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Mode: search LoRAs for a base model, or discover base model names from LoRA tags.",
+      "name": "mode",
+      "default": "search",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Optional Hugging Face API text search.",
+      "name": "query",
+      "default": "",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Comma-separated local match terms applied across repo id, tags, and safetensors filenames.",
+      "name": "match",
+      "default": "",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Local match mode: all or any.",
+      "name": "match_mode",
+      "default": "all",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Maximum result count. Use 0 for mode defaults.",
+      "name": "limit",
+      "default": 0,
+      "required": false,
+      "type": "integer"
+    },
+    {
+      "description": "How many Hub results to fetch before local matching. Use 0 for mode defaults.",
+      "name": "fetch_limit",
+      "default": 0,
+      "required": false,
+      "type": "integer"
+    },
+    {
+      "description": "Hub sort field.",
+      "name": "sort",
+      "default": "downloads",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Sort direction: -1 descending or 1 ascending.",
+      "name": "direction",
+      "default": "-1",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Comma-separated extracted base model id substrings for mode=base-models.",
+      "name": "base_model_match",
+      "default": "",
+      "required": false,
+      "type": "string"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "keywords": [
+    "huggingface",
+    "hub",
+    "lora",
+    "adapter",
+    "search",
+    "model"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "api_provider": "huggingface",
+    "env": [
+      "HF_TOKEN",
+      "HUGGING_FACE_HUB_TOKEN"
+    ],
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.search_loras.run"
+  },
+  "name": "Search LoRAs",
+  "outputs": [
+    {
+      "description": "Hugging Face LoRA search results.",
+      "mode": "create_or_replace",
+      "name": "results",
+      "path_template": "{out}/search-loras.json",
+      "type": "file"
+    }
+  ],
+  "short_description": "Search Hugging Face Hub for LoRAs associated with a base model.",
+  "version": "1.0"
+}

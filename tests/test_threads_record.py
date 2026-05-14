@@ -85,12 +85,12 @@ def test_noop_gates_skip_run_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     for request in cases:
         run_executor(request, registry)
 
-    monkeypatch.setenv("ARTAGENTS_THREADS_OFF", "1")
+    monkeypatch.setenv("ASTRID_THREADS_OFF", "1")
     run_executor(ExecutorRunRequest("test.writer", out=repo / "runs" / "off"), registry)
-    monkeypatch.delenv("ARTAGENTS_THREADS_OFF")
-    monkeypatch.setenv("ARTAGENTS_THREAD_INHERITED", "1")
+    monkeypatch.delenv("ASTRID_THREADS_OFF")
+    monkeypatch.setenv("ASTRID_THREAD_INHERITED", "1")
     run_executor(ExecutorRunRequest("test.writer", out=repo / "runs" / "inherited"), registry)
-    monkeypatch.delenv("ARTAGENTS_THREAD_INHERITED")
+    monkeypatch.delenv("ASTRID_THREAD_INHERITED")
 
     assert not (repo / "runs" / "dry" / "run.json").exists()
     assert not (repo / "runs" / "none" / "run.json").exists()
@@ -194,8 +194,8 @@ def test_typed_from_ref_parent_edge(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
-    for name in ("ARTAGENTS_THREADS_OFF", "ARTAGENTS_THREAD_INHERITED", "ARTAGENTS_THREAD_ID", "ARTAGENTS_RUN_ID", "ARTAGENTS_PARENT_RUN_ID"):
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
+    for name in ("ASTRID_THREADS_OFF", "ASTRID_THREAD_INHERITED", "ASTRID_THREAD_ID", "ASTRID_RUN_ID", "ASTRID_PARENT_RUN_ID"):
         monkeypatch.delenv(name, raising=False)
     return repo
 
@@ -206,7 +206,7 @@ def _writer_executor(executor_id: str) -> ExecutorDefinition:
         "from pathlib import Path\n"
         "out = Path(sys.argv[1])\n"
         "out.mkdir(parents=True, exist_ok=True)\n"
-        "(out / 'result.txt').write_text(os.environ.get('ARTAGENTS_THREAD_INHERITED', '') + ':' + os.environ.get('ARTAGENTS_THREAD_ID', ''), encoding='utf-8')\n"
+        "(out / 'result.txt').write_text(os.environ.get('ASTRID_THREAD_INHERITED', '') + ':' + os.environ.get('ASTRID_THREAD_ID', ''), encoding='utf-8')\n"
     )
     return ExecutorDefinition(
         id=executor_id,
@@ -245,7 +245,7 @@ def _writer_orchestrator(orchestrator_id: str) -> OrchestratorDefinition:
         "from pathlib import Path\n"
         "out = Path(sys.argv[1])\n"
         "out.mkdir(parents=True, exist_ok=True)\n"
-        "(out / 'orch-env.txt').write_text(os.environ.get('ARTAGENTS_THREAD_INHERITED', '') + ':' + os.environ.get('ARTAGENTS_THREAD_ID', ''), encoding='utf-8')\n"
+        "(out / 'orch-env.txt').write_text(os.environ.get('ASTRID_THREAD_INHERITED', '') + ':' + os.environ.get('ASTRID_THREAD_ID', ''), encoding='utf-8')\n"
     )
     return OrchestratorDefinition(
         id=orchestrator_id,

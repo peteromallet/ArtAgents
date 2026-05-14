@@ -29,7 +29,7 @@ from astrid.threads.ids import generate_ulid, is_ulid
 
 @pytest.fixture
 def project_tree(tmp_projects_root: Path) -> Path:
-    """Seed a minimal project under the monkeypatched ARTAGENTS_PROJECTS_ROOT."""
+    """Seed a minimal project under the monkeypatched ASTRID_PROJECTS_ROOT."""
     import json
 
     slug = "demo"

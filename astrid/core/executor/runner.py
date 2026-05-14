@@ -426,6 +426,9 @@ def _placeholder_values(executor: ExecutorDefinition, request: ExecutorRunReques
         placeholders["brief_slug"] = brief_slug
         placeholders["brief_out"] = str(brief_out)
         placeholders["brief_copy"] = str(brief_out / "brief.txt")
+    for port in executor.inputs:
+        if port.default is not None and port.name not in values:
+            placeholders[port.name] = _stringify_value(port.default)
     for key, value in values.items():
         if value is None:
             continue

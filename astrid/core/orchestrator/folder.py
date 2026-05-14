@@ -17,7 +17,7 @@ from .schema import (
 )
 
 
-_RESULT_PREFIX = "__ARTAGENTS_ORCHESTRATOR_METADATA__="
+_RESULT_PREFIX = "__ASTRID_ORCHESTRATOR_METADATA__="
 _MANIFEST_NAMES = ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json")
 
 
@@ -160,7 +160,7 @@ import traceback
 from astrid.core.orchestrator.api import OrchestratorSpec
 from astrid.core.orchestrator.schema import OrchestratorDefinition, validate_orchestrator_definition
 
-PREFIX = "__ARTAGENTS_ORCHESTRATOR_METADATA__="
+PREFIX = "__ASTRID_ORCHESTRATOR_METADATA__="
 
 
 def normalize(raw):

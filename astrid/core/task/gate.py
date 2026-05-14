@@ -1192,12 +1192,12 @@ def validate_attested_identity(
     if args.actor is None:
         _reject(slug, "attested step ack.kind=actor requires --actor", abort=False)
     if is_author_test_mode():
-        # Author-test mode: skip ARTAGENTS_ACTOR-match and self-ack checks so the
+        # Author-test mode: skip ASTRID_ACTOR-match and self-ack checks so the
         # harness can drive attestations under a synthetic actor. Canonical kind
         # ("actor") is preserved — author-test provenance rides on event["source"].
         return "actor", args.actor  # type: ignore[return-value]
     if task_actor_env() != args.actor:
-        _reject(slug, "attested --actor does not match ARTAGENTS_ACTOR env", abort=False)
+        _reject(slug, "attested --actor does not match ASTRID_ACTOR env", abort=False)
     # FLAG-005: self-ack rejection only applies to actor attestations because agents
     # do not start runs in V1; an agent_id on run_started would be required to
     # symmetrically block agent self-acks, which is out of scope for Phase 2.

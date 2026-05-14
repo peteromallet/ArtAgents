@@ -42,7 +42,7 @@ def test_second_create_same_slug_exit_code_2(tmp_path: Path, monkeypatch: pytest
 
 
 def test_different_roots_are_independent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The same slug can exist under different ARTAGENTS_PROJECTS_ROOT values."""
+    """The same slug can exist under different ASTRID_PROJECTS_ROOT values."""
     from astrid.core.project import paths
 
     root_a = tmp_path / "root-a"
@@ -87,3 +87,65 @@ def test_create_project_unique_slug_direct(tmp_path: Path, monkeypatch: pytest.M
     # exist_ok=True should allow re-entry.
     p2 = create_project("demo", exist_ok=True)
     assert p2["slug"] == "demo"
+
+
+def test_projects_ls_and_default_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from astrid.core.project import cli, paths
+    from astrid.core.project.project import create_project
+    from astrid.core.session import paths as session_paths
+
+    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
+    monkeypatch.setenv(session_paths.ASTRID_HOME_ENV, str(tmp_path / "home"))
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    create_project("demo")
+    create_project("other")
+
+    rc = cli.main(["ls"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "demo" in captured.out
+    assert "other" in captured.out
+
+    rc = cli.main(["default", "demo"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "default project (workspace): demo" in captured.out
+    assert "python3 -m astrid attach" in captured.out
+
+    rc = cli.main(["default"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "default project: demo" in captured.out
+
+    rc = cli.main(["default", "--clear"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "cleared default project" in captured.out
+
+
+def test_projects_default_warns_when_configured_default_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from astrid.core.project import cli, paths
+    from astrid.core.project.project import create_project
+    from astrid.core.session import paths as session_paths
+
+    monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
+    monkeypatch.setenv(session_paths.ASTRID_HOME_ENV, str(tmp_path / "home"))
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    (workspace / ".astrid").mkdir()
+    (workspace / ".astrid" / "config.json").write_text('{"default_project": "missing"}', encoding="utf-8")
+    create_project("demo")
+
+    rc = cli.main(["default"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "default project: missing" in captured.out
+    assert "warning: configured default project is not under the current projects root" in captured.out
+    assert "python3 -m astrid projects default demo" in captured.out

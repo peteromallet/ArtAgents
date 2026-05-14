@@ -85,7 +85,7 @@ def test_thread_help_has_no_deferred_commands(capsys: pytest.CaptureFixture[str]
 def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     return repo
 
 

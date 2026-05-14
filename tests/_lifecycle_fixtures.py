@@ -13,6 +13,7 @@ import os
 from contextlib import redirect_stdout
 from pathlib import Path
 
+from astrid.core.project.project import create_project
 from astrid.core.task.lifecycle import cmd_start
 from astrid.orchestrate.compile import compile_to_path
 
@@ -77,11 +78,12 @@ def setup_run(
     start_actor: str = "bob",
 ) -> tuple[Path, Path]:
     """Compile + cmd_start. Returns (packs_root, projects_root). Sets
-    ARTAGENTS_ACTOR=start_actor before cmd_start so run_started.actor==start_actor.
-    Caller is responsible for adjusting ARTAGENTS_ACTOR before subsequent ack calls.
+    ASTRID_ACTOR=start_actor before cmd_start so run_started.actor==start_actor.
+    Caller is responsible for adjusting ASTRID_ACTOR before subsequent ack calls.
     """
     packs, projects = setup_packs_and_compile(tmp_path, pack, module_name, body, qualified_id)
-    os.environ["ARTAGENTS_ACTOR"] = start_actor
+    create_project(project, root=projects, exist_ok=True)
+    os.environ["ASTRID_ACTOR"] = start_actor
     with redirect_stdout(io.StringIO()):
         rc = cmd_start(
             [qualified_id, "--project", project, "--name", run_id],

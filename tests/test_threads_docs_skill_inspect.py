@@ -48,7 +48,7 @@ def test_skill_includes_thread_session_guidance() -> None:
 def test_executor_and_orchestrator_inspect_show_active_thread_footer(tmp_path: Path, monkeypatch) -> None:
     thread = make_thread_record(thread_id=THREAD_ID, label="Footer Thread")
     ThreadIndexStore(tmp_path).write({"schema_version": 1, "active_thread_id": THREAD_ID, "threads": {THREAD_ID: thread}})
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(tmp_path))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(tmp_path))
 
     executor_stdout = io.StringIO()
     with contextlib.redirect_stdout(executor_stdout):

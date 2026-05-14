@@ -414,7 +414,8 @@ def _validate_step(step: Any, index: int, prior_siblings: list[Step]) -> Step:
             f"plan steps[{index}].adapter must be one of {ADAPTERS}, got {adapter!r}"
         )
 
-    requires_ack = step.get("requires_ack", False)
+    legacy_kind = step.get("kind")
+    requires_ack = step.get("requires_ack", legacy_kind == "attested")
     if not isinstance(requires_ack, bool):
         raise TaskPlanError(f"plan steps[{index}].requires_ack must be a bool")
 

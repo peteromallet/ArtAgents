@@ -78,6 +78,7 @@ def test_code_step_prints_command(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "code", _BODY_CODE, "demo.code", run_id="r2")
     out = _capture_next(packs, projects)
     assert "run: echo alpha" in out
+    assert "warning: this code-step command has no --project argument" in out
 
 
 def test_attested_agent_template(tmp_path: Path) -> None:

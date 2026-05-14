@@ -65,6 +65,10 @@ def _print_err(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
+def _system_exit_code(exc: SystemExit) -> int:
+    return int(exc.code) if isinstance(exc.code, int) else 2
+
+
 def _find_step_by_path(plan, path_tuple):
     """Walk a TaskPlan to find the step at ``path_tuple``."""
     if not path_tuple:
@@ -147,7 +151,7 @@ def cmd_ack(
     try:
         args = parser.parse_args(list(argv))
     except SystemExit as exc:
-        return int(exc.code or 2)
+        return _system_exit_code(exc)
 
     # --- Function-boundary identity assertion (Sprint 3 T16) ---
     # argparse `required=True` catches the CLI case.  This assertion catches

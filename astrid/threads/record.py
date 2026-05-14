@@ -194,7 +194,7 @@ def repo_relative(path: Path, repo_root: Path) -> str:
 
 
 def agent_version(repo_root: Path) -> str:
-    env_version = os.environ.get("ARTAGENTS_AGENT_VERSION", "").strip()
+    env_version = os.environ.get("ASTRID_AGENT_VERSION", "").strip()
     if env_version:
         return env_version
     try:

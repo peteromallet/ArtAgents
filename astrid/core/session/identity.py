@@ -84,7 +84,13 @@ def bootstrap_identity(*, prompt: Callable[[str], str] | None = None) -> Identit
 
         prompt = builtins.input
     for _ in range(3):
-        reply = prompt("agent id (slug, e.g. claude-1): ").strip()
+        try:
+            reply = prompt("agent id (slug, e.g. claude-1): ").strip()
+        except EOFError as exc:
+            raise IdentityError(
+                "agent identity is not configured and stdin is not interactive; "
+                "run `astrid status` in an interactive shell"
+            ) from exc
         try:
             slug = validate_agent_slug(reply)
         except IdentityError as exc:

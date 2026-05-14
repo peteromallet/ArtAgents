@@ -9,7 +9,7 @@ from astrid.core.project.project import create_project
 from astrid.core.task import gate as task_gate
 from astrid.core.task.active_run import write_active_run
 from astrid.core.task.env import (
-    ARTAGENTS_ACTOR,
+    ASTRID_ACTOR,
     TASK_ITEM_ID_ENV,
     child_subprocess_env,
 )
@@ -83,7 +83,7 @@ def test_for_each_partial_approval_via_item_flag(tmp_projects_root: Path, monkey
         ],
     }
     _setup(tmp_projects_root, plan)
-    monkeypatch.setenv(ARTAGENTS_ACTOR, "alice")
+    monkeypatch.setenv(ASTRID_ACTOR, "alice")
 
     # Ack b first (out of order), then c, then a.
     for item in ("b", "c", "a"):

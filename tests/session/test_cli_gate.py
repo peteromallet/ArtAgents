@@ -74,7 +74,17 @@ def test_every_gated_verb_errors_without_session(
     rc, _stdout, stderr = _run_pipeline(argv)
     assert rc == 2
     assert "no session bound" in stderr
+    assert "astrid status" in stderr
     assert "astrid attach" in stderr
+
+
+def test_unbound_project_command_suggests_concrete_attach(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, _stdout, stderr = _run_pipeline(["next", "--project", "demo"])
+    assert rc == 2
+    assert "astrid attach demo" in stderr
 
 
 # ----- allowlisted verbs run without a session --------------------------
@@ -152,6 +162,15 @@ def test_allowlist_projects_ls_runs_without_session(
     assert "no session bound" not in stderr
 
 
+def test_allowlist_projects_default_runs_without_session(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, _stdout, stderr = _run_pipeline(["projects", "default"])
+    assert rc == 0
+    assert "no session bound" not in stderr
+
+
 def test_allowlist_projects_create_runs_without_session(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -176,6 +195,27 @@ def test_allowlist_help_runs_without_session(
     rc, stdout, _stderr = _run_pipeline(["--help"])
     assert rc == 0
     assert "Astrid command gateway" in stdout
+
+
+def test_subcommand_help_runs_without_session(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, stdout, stderr = _run_pipeline(["projects", "--help"])
+    assert rc == 0
+    assert "no session bound" not in stderr
+    assert "Create, inspect, and manage persistent Astrid projects" in stdout
+
+
+def test_status_help_runs_without_rendering_live_status(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, stdout, stderr = _run_pipeline(["status", "--help"])
+    assert rc == 0
+    assert "no session bound" not in stdout
+    assert "show this help message" in stdout
+    assert stderr == ""
 
 
 def test_author_test_with_project_bypasses_gate(

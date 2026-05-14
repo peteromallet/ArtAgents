@@ -14,7 +14,7 @@ mode.
 from __future__ import annotations
 
 PROHIBITION_PREAMBLE = (
-    "ARTAGENTS TASK RUN — PROHIBITIONS\n"
+    "ASTRID TASK RUN — PROHIBITIONS\n"
     "- You are inside a frozen plan. Plan structure is pinned by hash; deviation "
     "from the printed step is rejected at the gate.\n"
     "- Do not edit plan.json or events.jsonl by hand. Both are append-only / "

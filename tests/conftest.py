@@ -21,9 +21,9 @@ from astrid.core.task.env import (
 )
 
 
-if "ARTAGENTS_TIMELINE_COMPOSITION_SRC" not in os.environ:
+if "ASTRID_TIMELINE_COMPOSITION_SRC" not in os.environ:
     _package_src = Path(tempfile.mkdtemp(prefix="astrid-timeline-composition-src-"))
-    os.environ["ARTAGENTS_TIMELINE_COMPOSITION_SRC"] = str(_package_src)
+    os.environ["ASTRID_TIMELINE_COMPOSITION_SRC"] = str(_package_src)
     atexit.register(lambda: shutil.rmtree(_package_src, ignore_errors=True))
 
 

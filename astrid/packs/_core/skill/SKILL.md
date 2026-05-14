@@ -6,23 +6,35 @@ description: "Use for the Astrid repo: a file-based toolkit for agents to make a
 
 # Astrid
 
-A file-based toolkit for agents to make art and creative work alongside a human.
+Astrid is a file-based toolkit for making video, image, and audio art alongside
+a human. `python3 -m astrid` is the only executable gateway.
 
-Three kinds of beings live here:
+## Start Here
 
-- **Executors** — run one concrete unit of work
-- **Orchestrators** — coordinate executors (and other orchestrators) into workflows
-- **Elements** — reusable render building blocks (effects, animations, transitions)
-
-`python3 -m astrid` is the executable package gateway. Every summons passes through this one gate.
-
-## First commands
-
-Run from the repository root:
+Astrid is session-gated. From the repository root, make `status` the first
+port of call at the start of a session and whenever project, timeline, run, or
+writer state is unclear. It also prints the key discovery commands for skills,
+orchestrators, executors, and elements.
 
 ```bash
 git status --short
 python3 -m astrid --help
+python3 -m astrid status
+```
+
+If status says `no session bound`, attach before running doctor, list, inspect,
+executor, orchestrator, element, or task-mode commands. After that, use
+`status` when you need to re-orient, not before every command.
+
+```bash
+python3 -m astrid attach [<project>] [--default] [--timeline <slug>] [--session <id>] [--as agent:<id>]
+python3 -m astrid status
+```
+
+Only after a session is bound should you run the usual registry and setup
+checks:
+
+```bash
 python3 -m astrid doctor
 python3 -m astrid orchestrators list
 python3 -m astrid executors list
@@ -32,42 +44,214 @@ python3 -m astrid setup
 
 `setup` is dry-run by default; pass `--apply` to mutate.
 
-## Using tools
+## Projects
 
-Find an id:
+A project is the durable workspace for timelines, task runs, events, and
+generated artifacts. Most commands need either an attached session or an
+explicit `--project <slug>`.
+
+Use `status` first: when no session is bound, it lists discovered projects and
+prints the exact attach and default-project commands to run.
+
+```bash
+python3 -m astrid status
+python3 -m astrid projects ls
+python3 -m astrid projects default
+python3 -m astrid projects default <slug>
+python3 -m astrid attach [<project>] [--default]
+```
+
+If `attach` has no project argument, it uses the configured default project.
+Use `projects create` only when the work needs a new durable project, not just a
+new run inside an existing project.
+
+## Choose The Mode
+
+- Use an **executor** for one concrete, independently runnable unit of work.
+- Use an **orchestrator** for a workflow that coordinates executors or child orchestrators.
+- Use an **element** for a reusable render building block: effect, animation, or transition.
+- Use task-mode verbs to continue a started plan: `status`, `next`, then the exact command or `ack` that `next` prints.
+- When creating new capability, search and compose existing tools first; only add new executors/elements/orchestrators for real gaps.
+
+## Pack-Specific Guidance
+
+This `_core` skill is the baseline. Custom packs can add their own guidance at
+`astrid/packs/<pack>/skill/SKILL.md`. When a task is clearly about one pack,
+read that pack skill after `_core` and before editing or running that pack's
+tools.
+
+To find every Astrid skill and what it does, attach to a project first, then
+list skills. The table shows each installable pack skill, its short
+description, and whether it is installed in Claude Code, Codex, and Hermes.
+Use `--json` when another agent or script needs to consume the list.
+
+```bash
+python3 -m astrid status
+python3 -m astrid attach [<project>]
+python3 -m astrid skills list
+python3 -m astrid skills list --json
+```
+
+If you create a custom pack whose conventions agents need to remember, add
+`astrid/packs/<pack>/skill/SKILL.md` and follow `docs/skills-install.md`.
+
+## Run A Tool
+
+Find an id before you run anything.
 
 ```bash
 python3 -m astrid [executors|orchestrators|elements] list
 python3 -m astrid [executors|orchestrators|elements] search <terms>
 ```
 
-If you don't know which tool to use, run `python3 -m astrid <kind> search <terms>` first — don't guess from id alone.
+If you don't know which tool to use, run `python3 -m astrid <kind> search
+<terms>` first. Do not guess from id alone.
 
-Inspect to see inputs, outputs, and intent:
+Inspect to see inputs, outputs, intent, folder root, and the relevant
+`STAGE.md`.
 
 ```bash
 python3 -m astrid [executors|orchestrators|elements] inspect <id> --json
 ```
 
-Run it:
+Read only that one `STAGE.md`; it is the source of truth for invocation details.
+Then run:
 
 ```bash
 python3 -m astrid [executors|orchestrators] run <id> -- <args>
 ```
 
-Each tool has its own `STAGE.md` next to its `run.py`. That is the source of truth — read it before invoking. The JSON inspect output points at the folder root and `stage_file`; load only the one relevant `STAGE.md`, not all of them.
+## Continue A Task Run
 
-At the start of any session that will produce runs, run `python3 -m astrid status` FIRST. The unbound output spells out the exact `astrid attach <slug>` command for every discoverable project; once attached, the breadcrumb prints session / agent / project / timeline / run / current-step / recent-events / inbox-count / role, plus a takeover hint when not the writer. If `status` reports "no session bound", attach before any other verb:
+Task lists are orchestrator plans tracked inside a project. Do not freelance:
+`next` is the control surface.
 
-```
-python3 -m astrid attach <project> [--timeline <slug>] [--session <id>] [--as agent:<id>]
+```bash
 python3 -m astrid status
 python3 -m astrid next --project <slug>
-python3 -m astrid ack <step> --project <slug> --decision approve [--agent <id>]
+```
+
+Then do exactly what `next` prints:
+
+- If it prints `run: ...`, run that command exactly.
+- If it prints an attested/manual step, acknowledge with the printed `ack` form.
+- If the run is stuck and another writer owns it, use the takeover hint from `status`.
+
+Common task commands:
+
+```bash
+python3 -m astrid start <orchestrator-id> --project <slug>
+python3 -m astrid next --project <slug>
+python3 -m astrid ack <step> --project <slug> --decision approve [--agent <id> | --actor <name>]
+python3 -m astrid status --project <slug>
+python3 -m astrid abort --project <slug>
 python3 -m astrid sessions {ls, detach, takeover} ...
 ```
 
 `astrid sessions takeover` atomically increments the run's `writer_epoch` and swaps the lease writer; any other tab that was writing to the run gets a `StaleEpochError` on its next mutating verb.
+
+## Create Something New
+
+Read `docs/creating-tools.md`, then follow this build order. Complete every
+step before falling back to the next.
+
+1. **Search and compose existing executors first.** If existing executors can
+   be wired together, build only an orchestrator that calls them.
+2. **Create missing executors next.** Each new executor does one concrete,
+   focused, independently runnable unit of work.
+3. **Then write the orchestrator.** It composes existing and newly created
+   executors into the workflow.
+4. **Add elements only for reusable render building blocks.** Effects,
+   animations, and transitions belong in the element tree, not in ad hoc
+   timeline code.
+
+Do not start by writing a god-orchestrator. If a `run.py` grows past a couple
+hundred lines while doing network calls, asset processing, and workflow logic,
+split it into executors plus an orchestrator.
+
+Before creating:
+
+```bash
+python3 -m astrid status
+python3 -m astrid executors search <terms>
+python3 -m astrid orchestrators search <terms>
+python3 -m astrid elements list
+python3 -m astrid [executors|orchestrators|elements] inspect <id> --json
+```
+
+Templates:
+
+- `docs/templates/executor/` — one concrete unit of work
+- `docs/templates/orchestrator/` — a workflow that combines executors
+- `docs/templates/element/` — a reusable render building block
+
+For custom pack behavior that agents should remember, add
+`astrid/packs/<pack>/skill/SKILL.md`. Keep pack-specific conventions there
+rather than expanding `_core`.
+
+Content lives under packs at `astrid/packs/<pack>/`. Executor folders use
+`astrid/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}` and orchestrator
+folders use `astrid/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}`,
+with optional local `src/` modules. Element folders live at
+`astrid/packs/<pack>/elements/<kind>/<id>/{component.tsx,element.yaml}` where
+kind is `effects`, `animations`, or `transitions`.
+
+Executor and orchestrator ids are always qualified as `<pack>.<name>`. Bare ids
+are rejected. Top-level `astrid/*.py` files are shared libraries or system
+commands, not alternate runnable implementations.
+
+Do not chain pipeline internals by hand unless debugging one specific stage. If
+the user gives a topic instead of a brief, use a brief-generation executor
+coordinated by an orchestrator; do not fake source media just to enter a
+source-video path. Render requires the `hype.timeline.json` and
+`hype.assets.json` pair produced by cut; do not skip cut unless both files
+already exist.
+
+## Safety Rules
+
+- Generated files live under `runs/` or another ignored output directory.
+- Do not commit source media, rendered videos, local dependency envs, or secrets.
+- Do not print or hardcode API keys; use `--env-file` or nearby `.env` files.
+- Do not edit `plan.json` or `events.jsonl` by hand during task-mode runs.
+- Treat curated tool stages as protected unless explicitly asked to edit them,
+  notably `astrid/packs/external/moirae/STAGE.md` and
+  `astrid/packs/external/vibecomfy/STAGE.md`.
+- Orchestrators may call declared child orchestrators; executors must not call orchestrators.
+
+After adding or renaming effects, animations, transitions, or theme elements:
+
+```bash
+python3 scripts/gen_effect_registry.py
+cd remotion && npm run gen-types
+```
+
+After editing `short_description` / `keywords` on any executor, orchestrator,
+or element manifest, refresh the capability index in this file:
+
+```bash
+python3 scripts/gen_capability_index.py
+```
+
+## Common Defaults
+
+Built-in orchestrators: `builtin.hype`, `builtin.event_talks`,
+`builtin.thumbnail_maker`.
+
+Built-in executors include `builtin.transcribe`, `builtin.cut`,
+`builtin.render`, `builtin.validate`, `builtin.understand` (audio/visual/video
+dispatcher; pass `--mode {audio,visual,video}`), `builtin.generate_image`, and
+the rest of the pipeline. External executors include `external.moirae` and
+`external.vibecomfy.run` (executor only, not an orchestrator).
+
+Element source priority: active theme →
+`astrid/packs/local/elements/<kind>/<id>` (gitignored scratch pack) →
+`astrid/packs/builtin/elements/<kind>/<id>`. Forking copies the source element
+into `astrid/packs/local/`, auto-creating `astrid/packs/local/pack.yaml` and
+rewriting the element's `pack_id` to `local`.
+
+```bash
+python3 -m astrid elements fork effects text-card
+```
 
 Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iteration_video.run inspect <thread>` to see modalities, renderers, quality, cache counts, and estimated cost without rendering. Note: the pack-level `--thread <id>` argument identifies a variant lineage WITHIN a pack and is UNRELATED to the (removed) `astrid thread` CLI verb — threads as a user-facing concept were retired in Sprint 1 (DEC-001); the internal `astrid.threads` library is retained for pack runners.
 
@@ -100,6 +284,7 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `builtin.render` | Render a hype timeline to hype.mp4 through the Remotion compositor. |
 | `builtin.scene_describe` | Caption each detected scene with a vision model for downstream selection. |
 | `builtin.scenes` | Detect source-video scene boundaries with ffmpeg-driven analysis. |
+| `builtin.search_loras` | Search Hugging Face Hub for LoRAs associated with a base model. |
 | `builtin.shots` | Slice scenes into shot windows for downstream pool building. |
 | `builtin.spatial_audio_page` | Build a static page that mixes Foley tracks anchored to spatial rectangles via Web Audio. |
 | `builtin.sprite_sheet` | Generate, slice, and preview GPT Image sprite sheets for batch image work. |
@@ -126,6 +311,7 @@ Before rendering an iteration video, run `python3 -m astrid.packs.builtin.iterat
 | `seinfeld.lora_eval_grid` | Run baseline LTX + per-checkpoint inference samples, download MP4s, write static index.html viewer. |
 | `seinfeld.lora_register` | Pure-local: copy chosen .safetensors into registered/ and write registered_lora.json. |
 | `seinfeld.repo_setup` | Idempotent git submodule add + checkout of ostris/ai-toolkit for config-schema reference. |
+| `seinfeld.script_pipeline` | Generate Seinfeld-style short scene scripts through ideation, synthesis, and voice passes. |
 | `upload.youtube` | Upload a finished video to YouTube via the shared banodoco-social Zapier integration. |
 
 ### Orchestrators
@@ -174,61 +360,9 @@ python3 -m astrid skills uninstall _core      # remove from all harnesses
 
 Default mechanism is per-pack symlinks under `~/.claude/skills/`, `~/.codex/skills/`, and `${HERMES_HOME:-~/.hermes}/skills/`. Codex additionally maintains an idempotent fenced block in `~/.codex/AGENTS.md` listing each installed pack. Hermes accepts an opt-in `--mechanism external-dir` that registers the whole `astrid/packs` tree via `~/.hermes/config.yaml` `skills.external_dirs` instead of per-pack symlinks.
 
-If no harness is installed, Astrid prints a one-line nudge to stderr at most once every seven days when you run a non-`skills` subcommand. Suppress with `ARTAGENTS_NO_NUDGE=1` or `--quiet`.
+If no harness is installed, Astrid prints a one-line nudge to stderr at most once every seven days when you run a non-`skills` subcommand. Suppress with `ASTRID_NO_NUDGE=1` or `--quiet`.
 
 See `docs/skills-install.md` for the SkillDescriptor contract and the `metadata.hermes.*` extension block.
-
-## Make something new
-
-Read `docs/creating-tools.md`, then follow this build order — every step before falling back to the next:
-
-1. **Compose existing executors first.** `python3 -m astrid executors list` and `inspect` the candidates. If existing executors can be wired together to do the job, build only an orchestrator that calls them.
-2. **Create the missing executors next.** Each new executor must do *one* concrete, focused unit of work — independently runnable, inspectable, and testable. Don't pack workflow logic into an executor; that belongs in an orchestrator.
-3. **Then write the orchestrator.** It composes the executors (existing + newly created) into the workflow. Orchestrators may call other orchestrators; executors must not.
-
-Skipping step 1 to write a god-orchestrator that bakes in network calls and business logic is the anti-pattern. Suspect it whenever a `run.py` grows past a couple of hundred lines without delegating to executors.
-
-Templates:
-
-- `docs/templates/executor/` — one concrete unit of work
-- `docs/templates/orchestrator/` — a workflow that combines executors
-- `docs/templates/element/` — a reusable render building block
-
-Content lives under packs at `astrid/packs/<pack>/`. Executor folders use the layout `astrid/packs/<pack>/<slug>/{executor.yaml,STAGE.md,run.py}` and orchestrator folders use `astrid/packs/<pack>/<slug>/{orchestrator.yaml,STAGE.md,run.py}`, with optional local `src/` modules. Element folders live at `astrid/packs/<pack>/elements/<kind>/<id>/{component.tsx,element.yaml}` (kind ∈ {effects, animations, transitions}). Top-level `astrid/*.py` files are shared libraries or system commands, not alternate runnable implementations. Executor and orchestrator ids are always qualified — `<pack>.<name>` (e.g. `builtin.cut`, `external.vibecomfy.run`); bare ids are rejected.
-
-Do not chain pipeline internals by hand unless you are debugging one specific stage. If the user gives a topic instead of a brief, use a brief-generation executor coordinated by an orchestrator — don't fake source media just to enter a source-video path. Render requires the `hype.timeline.json` and `hype.assets.json` pair produced by cut; don't skip cut unless both files already exist.
-
-## Defaults
-
-Built-in orchestrators: `builtin.hype`, `builtin.event_talks`, `builtin.thumbnail_maker`.
-
-Built-in executors include `builtin.transcribe`, `builtin.cut`, `builtin.render`, `builtin.validate`, `builtin.understand` (audio/visual/video dispatcher; pass `--mode {audio,visual,video}`), `builtin.generate_image` (with a `saint-peter-of-banodoco` preset for the onboarding portrait), and the rest of the pipeline. External executors include `external.moirae` and `external.vibecomfy.run` (executor only, not an orchestrator).
-
-Element source priority: active theme → `astrid/packs/local/elements/<kind>/<id>` (gitignored scratch pack) → `astrid/packs/builtin/elements/<kind>/<id>`. Forking copies the source element into `astrid/packs/local/`, auto-creating `astrid/packs/local/pack.yaml` and rewriting the element's `pack_id` to `local`.
-
-```bash
-python3 -m astrid elements fork effects text-card
-```
-
-## Rules
-
-- Generated files live under `runs/` (or another ignored output directory) and stay out of git. Don't commit source media, rendered videos, local dependency envs, or secrets.
-- Don't print or hardcode API keys; use `--env-file` or nearby `.env` files.
-- Treat curated tool stages as protected unless explicitly asked to edit them — notably `astrid/packs/external/moirae/STAGE.md` and `astrid/packs/external/vibecomfy/STAGE.md`.
-- Orchestrators may call declared child orchestrators; executors must not call orchestrators.
-
-After adding or renaming effects, animations, transitions, or theme elements:
-
-```bash
-python3 scripts/gen_effect_registry.py
-cd remotion && npm run gen-types
-```
-
-After editing `short_description` / `keywords` on any executor, orchestrator, or element manifest, refresh the capability index in this file:
-
-```bash
-python3 scripts/gen_capability_index.py
-```
 
 ## Adding overlays to a rendered video
 
@@ -338,14 +472,14 @@ You should not need ffmpeg's `atrim` / `afade` / `amix` for any normal "music un
 
 ```bash
 PYENV_VERSION=3.11.11 \
-ARTAGENTS_TIMELINE_COMPOSITION_SRC=$(pwd)/remotion/node_modules/@banodoco/timeline-composition/typescript/src \
+ASTRID_TIMELINE_COMPOSITION_SRC=$(pwd)/remotion/node_modules/@banodoco/timeline-composition/typescript/src \
 python3 -m astrid.packs.builtin.render.run \
   --timeline runs/<my-run>/timeline.json \
   --assets runs/<my-run>/assets.json \
   --out runs/<my-run>/composed.mp4
 ```
 
-The `ARTAGENTS_TIMELINE_COMPOSITION_SRC` env var points the codegen at `node_modules/@banodoco/timeline-composition` — without it, `gen_effect_registry.py` writes to `~/Documents/reigh-workspace/packages/timeline-composition` instead of the place Remotion actually imports from. Until that's fixed upstream, set the env var on every render whenever your effect/animation set changes.
+The `ASTRID_TIMELINE_COMPOSITION_SRC` env var points the codegen at `node_modules/@banodoco/timeline-composition` — without it, `gen_effect_registry.py` writes to `~/Documents/reigh-workspace/packages/timeline-composition` instead of the place Remotion actually imports from. Until that's fixed upstream, set the env var on every render whenever your effect/animation set changes.
 
 ### Where the schemas live (authoritative)
 

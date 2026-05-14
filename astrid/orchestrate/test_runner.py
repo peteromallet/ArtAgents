@@ -1,7 +1,7 @@
 """Author-test fixture replay driver.
 
 ``run_fixture`` drives a compiled orchestrator plan through the gate inside a
-scratch projects root with ARTAGENTS_AUTHOR_TEST=1, auto-approving attested
+scratch projects root with ASTRID_AUTHOR_TEST=1, auto-approving attested
 steps. The resulting events.jsonl path is returned for the diff/regenerate
 caller in ``orchestrate.cli``.
 """
@@ -17,8 +17,8 @@ from typing import Optional
 
 from astrid.core.task.active_run import read_active_run
 from astrid.core.task.env import (
-    ARTAGENTS_ACTOR,
-    ARTAGENTS_AUTHOR_TEST,
+    ASTRID_ACTOR,
+    ASTRID_AUTHOR_TEST,
     TASK_ITEM_ID_ENV,
     TASK_ITERATION_ENV,
     TASK_PROJECT_ENV,
@@ -50,8 +50,8 @@ _MAX_ITERATIONS = 200
 # so a fixture replay never leaks task-run state into the surrounding test
 # process or shell.
 _MANAGED_ENV_VARS = (
-    ARTAGENTS_AUTHOR_TEST,
-    ARTAGENTS_ACTOR,
+    ASTRID_AUTHOR_TEST,
+    ASTRID_ACTOR,
     TASK_RUN_ID_ENV,
     TASK_PROJECT_ENV,
     TASK_STEP_ID_ENV,
@@ -88,8 +88,8 @@ def run_fixture(
     the gate / lifecycle helpers reject a step (the original error is wrapped).
     """
     snapshot = _snapshot_env(_MANAGED_ENV_VARS)
-    os.environ[ARTAGENTS_AUTHOR_TEST] = "1"
-    os.environ[ARTAGENTS_ACTOR] = "author_test"
+    os.environ[ASTRID_AUTHOR_TEST] = "1"
+    os.environ[ASTRID_ACTOR] = "author_test"
     try:
         project_root = projects_root / project_slug
         if fixture_dir is not None and Path(fixture_dir).exists():

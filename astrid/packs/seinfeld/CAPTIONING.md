@@ -56,6 +56,7 @@ Style: Seinfeld sitcom, 90s NBC multi-cam look, studio sitcom lighting.
 | Omit dialogue to keep captions short | LTX 2.3's official auto-captioner emits speech transcription as a first-class section. Omitting it trains off-distribution. The pipeline cost of running Whisper per clip is acceptable. |
 | Use `visual_understand` (single frame) for the caption | Frames don't describe motion. A 12-second clip with "George enters" and "George sits down" both look like "George at a door" if you only see the midpoint. We use `video_understand` (Gemini, video-native, audio-aware) for captions. |
 | Auto-generated trigger token (one global token, prepended) | The LTX trainer's global-trigger flag is for a *single* style trigger. Doesn't help us — we need multiple locations selectable at inference. We use scene tokens inside the caption text, not the trainer's global trigger. |
+| Caption only verbatim speech + minimal action (Ostris recipe) | Ostris's *burn-in vs describe* rule (LTX-2.3 character LoRA tutorial, YT `JQIl8DFTL1M`): omitted attributes get burned into the LoRA, described ones stay prompt-controllable. He omits clothing/scene to lock them in. We do the **opposite** on purpose — describing `jerrys_apt`/`monks_diner` + outfits keeps them as inference-time switches, since we're training a style LoRA with selectable locations, not a single-character identity LoRA. Be aware of the tradeoff: our rich captions are intentional, not an oversight. |
 
 ## Where each section comes from in the pipeline
 

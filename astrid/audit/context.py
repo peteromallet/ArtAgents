@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 from .util import MAX_TEXT_PREVIEW, file_metadata, redact, stable_id, text_preview, utc_now
 
-PARENT_IDS_ENV = "ARTAGENTS_AUDIT_PARENT_IDS"
+PARENT_IDS_ENV = "ASTRID_AUDIT_PARENT_IDS"
 
 
 def _env_parent_ids() -> list[str]:
@@ -37,9 +37,9 @@ class AuditContext:
 
     @classmethod
     def from_env(cls) -> "AuditContext | None":
-        if os.environ.get("ARTAGENTS_AUDIT_DISABLED", "").strip().lower() in {"1", "true", "yes"}:
+        if os.environ.get("ASTRID_AUDIT_DISABLED", "").strip().lower() in {"1", "true", "yes"}:
             return None
-        run_dir = os.environ.get("ARTAGENTS_AUDIT_RUN_DIR", "").strip()
+        run_dir = os.environ.get("ASTRID_AUDIT_RUN_DIR", "").strip()
         if not run_dir:
             return None
         return cls.for_run(run_dir)

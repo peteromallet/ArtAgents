@@ -49,7 +49,7 @@ def test_inbox_approve_consumed_into_step_attested(tmp_path: Path) -> None:
     )
 
     # Run cmd_next: T4 hooks scan_inbox + consume_inbox_entry into cmd_next.
-    os.environ["ARTAGENTS_ACTOR"] = "bob"
+    os.environ["ASTRID_ACTOR"] = "bob"
     with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
         rc = cmd_next(["--project", "p"], projects_root=projects)
     assert rc == 0

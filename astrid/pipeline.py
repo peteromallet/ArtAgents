@@ -43,7 +43,7 @@ _UNBOUND_TOP_LEVEL = {
     "-h",
     "--help",
 }
-_UNBOUND_PROJECTS_SUBVERBS = {"ls", "create"}
+_UNBOUND_PROJECTS_SUBVERBS = {"ls", "create", "default"}
 _UNBOUND_SESSIONS_SUBVERBS = {"ls", "takeover", "detach"}
 
 
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     # Nudge runs once per CLI invocation, before the command itself, but never
     # for the `skills` subcommand (would be silly) or help. Cheap state-file
-    # read; bails early if no harness is detected or ARTAGENTS_NO_NUDGE is set.
+    # read; bails early if no harness is detected or ASTRID_NO_NUDGE is set.
     try:
         from .skills import nudge_if_needed
 
@@ -78,8 +78,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"session: {exc}", file=sys.stderr)
             return 2
         if session is None:
+            project_hint = _extract_project_slug(raw)
+            attach_hint = (
+                f"`astrid attach {project_hint}`"
+                if project_hint
+                else "`astrid attach <project>`"
+            )
             print(
-                "no session bound — run `astrid attach <project>`",
+                f"no session bound — run `astrid status` to list projects, then {attach_hint} "
+                "(or `astrid attach` if a default project is configured)",
                 file=sys.stderr,
             )
             return 2
@@ -137,7 +144,7 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     * ``attach``, ``init``, ``-h`` / ``--help`` (full-verb).
     * ``status`` — both the new session breadcrumb (no ``--project``) and
       the legacy ``astrid status --project <slug>``.
-    * ``projects ls`` and ``projects create``.
+    * ``projects ls``, ``projects create``, and ``projects default``.
     * ``sessions ls`` / ``sessions takeover`` / ``sessions detach``.
     * ``author test --project <slug>`` — documented exception for the
       workflow test runner.
@@ -147,7 +154,7 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
         return True  # empty argv → entrypoint help
 
     top = raw[0]
-    if top in {"-h", "--help"}:
+    if "-h" in raw or "--help" in raw:
         return True
     if top in {"attach", "init", "status"}:
         return True
@@ -217,7 +224,8 @@ def _dispatch(raw: list[str]) -> int:
         from .core.session.cli import build_parser as _sb
         from .core.session.cli import cmd_status as session_status
 
-        args = _sb().parse_args(["status"])
+        status_args = ["status", *[arg for arg in raw[1:] if arg in {"-h", "--help"}]]
+        args = _sb().parse_args(status_args)
         return int(session_status(args))
     if raw and raw[0] == "runs":
         return _dispatch_runs(raw[1:])
@@ -757,13 +765,13 @@ Usage:
     python3 -m astrid ack <step> --project <slug> --decision {approve,retry,iterate,abort} [--agent <id> | --actor <name>] [--evidence path] [--feedback "..."] [--item id]
     python3 -m astrid hook stop   # Claude Code Stop-hook entry point; see docs/HOOKS.md
   Session verbs (Sprint 1):
-    python3 -m astrid attach <project> [--timeline <slug>] [--session <id>] [--as agent:<id>]
+    python3 -m astrid attach [<project>] [--default] [--timeline <slug>] [--session <id>] [--as agent:<id>]
     python3 -m astrid status
     python3 -m astrid sessions {ls,detach,takeover} ...
   python3 -m astrid skills {list,install,uninstall,sync,doctor} ...
   python3 -m astrid executors {list,inspect,validate,install,run} ...
   python3 -m astrid elements {list,inspect,fork,install} ...
-  python3 -m astrid projects {create,show,source} ...
+  python3 -m astrid projects {ls,default,create,show,source} ...
   python3 -m astrid timelines {ls,create,show,rename,finalize,tombstone,purge,set-default} ...
   python3 -m astrid modalities {list,inspect} ...
   python3 -m astrid reigh-data --project-id PROJECT_ID [--out PATH]
@@ -776,8 +784,9 @@ Usage:
   python3 -m astrid --video SRC --brief BRIEF --out runs/name [--render]
   python3 -m astrid --brief BRIEF --out runs/name --target-duration SECONDS [--render]
 Start here:
-  python3 -m astrid attach <project>
   python3 -m astrid status
+  python3 -m astrid attach [<project>]
+  python3 -m astrid projects ls
   python3 -m astrid orchestrators list
   python3 -m astrid executors list
   python3 -m astrid elements list

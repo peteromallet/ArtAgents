@@ -17,7 +17,7 @@ from .discovery import SkillDescriptor, list_skills
 from .harnesses import ADAPTERS, HarnessAdapter, adapter_for, all_adapters
 
 NUDGE_INTERVAL_DAYS = 7
-NUDGE_ENV = "ARTAGENTS_NO_NUDGE"
+NUDGE_ENV = "ASTRID_NO_NUDGE"
 
 
 def install(

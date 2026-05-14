@@ -32,6 +32,13 @@ from astrid.core.session.binding import (
     SessionBindingError,
     resolve_current_session,
 )
+from astrid.core.session.config import (
+    load_user_config,
+    load_workspace_config,
+    resolve_default_project,
+    set_default_project,
+)
+from astrid.core.session.discovery import discover_projects
 
 from . import paths
 from .project import ProjectError, create_project, require_project, show_project
@@ -70,6 +77,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     create_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     create_parser.set_defaults(handler=_cmd_create)
+
+    ls_parser = subparsers.add_parser("ls", help="List local Astrid projects.")
+    ls_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    ls_parser.set_defaults(handler=_cmd_ls)
+
+    default_parser = subparsers.add_parser("default", help="Show, set, or clear the default project.")
+    default_parser.add_argument("slug", nargs="?", help="Project slug to remember as the default.")
+    default_parser.add_argument("--clear", action="store_true", help="Clear the configured default project.")
+    default_parser.add_argument(
+        "--user",
+        action="store_true",
+        help="Write the user-wide default instead of the workspace default.",
+    )
+    default_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    default_parser.set_defaults(handler=_cmd_default)
 
     show_parser = subparsers.add_parser("show", help="Show a project tree.")
     _add_project_arg(show_parser)
@@ -168,7 +190,92 @@ def _cmd_create(args: argparse.Namespace) -> int:
     print(f"created: {project['name']}")
     if project.get("project_id"):
         print(f"project_id: {project['project_id']}")
-    print(f"next: python3 -m astrid projects show --project {project['slug']}")
+    print(f"next: python3 -m astrid attach {project['slug']} --default")
+    return 0
+
+
+def _cmd_ls(args: argparse.Namespace) -> int:
+    projects = discover_projects()
+    default = resolve_default_project()
+    default_is_available = bool(default and default in projects)
+    if args.json:
+        _print_json(
+            {
+                "default_project": default,
+                "default_available": default_is_available,
+                "projects": projects,
+            }
+        )
+        return 0
+    if default_is_available:
+        print(f"default project: {default}")
+    elif default:
+        print(f"configured default project: {default} (not found under current projects root)")
+    if not projects:
+        print("no projects discovered under the projects root")
+        print("create one with: python3 -m astrid projects create <slug>")
+        return 0
+    print("projects:")
+    for slug in projects:
+        marker = " *" if slug == default and default_is_available else ""
+        print(f"  {slug}{marker}")
+    print("attach:")
+    if default_is_available:
+        print("  python3 -m astrid attach")
+    print("  python3 -m astrid attach <project>")
+    return 0
+
+
+def _cmd_default(args: argparse.Namespace) -> int:
+    if args.clear and args.slug:
+        raise ValueError("pass either a project slug or --clear, not both")
+    scope = "user" if args.user else "workspace"
+    if args.clear:
+        path = set_default_project(None, scope=scope)
+        if args.json:
+            _print_json({"default_project": None, "scope": scope, "path": str(path)})
+            return 0
+        print(f"cleared default project ({scope})")
+        return 0
+    if not args.slug:
+        default = resolve_default_project()
+        if args.json:
+            projects = discover_projects()
+            _print_json(
+                {
+                    "default_project": default,
+                    "default_available": bool(default and default in projects),
+                }
+            )
+            return 0
+        print(f"default project: {default or '(none)'}")
+        if default is None:
+            projects = discover_projects()
+            if projects:
+                print(f"set one with: python3 -m astrid projects default {projects[0]}")
+            else:
+                print("no projects discovered under the projects root")
+        else:
+            projects = discover_projects()
+            if default not in projects:
+                print("warning: configured default project is not under the current projects root")
+                workspace_default = load_workspace_config().get("default_project")
+                user_default = load_user_config().get("default_project")
+                if workspace_default == default and user_default and user_default != default:
+                    print("clear workspace default to use the user default:")
+                    print("  python3 -m astrid projects default --clear")
+                elif projects:
+                    print(f"choose an available project with: python3 -m astrid projects default {projects[0]}")
+                else:
+                    print("create one with: python3 -m astrid projects create <slug>")
+        return 0
+    require_project(args.slug)
+    path = set_default_project(args.slug, scope=scope)
+    if args.json:
+        _print_json({"default_project": args.slug, "scope": scope, "path": str(path)})
+        return 0
+    print(f"default project ({scope}): {args.slug}")
+    print("attach with: python3 -m astrid attach")
     return 0
 
 

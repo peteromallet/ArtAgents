@@ -23,7 +23,7 @@ def test_executor_project_runs_finalize_success_error_skip_and_avoid_thread_coll
     repo.mkdir()
     projects_root = repo / "projects"
     monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(projects_root))
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     _clear_thread_env(monkeypatch)
     create_project("demo")
     registry = ExecutorRegistry([_writer_executor("test.writer"), _requires_executor("test.requires"), _skip_executor("test.skip")])
@@ -46,7 +46,7 @@ def test_executor_project_runs_finalize_success_error_skip_and_avoid_thread_coll
 def test_executor_legacy_out_still_writes_thread_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("ARTAGENTS_REPO_ROOT", str(repo))
+    monkeypatch.setenv("ASTRID_REPO_ROOT", str(repo))
     monkeypatch.setenv(paths.PROJECTS_ROOT_ENV, str(tmp_path / "projects"))
     _clear_thread_env(monkeypatch)
     registry = ExecutorRegistry([_writer_executor("test.writer")])
@@ -178,7 +178,7 @@ def _writer_executor(executor_id: str) -> ExecutorDefinition:
         "from pathlib import Path\n"
         "out = Path(sys.argv[1])\n"
         "out.mkdir(parents=True, exist_ok=True)\n"
-        "(out / 'env.txt').write_text(os.environ.get('ARTAGENTS_PROJECT_RUN', ''), encoding='utf-8')\n"
+        "(out / 'env.txt').write_text(os.environ.get('ASTRID_PROJECT_RUN', ''), encoding='utf-8')\n"
     )
     return ExecutorDefinition(
         id=executor_id,
@@ -218,7 +218,7 @@ def _writer_orchestrator(orchestrator_id: str) -> OrchestratorDefinition:
         "from pathlib import Path\n"
         "out = Path(sys.argv[1])\n"
         "out.mkdir(parents=True, exist_ok=True)\n"
-        "(out / 'orch-env.txt').write_text(os.environ.get('ARTAGENTS_PROJECT_RUN', ''), encoding='utf-8')\n"
+        "(out / 'orch-env.txt').write_text(os.environ.get('ASTRID_PROJECT_RUN', ''), encoding='utf-8')\n"
     )
     return OrchestratorDefinition(
         id=orchestrator_id,
@@ -253,11 +253,11 @@ def _read_json(path: Path) -> dict:
 
 def _clear_thread_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
-        "ARTAGENTS_THREADS_OFF",
-        "ARTAGENTS_THREAD_INHERITED",
-        "ARTAGENTS_THREAD_ID",
-        "ARTAGENTS_RUN_ID",
-        "ARTAGENTS_PARENT_RUN_ID",
-        "ARTAGENTS_PROJECT_RUN",
+        "ASTRID_THREADS_OFF",
+        "ASTRID_THREAD_INHERITED",
+        "ASTRID_THREAD_ID",
+        "ASTRID_RUN_ID",
+        "ASTRID_PARENT_RUN_ID",
+        "ASTRID_PROJECT_RUN",
     ):
         monkeypatch.delenv(name, raising=False)

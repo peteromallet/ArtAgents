@@ -1118,12 +1118,12 @@ def run_step(step: Step, cmd: list[str], args: argparse.Namespace) -> int:
     with log_path.open("w", encoding="utf-8") as log_handle:
         env = os.environ.copy()
         if getattr(args, "audit", None) is not None:
-            env["ARTAGENTS_AUDIT_RUN_DIR"] = str(args.out)
+            env["ASTRID_AUDIT_RUN_DIR"] = str(args.out)
             parent_ids = getattr(args, "audit_parent_ids", [])
             if parent_ids:
                 env[PARENT_IDS_ENV] = ",".join(parent_ids)
         if getattr(args, "no_audit", False):
-            env["ARTAGENTS_AUDIT_DISABLED"] = "1"
+            env["ASTRID_AUDIT_DISABLED"] = "1"
         env.update(thread_subprocess_env())
         process = subprocess.Popen(
             cmd,

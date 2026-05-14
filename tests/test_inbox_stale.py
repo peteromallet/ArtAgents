@@ -65,7 +65,7 @@ def test_step_id_mismatch_leaves_file_in_place(tmp_path: Path) -> None:
         },
     )
 
-    os.environ["ARTAGENTS_ACTOR"] = "bob"
+    os.environ["ASTRID_ACTOR"] = "bob"
     rc = _run_next(projects)
     assert rc == 0
 
@@ -98,7 +98,7 @@ def test_approve_on_actor_step_quarantined_to_rejected(
         },
     )
 
-    os.environ["ARTAGENTS_ACTOR"] = "bob"
+    os.environ["ASTRID_ACTOR"] = "bob"
     with caplog.at_level(logging.WARNING, logger="astrid.core.task.inbox"):
         rc = _run_next(projects)
     assert rc == 0
@@ -126,7 +126,7 @@ def test_malformed_json_skipped_and_logged(tmp_path: Path, caplog) -> None:
 
     inbox_file = _drop(run_dir, "broken.json", "not valid json {")
 
-    os.environ["ARTAGENTS_ACTOR"] = "bob"
+    os.environ["ASTRID_ACTOR"] = "bob"
     with caplog.at_level(logging.WARNING, logger="astrid.core.task.inbox"):
         rc = _run_next(projects)
     assert rc == 0

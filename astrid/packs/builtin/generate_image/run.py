@@ -307,7 +307,7 @@ def generate(args: argparse.Namespace) -> int:
     manifest: list[dict[str, Any]] = []
     variant_artifacts: list[dict[str, Any]] = []
     audit = AuditContext.from_env()
-    run_id = os.environ.get("ARTAGENTS_RUN_ID", "").strip()
+    run_id = os.environ.get("ASTRID_RUN_ID", "").strip()
 
     for index, job in enumerate(jobs, start=1):
         prompt = str(job["prompt"]).strip()

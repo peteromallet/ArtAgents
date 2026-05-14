@@ -30,7 +30,7 @@ REMOTION_SRC = TOOLS_DIR / "remotion" / "src"
 # back-compat with tests that imported from the old location.
 PACKAGE_SRC = Path(
     os.environ.get(
-        "ARTAGENTS_TIMELINE_COMPOSITION_SRC",
+        "ASTRID_TIMELINE_COMPOSITION_SRC",
         str(WORKSPACE_ROOT / "packages" / "timeline-composition" / "typescript" / "src"),
     )
 )

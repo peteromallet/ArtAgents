@@ -172,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--root",
-        help="Override projects root (defaults to ARTAGENTS_PROJECTS_ROOT / ~/Documents/reigh-workspace/astrid-projects).",
+        help="Override projects root (defaults to ASTRID_PROJECTS_ROOT / ~/Documents/reigh-workspace/astrid-projects).",
     )
     args = parser.parse_args(argv)
     apply = bool(args.apply)

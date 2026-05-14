@@ -138,7 +138,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
 
 - **SD-029** — `generic_card` renderer is always registered as a fallback. When it fires, every iteration that uses it gets a "no renderer for `kind:<X>`" annotation in the HTML report and a stdout warning. Unknown modalities degrade gracefully and **loudly**. _load_bearing: true_
 
-- **SD-030** — Single chokepoint integration: `run_executor()` at `astrid/core/executor/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ARTAGENTS_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
+- **SD-030** — Single chokepoint integration: `run_executor()` at `astrid/core/executor/runner.py:75` and the orchestrator-runner equivalent are wrapped with `threads.begin(request)` / `threads.finalize(record_id, result)`. The wrapper is a no-op when: `dry_run=True`, `request.out` is unwritable or under `tempfile.gettempdir()`, `request.thread == "@none"`, or env `ASTRID_THREADS_OFF=1` is set. **No executor's `run.py` is modified except where it produces variant outputs.** _load_bearing: true_
 
 - **SD-031** — Existing-executor patches required by this layer:
   - `astrid/packs/builtin/generate_image/run.py` — declare `role: variant` on the N images; emit `group` from `(run_id, prompt_index)`; populate `preview_modes` and `duration`.
@@ -176,7 +176,7 @@ The whole system exists to support one killer demo: open a finished artifact, se
   - Concurrency: 8 parallel subprocess runs, all recorded, no lost updates
   - `run_executor` integration end-to-end: `run.json` written, index updated, finalization records returncode
   - Orchestrator integration: nested executor inherits parent thread via env
-  - Backwards compat: `ARTAGENTS_THREADS_OFF=1` produces no artifacts and no errors; missing `.astrid/` is auto-created; existing `runs/*/` without `run.json` work unchanged
+  - Backwards compat: `ASTRID_THREADS_OFF=1` produces no artifacts and no errors; missing `.astrid/` is auto-created; existing `runs/*/` without `run.json` work unchanged
   - Variants: heterogeneous outputs (variant + ancillary + manifest) result in only the variants being grouped
   - Provenance: `hype.metadata.json` carries the block; `thread_label` survives index deletion
   - All existing pytest tests pass without modification

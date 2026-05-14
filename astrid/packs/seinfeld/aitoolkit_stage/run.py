@@ -17,7 +17,8 @@ except ImportError:
 
 HIVEMIND_DEFAULTS = {
     "resolution": 512,
-    "num_frames": 97,
+    "resolution_buckets": [512, 768],
+    "num_frames": 121,
     "fps": 24,
     "lr": 2.0e-5,
     "steps_default": 2000,
@@ -96,13 +97,19 @@ def build_config(
     process["datasets"][0]["folder_path"] = dataset_dir
     process["datasets"][0]["num_frames"] = HIVEMIND_DEFAULTS["num_frames"]
     process["datasets"][0]["fps"] = HIVEMIND_DEFAULTS["fps"]
-    process["datasets"][0]["resolution"] = [HIVEMIND_DEFAULTS["resolution"]]
+    process["datasets"][0]["resolution"] = list(HIVEMIND_DEFAULTS["resolution_buckets"])
     process["datasets"][0]["bucketing"] = True
+    process["datasets"][0]["cache_latents_to_disk"] = True
     process["train"]["batch_size"] = HIVEMIND_DEFAULTS["batch_size"]
     process["train"]["steps"] = final_steps
     process["train"]["gradient_accumulation_steps"] = HIVEMIND_DEFAULTS["grad_accum"]
     process["train"]["lr"] = HIVEMIND_DEFAULTS["lr"]
     process["train"]["seed"] = seed
+    # Baseline/in-loop LTX video sampling has repeatedly killed otherwise healthy
+    # RunPod training runs. Train first; generate review samples as a separate
+    # post-training step after checkpoints are durable.
+    process["train"]["skip_first_sample"] = True
+    process["train"]["disable_sampling"] = True
     process["model"]["name_or_path"] = base_model
     process["model"]["is_ltx"] = True
     process["sample"]["sample_every"] = HIVEMIND_DEFAULTS["sample_every"]

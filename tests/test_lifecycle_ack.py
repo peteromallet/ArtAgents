@@ -67,7 +67,7 @@ def test_a_approve_attested_review_sh_writes_step_attested(tmp_path: Path) -> No
         tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="ra",
         start_actor="bob",
     )
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, out, err = _ack(packs, projects, "review", "--project", "p", "--decision", "approve", "--actor", "alice")
     assert rc == 0, f"out={out!r} err={err!r}"
     events = [json.loads(line) for line in (projects/"p"/"runs"/"ra"/"events.jsonl").read_text().splitlines()]
@@ -76,14 +76,14 @@ def test_a_approve_attested_review_sh_writes_step_attested(tmp_path: Path) -> No
 
 def test_b_approve_missing_identity_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rb")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, _ = _ack(packs, projects, "review", "--project", "p", "--decision", "approve")
     assert rc != 0
 
 
 def test_c_approve_both_flags_argparse_rejects(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rc")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, _ = _ack(
         packs, projects, "review", "--project", "p", "--decision", "approve",
         "--agent", "ag1", "--actor", "alice",
@@ -93,19 +93,19 @@ def test_c_approve_both_flags_argparse_rejects(tmp_path: Path) -> None:
 
 def test_d_approve_actor_not_matching_astrid_actor_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rd")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, err = _ack(packs, projects, "review", "--project", "p", "--decision", "approve", "--actor", "carol")
     assert rc != 0
-    assert "ARTAGENTS_ACTOR" in err
+    assert "ASTRID_ACTOR" in err
 
 
 def test_e_self_ack_rejected(tmp_path: Path) -> None:
-    """run_started.actor == --actor == ARTAGENTS_ACTOR triggers self-ack rejection."""
+    """run_started.actor == --actor == ASTRID_ACTOR triggers self-ack rejection."""
     packs, projects = setup_run(
         tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="re",
         start_actor="alice",
     )
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, err = _ack(packs, projects, "review", "--project", "p", "--decision", "approve", "--actor", "alice")
     assert rc != 0
     assert "self-ack" in err
@@ -114,14 +114,14 @@ def test_e_self_ack_rejected(tmp_path: Path) -> None:
 def test_f_retry_without_identity_rejected(tmp_path: Path) -> None:
     """FLAG-P5-002: retry must call validate_attested_identity BEFORE event mutation."""
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rf")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, _ = _ack(packs, projects, "review", "--project", "p", "--decision", "retry")
     assert rc != 0
 
 
 def test_g_retry_without_prior_verifier_failure_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "review", _ATTESTED_REVIEW, "demo.review", run_id="rg")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, err = _ack(packs, projects, "review", "--project", "p", "--decision", "retry", "--actor", "alice")
     assert rc != 0
     assert "produces_check_failed" in err
@@ -131,7 +131,7 @@ def test_h_retry_after_produces_check_failed_appends_cursor_rewind(tmp_path: Pat
     packs, projects = setup_run(
         tmp_path, "demo", "with_produces", _ATTESTED_PRODUCES, "demo.with_produces", run_id="rh"
     )
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     events_path = projects / "p" / "runs" / "rh" / "events.jsonl"
     append_event(events_path, make_step_attested_event("review", "actor", "alice", ()))
     append_event(
@@ -148,14 +148,14 @@ def test_h_retry_after_produces_check_failed_appends_cursor_rewind(tmp_path: Pat
 def test_i_iterate_without_identity_rejected(tmp_path: Path) -> None:
     """FLAG-P5-002: iterate must call validate_attested_identity BEFORE event mutation."""
     packs, projects = setup_run(tmp_path, "demo", "iter", _ITER, "demo.iter", run_id="ri")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, _ = _ack(packs, projects, "review", "--project", "p", "--decision", "iterate", "--feedback", "x")
     assert rc != 0
 
 
 def test_j_iterate_non_user_approves_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "va", _NON_USER_APPROVES, "demo.va", run_id="rj")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, err = _ack(
         packs, projects, "review", "--project", "p", "--decision", "iterate",
         "--actor", "alice", "--feedback", "x",
@@ -167,7 +167,7 @@ def test_j_iterate_non_user_approves_rejected(tmp_path: Path) -> None:
 def test_k_iterate_cumulative_feedback(tmp_path: Path) -> None:
     """Two iterate calls produce cumulative feedback.json at iterations/002/."""
     packs, projects = setup_run(tmp_path, "demo", "iter", _ITER, "demo.iter", run_id="rk")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc1, _, _ = _ack(
         packs, projects, "review", "--project", "p", "--decision", "iterate",
         "--actor", "alice", "--feedback", "less verbose",
@@ -188,7 +188,7 @@ def test_k_iterate_cumulative_feedback(tmp_path: Path) -> None:
 
 def test_l_approve_on_code_step_rejected(tmp_path: Path) -> None:
     packs, projects = setup_run(tmp_path, "demo", "code", _CODE, "demo.code", run_id="rl")
-    os.environ["ARTAGENTS_ACTOR"] = "alice"
+    os.environ["ASTRID_ACTOR"] = "alice"
     rc, _, err = _ack(packs, projects, "step_a", "--project", "p", "--decision", "approve", "--actor", "alice")
     assert rc != 0
     assert "code steps advance via subprocess" in err

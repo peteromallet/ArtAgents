@@ -6,7 +6,7 @@ import os
 import re
 from pathlib import Path
 
-PROJECTS_ROOT_ENV = "ARTAGENTS_PROJECTS_ROOT"
+PROJECTS_ROOT_ENV = "ASTRID_PROJECTS_ROOT"
 DEFAULT_PROJECTS_ROOT = Path("~/Documents/reigh-workspace/astrid-projects")
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")

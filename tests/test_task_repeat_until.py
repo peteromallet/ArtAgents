@@ -8,7 +8,7 @@ import pytest
 from astrid.core.project.project import create_project
 from astrid.core.task import gate as task_gate
 from astrid.core.task.active_run import write_active_run
-from astrid.core.task.env import ARTAGENTS_ACTOR, TASK_ITERATION_ENV, child_subprocess_env
+from astrid.core.task.env import ASTRID_ACTOR, TASK_ITERATION_ENV, child_subprocess_env
 from astrid.core.task.events import read_events
 from astrid.core.task.plan import compute_plan_hash, step_dir_for_path
 
@@ -41,7 +41,7 @@ def test_repeat_until_user_approves_appends_cumulative_feedback(
         ],
     }
     _setup(tmp_projects_root, plan)
-    monkeypatch.setenv(ARTAGENTS_ACTOR, "alice")
+    monkeypatch.setenv(ASTRID_ACTOR, "alice")
 
     # Iter 1: iterate with 'more energy'
     cmd1 = 'ack --project demo --step host --actor alice --evidence iterate_feedback=more_energy'
@@ -160,7 +160,7 @@ def test_repeat_until_max_exhaust_escalate_parks_for_attested_override(
         ],
     }
     _setup(tmp_projects_root, plan)
-    monkeypatch.setenv(ARTAGENTS_ACTOR, "alice")
+    monkeypatch.setenv(ASTRID_ACTOR, "alice")
 
     for i in (1, 2):
         d = task_gate.gate_command("demo", "echo go", ["echo", "go"], root=tmp_projects_root)

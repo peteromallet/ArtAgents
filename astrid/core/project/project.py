@@ -33,7 +33,7 @@ def create_project(
     project_path = project_root / "project.json"
 
     # Pre-check: reject if a directory with this slug already exists under the
-    # projects root.  Projects under different ARTAGENTS_PROJECTS_ROOT values
+    # projects root.  Projects under different ASTRID_PROJECTS_ROOT values
     # are independent — each root is checked separately.
     if project_root.exists() and not exist_ok:
         raise ProjectError(f"project '{slug}' already exists at {project_root}")

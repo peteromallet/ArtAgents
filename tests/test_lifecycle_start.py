@@ -19,6 +19,7 @@ from astrid.core.task.active_run import read_active_run
 from astrid.core.task.lifecycle import cmd_start
 from astrid.core.task.plan import compute_plan_hash
 from astrid.core.task.preamble import PROHIBITION_PREAMBLE
+from astrid.core.project.project import create_project
 
 
 _BODY_CODE = '''from astrid.orchestrate import orchestrator, code
@@ -29,6 +30,7 @@ def app(): return [code("step_a", argv=["echo", "x"])]
 
 def test_start_writes_active_run_with_correct_hash(tmp_path: Path) -> None:
     packs, projects = setup_packs_and_compile(tmp_path, "demo", "app", _BODY_CODE, "demo.app")
+    create_project("p", root=projects)
     rc = cmd_start(
         ["demo.app", "--project", "p", "--name", "r1"],
         packs_root=packs,
@@ -44,6 +46,7 @@ def test_start_writes_active_run_with_correct_hash(tmp_path: Path) -> None:
 
 def test_events_jsonl_first_line_is_run_started(tmp_path: Path) -> None:
     packs, projects = setup_packs_and_compile(tmp_path, "demo", "app", _BODY_CODE, "demo.app")
+    create_project("p", root=projects)
     cmd_start(["demo.app", "--project", "p", "--name", "r2"], packs_root=packs, projects_root=projects)
     events_path = projects / "p" / "runs" / "r2" / "events.jsonl"
     lines = events_path.read_text(encoding="utf-8").splitlines()
@@ -55,6 +58,7 @@ def test_events_jsonl_first_line_is_run_started(tmp_path: Path) -> None:
 
 def test_agent_md_includes_preamble(tmp_path: Path) -> None:
     packs, projects = setup_packs_and_compile(tmp_path, "demo", "app", _BODY_CODE, "demo.app")
+    create_project("p", root=projects)
     cmd_start(["demo.app", "--project", "p", "--name", "r3"], packs_root=packs, projects_root=projects)
     agent_md = (projects / "p" / "runs" / "r3" / "AGENT.md").read_text(encoding="utf-8")
     assert PROHIBITION_PREAMBLE in agent_md
@@ -64,6 +68,7 @@ def test_agent_md_includes_preamble(tmp_path: Path) -> None:
 
 def test_second_start_rejected_with_recovery(tmp_path: Path) -> None:
     packs, projects = setup_packs_and_compile(tmp_path, "demo", "app", _BODY_CODE, "demo.app")
+    create_project("p", root=projects)
     cmd_start(["demo.app", "--project", "p", "--name", "r4"], packs_root=packs, projects_root=projects)
     err = io.StringIO()
     with redirect_stderr(err), redirect_stdout(io.StringIO()):
@@ -85,6 +90,7 @@ def test_missing_build_json_prints_compile_recovery(tmp_path: Path) -> None:
     packs.mkdir()
     projects.mkdir()
     make_pack(packs, "demo", "uncompiled", _BODY_CODE.replace("demo.app", "demo.uncompiled"))
+    create_project("q", root=projects)
     err = io.StringIO()
     with redirect_stderr(err), redirect_stdout(io.StringIO()):
         rc = cmd_start(
@@ -94,3 +100,17 @@ def test_missing_build_json_prints_compile_recovery(tmp_path: Path) -> None:
         )
     assert rc == 1
     assert "astrid author compile demo.uncompiled" in err.getvalue()
+
+
+def test_start_rejects_missing_project_before_creating_run_dir(tmp_path: Path) -> None:
+    packs, projects = setup_packs_and_compile(tmp_path, "demo", "app", _BODY_CODE, "demo.app")
+    err = io.StringIO()
+    with redirect_stderr(err), redirect_stdout(io.StringIO()):
+        rc = cmd_start(
+            ["demo.app", "--project", "missing"],
+            packs_root=packs,
+            projects_root=projects,
+        )
+    assert rc == 1
+    assert "project 'missing' not found" in err.getvalue()
+    assert not (projects / "missing" / "runs").exists()

@@ -84,7 +84,7 @@ def test_pipeline_audit_env_propagation_and_fallback(monkeypatch, tmp_path: Path
     script.write_text(
         "import os, pathlib\n"
         "out = pathlib.Path(os.environ['CHILD_OUT'])\n"
-        "out.write_text(os.environ.get('ARTAGENTS_AUDIT_RUN_DIR', ''), encoding='utf-8')\n",
+        "out.write_text(os.environ.get('ASTRID_AUDIT_RUN_DIR', ''), encoding='utf-8')\n",
         encoding="utf-8",
     )
     out = tmp_path / "run"
@@ -113,7 +113,7 @@ def test_ambient_register_outputs_from_producer(monkeypatch, tmp_path: Path) -> 
     from astrid.packs.builtin.scenes import run as scenes
 
     run = tmp_path / "run"
-    monkeypatch.setenv("ARTAGENTS_AUDIT_RUN_DIR", str(run))
+    monkeypatch.setenv("ASTRID_AUDIT_RUN_DIR", str(run))
     json_path = run / "scenes.json"
     csv_path = run / "scenes.csv"
 
@@ -129,8 +129,8 @@ def test_ambient_register_outputs_inherits_parent_ids(monkeypatch, tmp_path: Pat
 
     run = tmp_path / "run"
     parent_id = "source-parent"
-    monkeypatch.setenv("ARTAGENTS_AUDIT_RUN_DIR", str(run))
-    monkeypatch.setenv("ARTAGENTS_AUDIT_PARENT_IDS", parent_id)
+    monkeypatch.setenv("ASTRID_AUDIT_RUN_DIR", str(run))
+    monkeypatch.setenv("ASTRID_AUDIT_PARENT_IDS", parent_id)
 
     scenes.write_outputs([{"index": 1, "start": 0.0, "end": 1.0, "duration": 1.0}], run / "scenes.json", run / "scenes.csv")
 

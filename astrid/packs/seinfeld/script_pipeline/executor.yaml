@@ -1,0 +1,32 @@
+{
+  "id": "seinfeld.script_pipeline",
+  "name": "Seinfeld Script Pipeline",
+  "kind": "built_in",
+  "version": "0.1.0",
+  "short_description": "Generate Seinfeld-style short scene scripts through ideation, synthesis, and voice passes.",
+  "description": "Runs a three-phase DeepSeek script pipeline: parallel rough scene ideation, structural synthesis, then Seinfeld voice and laugh-tag pass. Can generate multiple final candidates concurrently and write a selected-best markdown result.",
+  "keywords": ["seinfeld", "script", "comedy", "deepseek", "scene"],
+  "inputs": [
+    {"name": "prompt", "type": "string", "required": false, "description": "Scene brief. Defaults to Kramer excited about open source AI when using the module CLI."},
+    {"name": "candidates", "type": "integer", "required": false, "description": "Number of complete pipeline candidates to generate when using the module CLI."}
+  ],
+  "outputs": [
+    {"name": "selected_scene", "type": "file", "path_template": "{out}/produces/selected_scene.md"},
+    {"name": "manifest", "type": "file", "path_template": "{out}/produces/manifest.json"}
+  ],
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.seinfeld.script_pipeline.run",
+      "--produces-dir",
+      "{out}/produces"
+    ]
+  },
+  "cache": {"mode": "none"},
+  "isolation": {"mode": "subprocess", "network": true},
+  "metadata": {
+    "runtime_module": "astrid.packs.seinfeld.script_pipeline.run",
+    "runtime_file": "run.py"
+  }
+}

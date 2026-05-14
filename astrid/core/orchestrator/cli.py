@@ -271,7 +271,7 @@ def _print_active_thread_footer() -> None:
         from astrid._paths import REPO_ROOT
         from astrid.threads.index import ThreadIndexStore
 
-        index = ThreadIndexStore(Path(os.environ.get("ARTAGENTS_REPO_ROOT", REPO_ROOT))).read()
+        index = ThreadIndexStore(Path(os.environ.get("ASTRID_REPO_ROOT", REPO_ROOT))).read()
     except Exception:
         print("active_thread: unavailable")
         print("thread_details: python3 -m astrid thread show @active")

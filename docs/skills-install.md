@@ -98,8 +98,8 @@ skills:
 
 ## State file
 
-Install state lives at `$XDG_STATE_HOME/astrid/skills.json` (default `~/.local/state/astrid/skills.json`). Tests and CI can override with `ARTAGENTS_STATE_HOME=...`.
+Install state lives at `$XDG_STATE_HOME/astrid/skills.json` (default `~/.local/state/astrid/skills.json`). Tests and CI can override with `ASTRID_STATE_HOME=...`.
 
 ## Nudge
 
-If at least one harness is detected on disk and is missing one of the expected packs, Astrid prints a single-line nudge to stderr at most once every 7 days when you run any non-`skills` subcommand. The nudge is suppressed by `ARTAGENTS_NO_NUDGE=1` or `--quiet`. The nudge is best-effort — it cannot break a real command.
+If at least one harness is detected on disk and is missing one of the expected packs, Astrid prints a single-line nudge to stderr at most once every 7 days when you run any non-`skills` subcommand. The nudge is suppressed by `ASTRID_NO_NUDGE=1` or `--quiet`. The nudge is best-effort — it cannot break a real command.

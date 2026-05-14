@@ -19,6 +19,7 @@ from typing import Any
 
 from astrid.core.project.current_run import read_current_run
 from astrid.core.project.paths import project_dir, resolve_projects_root
+from astrid.core.project.project import ProjectError, require_project
 from astrid.core.timeline import crud as timeline_crud
 from astrid.core.timeline.defaults import read_project_default
 from astrid.core.timeline.paths import find_timeline_by_slug, find_timeline_slug_for_ulid
@@ -27,7 +28,7 @@ from astrid.core.session.binding import (
     SessionBindingError,
     resolve_current_session,
 )
-from astrid.core.session.config import resolve_default_project
+from astrid.core.session.config import resolve_default_project, set_default_project
 from astrid.core.session.constants import STUCK_NO_EVENT_SECONDS
 from astrid.core.session.discovery import discover_projects
 from astrid.core.session.identity import (
@@ -144,7 +145,11 @@ def _is_target_warm(run_dir: Path) -> bool:
 def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
     if out is None:
         out = sys.stdout
-    identity = _ensure_identity(out=out)
+    try:
+        identity = _ensure_identity(out=out)
+    except IdentityError as exc:
+        print(f"attach: {exc}", file=sys.stderr)
+        return 2
     agent_id = identity.agent_id
     if args.as_agent:
         try:
@@ -172,7 +177,49 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
         resolved_timeline_slug = session.timeline
         resolved_timeline_id = session.timeline_id
     else:
-        slug = args.project
+        explicit_project = args.project is not None
+        slug = args.project or resolve_default_project()
+        if not slug:
+            projects = discover_projects()
+            print("attach: no project specified and no default project configured", file=sys.stderr)
+            if projects:
+                print("", file=sys.stderr)
+                print("projects:", file=sys.stderr)
+                for project_slug in projects:
+                    print(f"  {project_slug}", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("choose one:", file=sys.stderr)
+                print(f"  astrid attach {projects[0]}", file=sys.stderr)
+                print(f"  astrid attach {projects[0]} --default", file=sys.stderr)
+                print(f"  astrid projects default {projects[0]}", file=sys.stderr)
+            else:
+                print("no projects discovered under the projects root", file=sys.stderr)
+                print("create one with: astrid projects create <slug>", file=sys.stderr)
+            return 2
+        try:
+            require_project(slug)
+        except ProjectError:
+            projects = discover_projects()
+            if args.project:
+                print(f"attach: project '{slug}' was not found under the current projects root", file=sys.stderr)
+            else:
+                print(
+                    f"attach: configured default project '{slug}' was not found under the current projects root",
+                    file=sys.stderr,
+                )
+            if projects:
+                print("", file=sys.stderr)
+                print("projects:", file=sys.stderr)
+                for project_slug in projects:
+                    print(f"  {project_slug}", file=sys.stderr)
+                print("", file=sys.stderr)
+                print("choose one:", file=sys.stderr)
+                print(f"  astrid attach {projects[0]} --default", file=sys.stderr)
+                print(f"  astrid projects default {projects[0]}", file=sys.stderr)
+            else:
+                print("no projects discovered under the projects root", file=sys.stderr)
+                print("create one with: astrid projects create <slug>", file=sys.stderr)
+            return 2
         sid = generate_ulid()
         # Resolve timeline: explicit flag → project default → prompt / error.
         resolved_timeline_id: str | None = None
@@ -218,6 +265,22 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
                         file=sys.stderr,
                     )
                     resolved_timeline_slug = None
+                elif len(available) == 1:
+                    choice = available[0]
+                    found = find_timeline_by_slug(slug, choice.slug)
+                    if found is None:
+                        print(
+                            f"attach: timeline '{choice.slug}' not found in project '{slug}'",
+                            file=sys.stderr,
+                        )
+                        return 2
+                    resolved_timeline_id = found[0]
+                    resolved_timeline_slug = choice.slug
+                    print(
+                        f"Using only timeline: {choice.slug}. "
+                        "Use --timeline to override.",
+                        file=sys.stderr,
+                    )
                 elif sys.stdin.isatty():
                     print("Available timelines:", file=sys.stderr)
                     for t in available:
@@ -275,8 +338,17 @@ def cmd_attach(args: argparse.Namespace, *, out: Any = None) -> int:
             role=role,
         )
         session.to_json(session_path(sid))
+        if getattr(args, "set_default", False):
+            set_default_project(
+                slug,
+                scope="user" if getattr(args, "user_default", False) else "workspace",
+            )
 
     print(ATTACH_HEADER, file=out)
+    if not args.session and getattr(args, "set_default", False):
+        scope = "user" if getattr(args, "user_default", False) else "workspace"
+        label = "saved default project" if explicit_project else "using default project"
+        print(f"{label} ({scope}): {slug}", file=out)
     print(EXPORT_LINE_TEMPLATE.format(sid=sid), file=out)
     print(f"project: {slug}", file=out)
     print(f"timeline: {resolved_timeline_slug or NONE_PLACEHOLDER}", file=out)
@@ -429,15 +501,6 @@ def cmd_sessions_takeover(args: argparse.Namespace, *, out: Any = None) -> int:
 def cmd_status(args: argparse.Namespace, *, out: Any = None) -> int:
     if out is None:
         out = sys.stdout
-    # Unbound + no identity → trigger bootstrap.
-    if read_identity() is None:
-        try:
-            _ensure_identity(out=out)
-        except IdentityError as exc:
-            print(f"status: {exc}", file=sys.stderr)
-            return 2
-        # After bootstrap, fall through to the unbound listing.
-
     try:
         session = resolve_current_session()
     except SessionBindingError as exc:
@@ -452,16 +515,44 @@ def cmd_status(args: argparse.Namespace, *, out: Any = None) -> int:
 def _render_unbound_status(*, out: Any) -> int:
     print(STATUS_UNBOUND_HEADER, file=out)
     default = resolve_default_project()
-    if default:
-        print(f"default project: {default}", file=out)
     projects = discover_projects()
+    default_is_available = bool(default and default in projects)
+    if default_is_available:
+        print(f"default project: {default}", file=out)
+    elif default:
+        print(f"configured default project: {default} (not found under current projects root)", file=out)
     if not projects:
         print(NO_PROJECTS_FOUND, file=out)
+        print("create one with: astrid projects create <slug>", file=out)
         return 0
+    print("", file=out)
+    print("start:", file=out)
+    if default_is_available:
+        print("  astrid attach              # attach default project", file=out)
+    elif len(projects) == 1:
+        print(f"  astrid attach {projects[0]}", file=out)
+    else:
+        print("  astrid attach <project>", file=out)
+    print("", file=out)
     print("discovered projects:", file=out)
     for slug in projects:
         print(ATTACH_SUGGESTION_TEMPLATE.format(slug=slug), file=out)
+    print("", file=out)
+    print("manage:", file=out)
+    print("  astrid projects ls", file=out)
+    if projects:
+        print(f"  astrid projects default {projects[0]}", file=out)
+    print("", file=out)
+    print("after attach:", file=out)
+    _print_discovery_hints(out=out)
     return 0
+
+
+def _print_discovery_hints(*, out: Any) -> None:
+    print("  astrid skills list          # discover pack skills and install state", file=out)
+    print("  astrid orchestrators list   # discover workflows", file=out)
+    print("  astrid executors list       # discover concrete tools", file=out)
+    print("  astrid elements list        # discover render building blocks", file=out)
 
 
 def _render_bound_status(session: Session, *, out: Any) -> int:
@@ -562,6 +653,15 @@ def _render_bound_status(session: Session, *, out: Any) -> int:
     print(role_line, file=out)
     if takeover_hint is not None:
         print(takeover_hint, file=out)
+    print("", file=out)
+    print("task:", file=out)
+    if run_id is not None:
+        print(f"  astrid next --project {session.project}   # continue current task run", file=out)
+    else:
+        print(f"  astrid start <orchestrator-id> --project {session.project}   # start a task list", file=out)
+    print("", file=out)
+    print("discover:", file=out)
+    _print_discovery_hints(out=out)
     return 0
 
 
@@ -573,10 +673,22 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     attach = sub.add_parser("attach", help="Bind the current tab to a project.")
-    attach.add_argument("project")
+    attach.add_argument("project", nargs="?")
     attach.add_argument("--timeline")
     attach.add_argument("--session", help="Resume an existing session id.")
     attach.add_argument("--as", dest="as_agent", help="Per-tab agent override (agent:<slug>).")
+    attach.add_argument(
+        "--default",
+        action="store_true",
+        dest="set_default",
+        help="Remember this project as the workspace default.",
+    )
+    attach.add_argument(
+        "--user",
+        action="store_true",
+        dest="user_default",
+        help="With --default, write the user-wide default instead of the workspace default.",
+    )
     attach.set_defaults(handler=cmd_attach)
 
     ls = sub.add_parser("ls", help="List sessions in ~/.astrid/sessions/.")

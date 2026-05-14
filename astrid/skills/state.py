@@ -2,7 +2,7 @@
 
 State path: ``$XDG_STATE_HOME/astrid/skills.json`` if XDG_STATE_HOME is set,
 else ``~/.local/state/astrid/skills.json``. This single location works on
-macOS and Linux; the user can override with ``ARTAGENTS_STATE_HOME`` for
+macOS and Linux; the user can override with ``ASTRID_STATE_HOME`` for
 testing.
 """
 
@@ -19,7 +19,7 @@ HARNESSES = ("claude", "codex", "hermes")
 
 
 def state_path() -> Path:
-    override = os.environ.get("ARTAGENTS_STATE_HOME")
+    override = os.environ.get("ASTRID_STATE_HOME")
     if override:
         return Path(override) / "astrid" / "skills.json"
     xdg = os.environ.get("XDG_STATE_HOME")

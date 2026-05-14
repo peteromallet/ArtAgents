@@ -35,7 +35,7 @@ def test_prepare_refuses_above_cap_before_uncached_dispatch(tmp_path: Path, monk
     message = str(raised.value)
     assert "max_iterations=1" in message
     assert "--max-iterations" in message
-    assert "ARTAGENTS_ITERATION_MAX" in message
+    assert "ASTRID_ITERATION_MAX" in message
     assert "default cap is 200" in message
     assert calls == []
 
@@ -44,9 +44,9 @@ def test_executor_gateway_invocation_enforces_same_cap(tmp_path: Path) -> None:
     repo = _repo_with_two_run_graph(tmp_path)
     env = {
         **os.environ,
-        "ARTAGENTS_REPO_ROOT": str(repo),
-        "ARTAGENTS_THREADS_OFF": "1",
-        "ARTAGENTS_ITERATION_MAX": "1",
+        "ASTRID_REPO_ROOT": str(repo),
+        "ASTRID_THREADS_OFF": "1",
+        "ASTRID_ITERATION_MAX": "1",
     }
 
     completed = subprocess.run(
@@ -70,7 +70,7 @@ def test_executor_gateway_invocation_enforces_same_cap(tmp_path: Path) -> None:
     )
 
     assert completed.returncode == 2
-    assert "ARTAGENTS_ITERATION_MAX" in completed.stderr
+    assert "ASTRID_ITERATION_MAX" in completed.stderr
     assert not (repo / "runs" / "prepare" / "iteration.manifest.json").exists()
 
 
@@ -97,7 +97,7 @@ def test_summary_cache_key_hits_misses_and_cost_metadata(tmp_path: Path, monkeyp
             "summarizer_model_version": kwargs["summarizer_model_version"],
         }
 
-    monkeypatch.setenv("ARTAGENTS_SUMMARIZE_SEQUENTIAL", "1")
+    monkeypatch.setenv("ASTRID_SUMMARIZE_SEQUENTIAL", "1")
     monkeypatch.setattr(prepare, "summarize_run_with_backoff", fake_summary)
 
     result = prepare.prepare_iteration(

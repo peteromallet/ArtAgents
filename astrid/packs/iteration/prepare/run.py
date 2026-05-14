@@ -45,10 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", required=True, help="Directory for iteration.prepare outputs.")
     parser.add_argument(
         "--repo-root",
-        default=str(Path(os.environ.get("ARTAGENTS_REPO_ROOT", REPO_ROOT))),
-        help="Repository root. Defaults to ARTAGENTS_REPO_ROOT or the Astrid repo.",
+        default=str(Path(os.environ.get("ASTRID_REPO_ROOT", REPO_ROOT))),
+        help="Repository root. Defaults to ASTRID_REPO_ROOT or the Astrid repo.",
     )
-    parser.add_argument("--max-iterations", type=int, default=None, help="Maximum uncached summarize calls. Defaults to ARTAGENTS_ITERATION_MAX or 200.")
+    parser.add_argument("--max-iterations", type=int, default=None, help="Maximum uncached summarize calls. Defaults to ASTRID_ITERATION_MAX or 200.")
     parser.add_argument("--summarizer-model-version", default=DEFAULT_SUMMARIZER_MODEL_VERSION)
     parser.add_argument("--cost-per-call", type=float, default=DEFAULT_COST_PER_CALL)
     parser.add_argument("--summary-query", default="Summarize this Astrid run for an iteration video.")
@@ -244,7 +244,7 @@ def summarize_nodes(
     if len(misses) > max_iterations:
         raise PrepareError(
             f"iteration.prepare needs {len(misses)} uncached summarize calls, above max_iterations={max_iterations}. "
-            f"Raise the cap with --max-iterations or ARTAGENTS_ITERATION_MAX; default cap is {DEFAULT_MAX_ITERATIONS}."
+            f"Raise the cap with --max-iterations or ASTRID_ITERATION_MAX; default cap is {DEFAULT_MAX_ITERATIONS}."
         )
     generated = _summarize_misses(misses, summarizer_model_version=summarizer_model_version, summary_query=summary_query)
     for node, summary in generated.items():
@@ -365,7 +365,7 @@ def _summarize_misses(
 ) -> dict[str, dict[str, Any]]:
     if not misses:
         return {}
-    sequential = os.environ.get("ARTAGENTS_SUMMARIZE_SEQUENTIAL", "").strip().lower() in {"1", "true", "yes"}
+    sequential = os.environ.get("ASTRID_SUMMARIZE_SEQUENTIAL", "").strip().lower() in {"1", "true", "yes"}
     if sequential:
         return {
             node.run_id: summarize_run_with_backoff(
@@ -375,7 +375,7 @@ def _summarize_misses(
             )
             for node in misses
         }
-    max_workers = int(os.environ.get("ARTAGENTS_SUMMARIZE_CONCURRENCY", "4"))
+    max_workers = int(os.environ.get("ASTRID_SUMMARIZE_CONCURRENCY", "4"))
     results: dict[str, dict[str, Any]] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
         future_by_node = {
@@ -532,7 +532,7 @@ def _cache_path(cache_dir: Path, run_id: str, model_version: str) -> Path:
 def _resolve_max_iterations(raw: int | None) -> int:
     if raw is not None:
         return int(raw)
-    env_value = os.environ.get("ARTAGENTS_ITERATION_MAX", "").strip()
+    env_value = os.environ.get("ASTRID_ITERATION_MAX", "").strip()
     return int(env_value) if env_value else DEFAULT_MAX_ITERATIONS
 
 

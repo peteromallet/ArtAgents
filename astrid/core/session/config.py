@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from astrid.core.project.jsonio import read_json
+from astrid.core.project.jsonio import read_json, write_json_atomic
 from astrid.core.session.paths import user_config_path, workspace_config_path
 
 
@@ -54,6 +54,30 @@ def resolve_default_project(cwd: str | Path | None = None) -> str | None:
     return value
 
 
+def set_default_project(
+    slug: str | None,
+    *,
+    scope: str = "workspace",
+    cwd: str | Path | None = None,
+) -> Path:
+    """Set or clear the default project in user or workspace config.
+
+    ``scope`` is intentionally explicit at the write boundary. Reads still use
+    the merged user + workspace view where workspace wins.
+    """
+
+    path = _config_path_for_scope(scope, cwd)
+    payload = _load(path)
+    if slug is None:
+        payload.pop("default_project", None)
+    elif not isinstance(slug, str) or not slug:
+        raise ConfigError("default_project must be a non-empty string")
+    else:
+        payload["default_project"] = slug
+    write_json_atomic(path, payload)
+    return path
+
+
 def resolve_default_timeline(cwd: str | Path | None = None) -> str | None:
     merged: dict[str, Any] = {}
     merged.update(load_user_config())
@@ -64,3 +88,11 @@ def resolve_default_timeline(cwd: str | Path | None = None) -> str | None:
     if not isinstance(value, str) or not value:
         raise ConfigError("default_timeline must be a non-empty string")
     return value
+
+
+def _config_path_for_scope(scope: str, cwd: str | Path | None = None) -> Path:
+    if scope == "workspace":
+        return workspace_config_path(cwd)
+    if scope == "user":
+        return user_config_path()
+    raise ConfigError("scope must be 'workspace' or 'user'")

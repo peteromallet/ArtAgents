@@ -32,7 +32,7 @@ Top risk 1 is schema churn after Day 2; mitigation is the Frozen Schema Review g
 
 Top risk 2 is lock contention under parallel runs; mitigation is `fcntl` locking with a 30-second timeout and stale-lock guidance that tells the user to verify no Astrid writer is active before manual lock-file removal. No lock-repair command ships in v1.
 
-Top risk 3 is iteration summarization cost or rate pressure; mitigation is `ARTAGENTS_SUMMARIZE_CONCURRENCY` defaulting to 4, exponential backoff per `builtin.understand` call, SD-043 summary cache, and a hard `max_iterations` cap inside `iteration.prepare`.
+Top risk 3 is iteration summarization cost or rate pressure; mitigation is `ASTRID_SUMMARIZE_CONCURRENCY` defaulting to 4, exponential backoff per `builtin.understand` call, SD-043 summary cache, and a hard `max_iterations` cap inside `iteration.prepare`.
 
 Definition of done: all post-wrapper runs have v1 metadata, the week-1 SD-037 coverage is green as trimmed, full pytest is green, `runs/astrid_logo_v3` renders all five SD-022 outputs, `--no-content` works for thread/report views, and the Day-10 demo checklist is signed.
 
@@ -136,7 +136,7 @@ Schema-versioning machinery is also trimmed: keep `schema_version: 1` on persist
 ## Open Question Resolutions
 
 - **OQ-1: Day-by-day allocation.** Resolved by the Week 1 and Week 2 sections: Days 1-5 are data, Days 6-10 are iteration video, with Day 2 as the schema freeze and Day 10 as the demo gate.
-- **OQ-2: Summarization parallelism.** Use `ThreadPoolExecutor(max_workers=int(os.environ.get("ARTAGENTS_SUMMARIZE_CONCURRENCY", "4")))` inside the summarize phase of `iteration.prepare`, with exponential backoff per `builtin.understand` call. Keep `ARTAGENTS_SUMMARIZE_SEQUENTIAL=1` as an implementation/debug fallback if rate limits or local determinism require it.
+- **OQ-2: Summarization parallelism.** Use `ThreadPoolExecutor(max_workers=int(os.environ.get("ASTRID_SUMMARIZE_CONCURRENCY", "4")))` inside the summarize phase of `iteration.prepare`, with exponential backoff per `builtin.understand` call. Keep `ASTRID_SUMMARIZE_SEQUENTIAL=1` as an implementation/debug fallback if rate limits or local determinism require it.
 - **OQ-3: Prefix format.** Width is `min(120, $COLUMNS)` when `$COLUMNS` is available, otherwise 120. ANSI color is allowed only when stdout is a TTY and `NO_COLOR` is unset. Labels truncate to 32 display characters; IDs are never truncated. All prefix lines stream to stdout before command output. V1 order is `[thread] -> [variants] -> Notice: -> blank line -> command output`; `[hint]` and `Warn:` are deferred by DEF-3 and DEF-1. Format stability is governed by `schema_version` and the Definition of Done.
 - **OQ-4: Reaper timing.** Run the SD-033 in-flight reaper lazily on first index read per process. It is not a daemon and not a per-command directory walk after the first read.
 - **OQ-5: Global documentation location.** Use `docs/threads.md` for the long-form reference. Day 3 lands a short stub explaining the prefix; Day 5 expands privacy, selection semantics, tier firing rules, inspect-before-render, and deferred features.
@@ -193,7 +193,7 @@ Put the v1 run record behind the single executor/orchestrator chokepoints and fr
 - Modify `ExecutorRunRequest` at `astrid/core/executor/runner.py:43` and the orchestrator run request equivalent to carry `thread`, `variants`, and `from_variant`.
 - Add `--thread <id|@new|@none>`, `--variants N`, and `--from <run-id>:<n>` to both `python3 -m astrid executors run ...` and `python3 -m astrid orchestrators run ...`.
 - Wrap `run_executor()` at `astrid/core/executor/runner.py:75` and the orchestrator-runner equivalent with begin/finalize.
-- Preserve all SD-030 no-op gates: `dry_run=True`, unwritable output, output under `tempfile.gettempdir()`, `request.thread == "@none"`, and `ARTAGENTS_THREADS_OFF=1`.
+- Preserve all SD-030 no-op gates: `dry_run=True`, unwritable output, output under `tempfile.gettempdir()`, `request.thread == "@none"`, and `ASTRID_THREADS_OFF=1`.
 - Leave the `upload.youtube` short-circuit at `astrid/core/executor/runner.py:78` untouched; verify it produces zero thread artifacts and zero errors.
 - Write the trimmed SD-008 v1 `run.json` fields: `schema_version`, `run_id`, `thread_id`, typed `parent_run_ids[]`, `executor_id`, `orchestrator_id`, `kind`, `started_at`, `ended_at`, `returncode`, `out_path`, `cli_args_redacted`, `agent_version`, `brief_content_sha256`, `inputs_digest`, `input_artifacts[]`, `output_artifacts[]`, `external_service_calls[]`, and `starred`.
 - Use typed `parent_run_ids` entries for both causal and chosen edges: `{run_id, kind: "causal"}` and `{run_id, kind: "chosen", group: "..."}`. Do not add top-level `chosen_from_groups` in v1.
@@ -215,7 +215,7 @@ SD-008 as trimmed, SD-010 as trimmed, SD-011, SD-030, SD-032, SD-041 redaction b
 - `executors run` and `orchestrators run` both accept and pass through `--thread`, `--variants`, and `--from`.
 - Eligible executor runs write `run.json`, update `.astrid/threads.json`, and finalize `ended_at` and `returncode`.
 - Eligible orchestrator runs write the same v1 metadata through the orchestrator chokepoint.
-- `ARTAGENTS_THREADS_OFF=1` produces no thread artifacts and no errors.
+- `ASTRID_THREADS_OFF=1` produces no thread artifacts and no errors.
 - `--thread @none` produces no thread artifacts and no errors.
 - `upload.youtube` produces zero thread artifacts and zero errors.
 - Secret-like CLI values are redacted to exactly `***REDACTED***`.
@@ -250,8 +250,8 @@ Make thread attribution visible and explainable to agents the same day it appear
 - Add `python3 -m astrid thread new`, `thread list`, and `thread show` CLI.
 - Add `thread show @active --no-content` for SD-041.
 - Do not add `[thread-health]` smell lines on `thread list`; DEF-2 defers that output format.
-- Modify `_run_external_executor` at `astrid/core/executor/runner.py:258` to thread `ARTAGENTS_THREAD_ID` into the subprocess env when present, so external executor processes inherit the parent thread without re-stamping.
-- Child wrappers skip begin when `ARTAGENTS_THREAD_ID` is set and instead attach to the parent context.
+- Modify `_run_external_executor` at `astrid/core/executor/runner.py:258` to thread `ASTRID_THREAD_ID` into the subprocess env when present, so external executor processes inherit the parent thread without re-stamping.
+- Child wrappers skip begin when `ASTRID_THREAD_ID` is set and instead attach to the parent context.
 - Append this exact SKILL.md paragraph:
 
   > At the start of any session that will produce runs, run python3 -m astrid thread show @active first. The [thread] prefix on every command output is your continuous indicator; if it shows the wrong thread, run thread new or pass --thread @new to your next command. Selections are append-only; the most recent write is authoritative on read; prior selections are preserved as history but do not affect current keepers.
@@ -273,7 +273,7 @@ SD-006, SD-018 as trimmed, SD-038 Day-3 pieces, SD-041 `thread show --no-content
 - `Notice:` appears only for the v1 Notice triggers.
 - No `Warn:` line is produced by v1 brief-novelty logic because that logic is deferred.
 - `thread show @active --no-content` emits IDs, labels, hashes, and status without plaintext brief/prompt content.
-- External executor subprocesses inherit `ARTAGENTS_THREAD_ID` and do not create duplicate begin records.
+- External executor subprocesses inherit `ASTRID_THREAD_ID` and do not create duplicate begin records.
 - SKILL.md contains the exact paragraph above.
 - `executors inspect` and `orchestrators inspect` show the active-thread footer.
 
@@ -281,7 +281,7 @@ SD-006, SD-018 as trimmed, SD-038 Day-3 pieces, SD-041 `thread show --no-content
 
 - `tests/test_threads_attribute.py`: all five branches, lineage precedence, reopen window, and frozen-clock behavior.
 - `tests/test_threads_prefix.py`: stdout placement, width/truncation behavior, color gating, and v1 Notice triggers.
-- `tests/test_threads_nested.py`: parent-to-child inheritance and skip-begin behavior when `ARTAGENTS_THREAD_ID` is set.
+- `tests/test_threads_nested.py`: parent-to-child inheritance and skip-begin behavior when `ASTRID_THREAD_ID` is set.
 - `tests/test_threads_skill_md_text.py`: exact SKILL.md paragraph match.
 - `tests/test_threads_no_content.py`: `thread show @active --no-content` suppresses plaintext.
 
@@ -368,14 +368,14 @@ SD-009, SD-019 as trimmed, SD-034, SD-038 long reference, SD-041 documentation, 
 - `thread_label` and `agent_version` are denormalized into the provenance block.
 - Backfill adopts existing run directories without moving files.
 - Backfilled threads are clustered by hash graph, not modification time.
-- `ARTAGENTS_THREADS_OFF=1` still leaves existing behavior unchanged.
+- `ASTRID_THREADS_OFF=1` still leaves existing behavior unchanged.
 - `docs/threads.md` contains the required sections and does not introduce a dedicated brief-privacy flag.
 - All existing pytest tests pass without modification at the end of Week 1.
 
 **Tests**
 
 - `tests/test_threads_provenance.py`: `hype.metadata.json` provenance block, denormalized label/version, typed parent edges, and behavior after index deletion.
-- `tests/test_threads_off.py`: `ARTAGENTS_THREADS_OFF=1` and no-op compatibility.
+- `tests/test_threads_off.py`: `ASTRID_THREADS_OFF=1` and no-op compatibility.
 - `tests/test_threads_backfill.py`: existing run adoption, hash-graph clustering, and no file moves.
 - `tests/test_threads_brief_private.py`: brief snapshot sha, private path sha-only behavior, and no dedicated brief-privacy flag.
 - `tests/test_threads_md_sections.py`: required `docs/threads.md` headings and v1 tier table.
@@ -439,12 +439,12 @@ Complete `iteration.prepare` with summarization, cost guardrail, caching, and de
 
 **Deliverables**
 
-- Implement the summarization phase inside `iteration.prepare` by calling `builtin.understand` through `ThreadPoolExecutor(max_workers=int(os.environ.get("ARTAGENTS_SUMMARIZE_CONCURRENCY", "4")))`.
+- Implement the summarization phase inside `iteration.prepare` by calling `builtin.understand` through `ThreadPoolExecutor(max_workers=int(os.environ.get("ASTRID_SUMMARIZE_CONCURRENCY", "4")))`.
 - Add exponential backoff around each `builtin.understand` call.
-- Add `ARTAGENTS_SUMMARIZE_SEQUENTIAL=1` as a deterministic/debug fallback.
+- Add `ASTRID_SUMMARIZE_SEQUENTIAL=1` as a deterministic/debug fallback.
 - Enforce the SD-043 cap inside `iteration.prepare` before any uncached summarize dispatch.
-- `max_iterations` defaults to 200 and is configurable by `--max-iterations` and `ARTAGENTS_ITERATION_MAX`.
-- If the candidate run count exceeds `max_iterations`, `iteration.prepare` exits non-zero with an actionable message naming the cap, `--max-iterations`, and `ARTAGENTS_ITERATION_MAX`.
+- `max_iterations` defaults to 200 and is configurable by `--max-iterations` and `ASTRID_ITERATION_MAX`.
+- If the candidate run count exceeds `max_iterations`, `iteration.prepare` exits non-zero with an actionable message naming the cap, `--max-iterations`, and `ASTRID_ITERATION_MAX`.
 - Direct `python3 -m astrid executors run iteration.prepare ...` invocations cannot bypass the cap.
 - Add the SD-043 cache at `.astrid/iteration_cache/<run_id>__<summarizer_model_version>.json`.
 - Cache lookup happens before dispatch; the cap is evaluated against the uncached summarize count after cache lookup, so re-rendering a large already-summarized thread does not fail just because its history is long.
@@ -459,7 +459,7 @@ SD-021 as trimmed, SD-024 scoring preconditions, SD-043 cap/cache/cost metadata,
 **Acceptance**
 
 - `iteration.prepare` refuses above `max_iterations` before any uncached `builtin.understand` call.
-- The refusal message names the default cap, the `--max-iterations` override, and `ARTAGENTS_ITERATION_MAX`.
+- The refusal message names the default cap, the `--max-iterations` override, and `ASTRID_ITERATION_MAX`.
 - Direct executor invocation of `iteration.prepare` enforces the same cap.
 - Cache files use `.astrid/iteration_cache/<run_id>__<summarizer_model_version>.json`.
 - Re-running prepare uses cached summaries and only dispatches new `builtin.understand` calls for cache misses.
@@ -732,11 +732,11 @@ The critical path is the sequence where slipping one node directly threatens the
 
 1. **Day 1: atomic index + `xxhash`.** The sprint needs locked `.astrid/threads.json`, ULIDs, repo-relative paths, and `xxhash>=3.4` before any run metadata can be trusted.
 2. **Day 2: wrapper + CLI plumbing + Frozen Schema Review.** `run_executor()` and the orchestrator runner must write trimmed SD-008 records, both CLI surfaces must accept `--thread`/`--variants`/`--from`, redaction must work, and `schema_version=1` must freeze by end of day.
-3. **Day 3: auto-attribute + nested env + SKILL.md + inspect footer.** Lineage inference, `[thread]` output, `ARTAGENTS_THREAD_ID` propagation, exact SKILL.md guidance, and inspect footers are the adoption-critical surfaces.
+3. **Day 3: auto-attribute + nested env + SKILL.md + inspect footer.** Lineage inference, `[thread]` output, `ASTRID_THREAD_ID` propagation, exact SKILL.md guidance, and inspect footers are the adoption-critical surfaces.
 4. **Day 4: variants + lifecycle CLI tail + reaper.** `archive`/`reopen`, lazy reaper, `role: variant | other`, selections, groups, typed chosen parent edges, and the two SD-031 producer patches must land before dogfood data is generated.
 5. **Day 5: brief + provenance + `docs/threads.md` + backfill.** This is the latest acceptable date for week-1 metadata durability: brief snapshots, `hype.metadata.json` provenance, thread backfill, and long-form docs.
 6. **Day 6: modality registry + prepare collection.** The exact three renderers and OQ-6 quality calculation must exist before the video path can make honest decisions.
-7. **Day 7: `iteration.prepare` summarize cap + cache + scoring.** The SD-043 cap/cache must live inside `iteration.prepare`, with `ARTAGENTS_SUMMARIZE_CONCURRENCY` parallelism and deterministic ordering.
+7. **Day 7: `iteration.prepare` summarize cap + cache + scoring.** The SD-043 cap/cache must live inside `iteration.prepare`, with `ASTRID_SUMMARIZE_CONCURRENCY` parallelism and deterministic ordering.
 8. **Day 8: `iteration.assemble` + quality floor.** Timeline assembly, kind-based renderer dispatch, audio-bed policy, quality refusal, and loud fallback must land before orchestrator wiring.
 9. **Day 9: orchestrator + inspect Cost line.** `builtin.iteration_video` wires `iteration.prepare -> iteration.assemble -> builtin.render -> finalize`, emits the five SD-022 outputs, and exposes the single-estimate Cost line before render.
 10. **Day 10: dogfood + 60-second demo + failure-mode acceptance.** `runs/astrid_logo_v3` must render, the manual checklist must be signed, and the dogfood transcript must prove attribution behavior.
@@ -758,7 +758,7 @@ The end-of-Day-2 Frozen Schema Review is the most important process gate. The Da
    **Mitigation:** the Frozen Schema Review freezes `schema_version=1` at end of Day 2; later field additions/removals/renames require explicit sprint-lead review, a compatibility note, and test updates before merge. Formal migration helper machinery is not part of v1.
 
 5. **`builtin.understand` rate limits or latency.** Iteration summaries can produce many calls, and rate limits would block Day 9/10.
-   **Mitigation:** `iteration.prepare` uses `ThreadPoolExecutor(max_workers=int(os.environ.get("ARTAGENTS_SUMMARIZE_CONCURRENCY", "4")))`, exponential backoff per call, `ARTAGENTS_SUMMARIZE_SEQUENTIAL=1` fallback, and the SD-043 cache to reduce repeat calls.
+   **Mitigation:** `iteration.prepare` uses `ThreadPoolExecutor(max_workers=int(os.environ.get("ASTRID_SUMMARIZE_CONCURRENCY", "4")))`, exponential backoff per call, `ASTRID_SUMMARIZE_SEQUENTIAL=1` fallback, and the SD-043 cache to reduce repeat calls.
 
 6. **Cost blowup on large threads.** An agent may inspect or render a long thread without realizing how many summaries it triggers.
    **Mitigation:** SD-043 cap is enforced inside `iteration.prepare`; `iteration_video inspect` prints `Estimated cost: ~$X.XX (N calls x $Y.YYY)` before render; cache hit/miss counts make repeated renders visible.
@@ -788,18 +788,18 @@ The test plan is intentionally file-named. These are planned tests, not code wri
 | Dependency and IDs | `tests/test_threads_dependencies.py`, `tests/test_threads_ids.py` | 1 | `xxhash>=3.4` is importable from the project environment; generated run/thread/group IDs are 26-char Crockford ULIDs and monotonic within one process. |
 | Record schema | `tests/test_threads_record.py` | 2 | `run.json` includes the trimmed v1 SD-008 fields: `schema_version`, `run_id`, `thread_id`, typed `parent_run_ids`, executor/orchestrator IDs, `kind`, timestamps, `returncode`, repo-relative `out_path`, `cli_args_redacted`, `agent_version`, `brief_content_sha256`, `inputs_digest`, `input_artifacts`, `output_artifacts`, three-field `external_service_calls`, and `starred`. |
 | CLI plumbing | `tests/test_threads_cli_plumbing.py` | 2 | Both `python3 -m astrid executors run` and `python3 -m astrid orchestrators run` accept `--thread <id|@new|@none>`, `--variants N`, and `--from <run-id>:<n>` and pass them into the request objects without altering tool args after `--`. |
-| Chokepoint wrapper | `tests/test_threads_wrapper.py`, `tests/test_threads_upload_youtube_noop.py` | 2 | `threads.begin`/`threads.finalize` wrap normal executor/orchestrator runs; dry runs, tempfile outputs, `--thread @none`, `ARTAGENTS_THREADS_OFF=1`, and `upload.youtube` produce zero thread artifacts and zero thread-layer errors. |
+| Chokepoint wrapper | `tests/test_threads_wrapper.py`, `tests/test_threads_upload_youtube_noop.py` | 2 | `threads.begin`/`threads.finalize` wrap normal executor/orchestrator runs; dry runs, tempfile outputs, `--thread @none`, `ASTRID_THREADS_OFF=1`, and `upload.youtube` produce zero thread artifacts and zero thread-layer errors. |
 | Redaction and privacy base | `tests/test_threads_redaction.py` | 2 | CLI values whose keys match KEY/TOKEN/SECRET/PASSWORD/PASSPHRASE/API_KEY/BEARER are stored as `***REDACTED***`; persisted paths are repo-relative; `runs/<slug>/private/` inputs are sha-only. |
 | Prefix ordering | `tests/test_threads_line_ordering.py` | 2 | A synthetic run with every v1 prefix condition prints to stdout in this exact order before command output: `[thread]`, `[variants]` when present, `Notice:` when present, blank separator line, then command output. |
 | Auto-attribution | `tests/test_threads_attribute.py` | 3 | The five SD-006 branches pass with a frozen clock: explicit `--thread`, lineage inference from `runs/<R>/` args, open active thread join, archived-within-window reopen, and new-thread fallback. |
-| Nested executor inheritance | `tests/test_threads_nested.py`, `tests/test_threads_nested_env.py` | 3 | `_run_external_executor` threads `ARTAGENTS_THREAD_ID` into subprocess env; child wrappers skip a second begin and inherit the parent thread. |
+| Nested executor inheritance | `tests/test_threads_nested.py`, `tests/test_threads_nested_env.py` | 3 | `_run_external_executor` threads `ASTRID_THREAD_ID` into subprocess env; child wrappers skip a second begin and inherit the parent thread. |
 | Agent text and inspect footers | `tests/test_threads_skill_md_text.py`, `tests/test_threads_inspect_footer.py` | 3 | `SKILL.md` contains the exact committed paragraph; `executors inspect` and `orchestrators inspect` include the active-thread footer. |
 | Thread CLI lifecycle | `tests/test_threads_cli.py`, `tests/test_threads_lifecycle.py` | 3-4 | `thread new`, `thread list`, `thread show`, `thread archive`, and `thread reopen` work against `.astrid/threads.json`; lazy lifecycle enforcement has no daemon dependency. |
 | In-flight reaper | `tests/test_threads_reaper.py` | 4 | A stale run with `ended_at: null` and a dead stamped PID is marked `returncode: -1`, `status: "orphaned"`, and finalized at most once per process. |
 | Variants and selections | `tests/test_threads_variants.py`, `tests/test_threads_variants_help.py`, `tests/test_threads_concurrent.py` | 4 | Only artifacts with `role: "variant"` enter groups; `role: "other"` is the default; append-only `selections.jsonl` is last-write-wins on read; concurrent selection writes preserve history; `[variants]` and `thread keep --help` include the SD-042 sentence. |
 | Producer patches | `tests/test_threads_generate_image_variants.py`, `tests/test_threads_logo_ideas_variants.py` | 4 | `generate_image` and `logo_ideas` are the only existing producer patches; they populate `role`, `group`, `group_index`, `duration`, and `variant_meta` as applicable. |
 | Brief snapshotting | `tests/test_threads_brief_snapshot.py`, `tests/test_threads_brief_private.py` | 5 | Each run writes `runs/<slug>/brief.copy.txt` and `brief_content_sha256`; private-path briefs are represented by hash/kind only and no dedicated brief-privacy flag exists. |
-| Provenance and backfill | `tests/test_threads_provenance.py`, `tests/test_threads_backfill.py`, `tests/test_threads_off.py` | 5 | The thread provenance bridge writes the provenance block into `hype.metadata.json`; `thread backfill` adopts existing `runs/*/` without `run.json`; `ARTAGENTS_THREADS_OFF=1` leaves old workflows unchanged. |
+| Provenance and backfill | `tests/test_threads_provenance.py`, `tests/test_threads_backfill.py`, `tests/test_threads_off.py` | 5 | The thread provenance bridge writes the provenance block into `hype.metadata.json`; `thread backfill` adopts existing `runs/*/` without `run.json`; `ASTRID_THREADS_OFF=1` leaves old workflows unchanged. |
 | Thread docs | `tests/test_threads_md_sections.py`, `tests/test_threads_no_content.py` | 5 | `docs/threads.md` contains Privacy & Redaction, Concurrent Variant Selection, Tier Firing Rules, Inspect Before Render, and Deferred Features; `thread show --no-content` omits plaintext content. |
 | Modality registry | `tests/test_modalities_registry.py` | 6 | Exactly `image_grid`, `audio_waveform`, and `generic_card` are registered; `generic_card` is last in fallback order; `python3 -m astrid modalities {list, inspect}` reports the declarations. |
 | Iteration prepare | `tests/test_iteration_prepare.py`, `tests/test_iteration_prepare_cap.py`, `tests/test_iteration_prepare_cache.py` | 6-7 | `iteration.prepare` walks provenance-graph ancestry, computes OQ-6 data quality without penalizing valid roots, enforces SD-043 before uncached summarize dispatch, and writes/reads `.astrid/iteration_cache/<run_id>__<summarizer_model_version>.json`. |
@@ -973,7 +973,7 @@ The sprint is done only when every item below is observable:
 
 (s) `upload.youtube` produces zero thread artifacts and zero thread-layer errors.
 
-(t) Child subprocesses inherit `ARTAGENTS_THREAD_ID`; child wrappers skip begin and do not re-stamp the parent thread.
+(t) Child subprocesses inherit `ASTRID_THREAD_ID`; child wrappers skip begin and do not re-stamp the parent thread.
 
 (u) `cli_args_redacted` replaces KEY/TOKEN/SECRET/PASSWORD/PASSPHRASE/API_KEY/BEARER-class values with `***REDACTED***`.
 

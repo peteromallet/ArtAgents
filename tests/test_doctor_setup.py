@@ -11,7 +11,7 @@ from unittest import mock
 
 from astrid import doctor, setup_cli
 from astrid.core.element.registry import load_default_registry as load_element_registry
-from astrid.structure import TOP_LEVEL_ARTAGENTS_DIRS, validate_repo_structure
+from astrid.structure import TOP_LEVEL_ASTRID_DIRS, validate_repo_structure
 
 
 class DoctorSetupTest(unittest.TestCase):
@@ -105,8 +105,8 @@ class DoctorSetupTest(unittest.TestCase):
         self.assertIn("[skipped] elements install: effects/text-card: no dependencies declared", stdout)
 
     def test_top_level_dirs_includes_verify_and_orchestrate(self) -> None:
-        self.assertIn("verify", TOP_LEVEL_ARTAGENTS_DIRS)
-        self.assertIn("orchestrate", TOP_LEVEL_ARTAGENTS_DIRS)
+        self.assertIn("verify", TOP_LEVEL_ASTRID_DIRS)
+        self.assertIn("orchestrate", TOP_LEVEL_ASTRID_DIRS)
 
     def test_repo_structure_guard_rejects_legacy_and_misplaced_folders(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

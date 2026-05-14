@@ -16,7 +16,7 @@ from .jsonio import read_json, write_json_atomic
 from .project import require_project
 from .schema import build_run_record, utc_now_iso, validate_run_record
 
-PROJECT_RUN_ENV = "ARTAGENTS_PROJECT_RUN"
+PROJECT_RUN_ENV = "ASTRID_PROJECT_RUN"
 SENSITIVE_ARG_NAMES = {
     "--api-key",
     "--apikey",
@@ -77,7 +77,7 @@ def prepare_project_run(
             raise ProjectRunError(f"task run is bound to project {task_project!r}, refusing to prepare run for {project_slug!r}")
         step_id = task_env.task_step_id_env()
         if not step_id:
-            raise ProjectRunError("ARTAGENTS_TASK_STEP_ID must be set when ARTAGENTS_TASK_RUN_ID is set")
+            raise ProjectRunError("ASTRID_TASK_STEP_ID must be set when ASTRID_TASK_RUN_ID is set")
         run_root = step_dir_for(project_slug, parent_run_id, step_id, step_version=1, root=projects_root)
         run_root.mkdir(parents=True, exist_ok=True)
         now = utc_now_iso()
