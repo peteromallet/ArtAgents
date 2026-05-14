@@ -27,6 +27,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(parse_argv)
     if getattr(args, "command", None) == "run":
         args.orchestrator_args = passthrough
+    # FLAG-S1-002: 'new' short-circuits BEFORE load_default_registry() so
+    # scaffold commands never load the built-in registry or import pack code.
+    if getattr(args, "command", None) == "new":
+        return int(args.handler(args, registry=None))
     try:
         registry = load_default_registry(banodoco_config=_banodoco_config_from_args(args))
         return int(args.handler(args, registry))
@@ -83,7 +87,71 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--variants", type=int, help="Request a sibling variant count for variant-aware producers.")
     run_parser.add_argument("--from", dest="from_ref", help="Consume a specific prior run or variant, e.g. <run-id>:<n>.")
     run_parser.set_defaults(handler=_cmd_run)
+
+    new_parser = subparsers.add_parser("new", help="Scaffold a new orchestrator in an existing pack.")
+    new_parser.add_argument(
+        "qualified_id",
+        help="Qualified orchestrator id: <pack>.<slug> (e.g., my_pack.make_trailer).",
+    )
+    new_parser.set_defaults(handler=_cmd_new)
+
     return parser
+
+
+def _cmd_new(args: argparse.Namespace, registry: Any) -> int:
+    """Scaffold a new orchestrator component into an existing pack (CWD-relative).
+
+    Short-circuits before ``load_default_registry()`` — never imports pack code.
+    """
+    from astrid.core.executor.cli import _scaffold_component
+
+    return _scaffold_component(
+        qualified_id=args.qualified_id,
+        component_type="orchestrator",
+        yaml_template=_ORCHESTRATOR_YAML_TEMPLATE,
+        run_py_template=_RUN_PY_TEMPLATE,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator-specific scaffold templates
+# ---------------------------------------------------------------------------
+
+_ORCHESTRATOR_YAML_TEMPLATE = """\
+schema_version: 1
+id: {qualified_id}
+name: {slug}
+version: 0.1.0
+description: \"TODO: describe what this orchestrator does.\"
+
+runtime:
+  type: python-cli
+  entrypoint: run.py
+  callable: main
+"""
+
+_RUN_PY_TEMPLATE = """\
+\"\"\"{qualified_id} — orchestrator runtime entrypoint.
+
+Implement your orchestrator logic here. The function named ``main`` (or
+whatever you set for ``runtime.callable`` in the manifest) is the entrypoint.
+\"\"\"
+
+
+def main(*, inputs: dict, outputs: dict, **kwargs) -> int:
+    \"\"\"Entrypoint for {qualified_id}.
+
+    Args:
+        inputs: Dict of resolved input values (name → path/value).
+        outputs: Dict to populate with output values (name → path/value).
+        **kwargs: Runtime context (project, brief, etc.).
+
+    Returns:
+        Exit code (0 on success, non-zero on failure).
+    \"\"\"
+    # TODO: implement your orchestration logic here
+    return 0
+"""
 
 
 def _banodoco_config_from_args(args: argparse.Namespace) -> BanodocoCatalogConfig:
