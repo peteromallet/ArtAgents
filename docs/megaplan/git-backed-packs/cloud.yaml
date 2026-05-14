@@ -30,8 +30,6 @@ resources:
 railway:
   service: astrid-git-backed-packs
   session: astrid-git-backed-packs
-  project: reigh-megaplan-dev
-  environment: production
 
 toolchains:
   - name: astrid-video-tools
