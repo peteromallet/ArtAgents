@@ -1,0 +1,109 @@
+# Chained megaplan setup for Git-backed Astrid packs.
+# Prepared only. Do not start until the setup branch is reviewed.
+
+merge_policy: review
+
+driver:
+  robustness: standard
+  auto_approve: true
+  on_escalate: abort
+
+on_failure:
+  abort: stop_chain
+
+on_escalate:
+  abort: stop_chain
+
+# Provider-routing shim:
+# Keep the normal rubric profiles, but route DeepSeek phases through the direct
+# DeepSeek API instead of Fireworks. This is deliberately local to this chain so
+# we do not multiply project profiles.
+x_direct_deepseek_phases: &direct_deepseek_phases
+  - prep=hermes:deepseek:deepseek-v4-pro
+  - gate=hermes:deepseek:deepseek-v4-pro
+  - finalize=hermes:deepseek:deepseek-v4-pro
+  - execute=hermes:deepseek:deepseek-v4-pro
+  - loop_execute=hermes:deepseek:deepseek-v4-pro
+
+x_codex_thoughtful_phases: &codex_thoughtful_phases
+  - plan=codex:medium
+  - critique=codex:low
+  - revise=codex:medium
+  - review=codex:low
+  - loop_plan=codex:medium
+  - prep=hermes:deepseek:deepseek-v4-pro
+  - gate=hermes:deepseek:deepseek-v4-pro
+  - finalize=hermes:deepseek:deepseek-v4-pro
+  - execute=hermes:deepseek:deepseek-v4-pro
+  - loop_execute=hermes:deepseek:deepseek-v4-pro
+
+milestones:
+  - label: sprint-00-architecture-gate
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-00-architecture-gate.md
+    branch: megaplan/git-backed-packs/sprint-00-architecture-gate
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-01-contract-validation
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-01-contract-validation.md
+    branch: megaplan/git-backed-packs/sprint-01-contract-validation
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-02-resolver-runtime
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-02-resolver-runtime.md
+    branch: megaplan/git-backed-packs/sprint-02-resolver-runtime
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-03-local-install
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-03-local-install.md
+    branch: megaplan/git-backed-packs/sprint-03-local-install
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-04-git-install
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-04-git-install.md
+    branch: megaplan/git-backed-packs/sprint-04-git-install
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-05-builder-scaffolding
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-05-builder-scaffolding.md
+    branch: megaplan/git-backed-packs/sprint-05-builder-scaffolding
+    profile: thoughtful
+    robustness: light
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-06-agent-index
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-06-agent-index.md
+    branch: megaplan/git-backed-packs/sprint-06-agent-index
+    profile: thoughtful
+    robustness: light
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-07-elements-example
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-07-elements-example.md
+    branch: megaplan/git-backed-packs/sprint-07-elements-example
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-08-legacy-migration-proof
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-08-legacy-migration-proof.md
+    branch: megaplan/git-backed-packs/sprint-08-legacy-migration-proof
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases
+
+  - label: sprint-09-portfolio-rationalization
+    idea: docs/megaplan/git-backed-packs/ideas/sprint-09-portfolio-rationalization.md
+    branch: megaplan/git-backed-packs/sprint-09-portfolio-rationalization
+    profile: thoughtful
+    robustness: standard
+    phase_model: *codex_thoughtful_phases

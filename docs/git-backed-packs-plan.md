@@ -573,7 +573,10 @@ Deliverables:
 - Define the runtime contract in docs: callable shape, argv/env behavior, output
   conventions, exit codes, and error wrapping.
 - Replace or bypass the flat YAML parser on the validation path with a real YAML
-  parser.
+  parser. **Motivation:** PyYAML is absent from `requirements.txt` despite 12
+  runtime and test sites importing `yaml.safe_load`, making this a live packaging
+  inconsistency. Sprint 1 must make PyYAML an explicit dependency and use it as
+  the canonical YAML parser for validation.
 - Implement `python3 -m astrid packs validate <path>`.
 - Implement minimal `python3 -m astrid packs new <id>` that generates a valid
   pack skeleton.
@@ -592,6 +595,12 @@ Explicitly out of scope:
 - Rich scaffolding templates beyond minimal executor/orchestrator creation.
 - Element scaffolding commands.
 - Dependency installation.
+- **Sandboxing or runtime security boundaries:** validation is static and does
+  not execute pack code. The schemas and parser prove structure, not safety.
+- **Installed packs overriding built-ins:** collision rejection and override
+  policy are defined in Sprint 0; Sprint 1 only enforces the contract shape.
+- **Project-local/theme element overrides:** these remain a special existing
+  authoring workflow and are not the installed-pack model.
 
 Exit criteria:
 
@@ -621,7 +630,14 @@ Deliverables:
 - Add an opt-out rule for legitimate non-pack directories, such as `_core`,
   `__pycache__`, or `.no-pack`.
 - Detect duplicate ids across all discovered packs.
-- Collapse orchestrator resolution to the manifest-based path.
+- Collapse orchestrator resolution to the manifest-based path. This requires
+  updating the full legacy caller set: `astrid/orchestrate/cli.py` (author
+  compile/check/describe and nested-plan traversal), `astrid/core/task/lifecycle.py`
+  (start reads `<pack>/build/<name>.json`), and the three registries —
+  `astrid/core/executor/registry.py`, `astrid/core/orchestrator/registry.py`,
+  `astrid/core/element/registry.py` — all of which call `discover_packs()` with
+  no source argument, defaulting to the built-in `packs_root()`. Introducing
+  PackResolver is a cross-cutting call-site change, not a single-file refactor.
 - Preserve current CLI and runner behavior for existing built-in orchestrators.
 - Move, rename, or delete the legacy `builtin/hype.py` DSL fixture.
 - Define whether the DSL decorator remains supported or becomes legacy.
@@ -639,6 +655,15 @@ Explicitly out of scope:
 - Full installed-pack lifecycle.
 - Full pack taxonomy migration.
 - Rich component templates.
+- **Validation sandboxing:** discovery and resolution changes are about which
+  files are found at which paths; they do not execute or sandbox pack code.
+- **Installed packs overriding built-ins:** the no-override policy from Sprint 0
+  is enforced by discovery ordering and collision rejection, not by adding a
+  separate override mechanism.
+- **Project-local/theme element overrides:** these remain a special existing
+  authoring workflow and are not unified with the installed-pack model.
+- **Dependency installation:** dependency declarations remain informational only
+  in v1; no automatic provisioning is added.
 
 Exit criteria:
 
@@ -685,6 +710,13 @@ Explicitly out of scope:
 - Git URL install.
 - Automatic dependency provisioning.
 - Pack registry or marketplace.
+- **Installed packs overriding built-ins:** installed packs may not shadow
+  built-in executors, orchestrators, or elements. Collision rejection is
+  enforced at install time per the Sprint 0 decision.
+- **Project-local/theme element overrides:** these remain a special existing
+  authoring workflow and are not the installed-pack model.
+- **Validation sandboxing:** validation remains static and does not execute pack
+  code. The local install path validates structure, not runtime safety.
 
 Exit criteria:
 
@@ -717,6 +749,13 @@ Explicitly out of scope:
 - Marketplace or curated registry.
 - Signature verification.
 - Automatic dependency provisioning.
+- **Installed packs overriding built-ins:** the no-override policy from Sprint 0
+  continues through Git install; collision rejection is enforced per the
+  established rules.
+- **Validation sandboxing:** Git install extends the install path (new source
+  type) but does not change validation from static to execution-based.
+- **Project-local/theme element overrides:** these remain a special existing
+  authoring workflow and are not the installed-pack model.
 
 Exit criteria:
 
@@ -972,6 +1011,11 @@ not referenced in place by default.
 - Local path copies respect the source repository's `.gitignore`.
 - Referencing a source directory in place is a future developer mode, not the v1
   default.
+- **Active pointer:** the semantic model is an "active pointer" that points to
+  the currently-active revision. On Unix this is implemented as a symlink
+  (`active -> revisions/<revision-id>/`). Windows-friendly indirection (e.g., a
+  small plaintext pointer file) remains an open implementation detail for later
+  sprints.
 
 Reasoning: an installed pack should not change just because a builder edits a
 working tree. Activation should be explicit, repeatable, and reversible. Using
@@ -1000,12 +1044,34 @@ Pack ids should remain simple strings in v1, with strict validation and
 collision rejection.
 
 - Valid pack ids should be lowercase ASCII identifiers such as `my_project`.
+  > **Implementation note:** the current pack-id regex in `astrid/core/pack.py`
+  > (`^[A-Za-z][A-Za-z0-9_-]*$`) is broader than this policy — it accepts
+  > uppercase letters and underscores. The v1 decision is lowercase-only
+  > (`^[a-z][a-z0-9_]*$`), and the regex will be tightened accordingly in
+  > Sprint 1. Pack ids that do not match the lowercase-only regex are rejected
+  > at validation and install time.
 - Executor and orchestrator ids remain `<pack>.<slug>`.
 - Installed packs cannot collide with built-in or already-installed pack ids.
 - Git URL, requested ref, resolved commit SHA, and local source path are source
   identity metadata in the install record, not the CLI id.
 - Public registry or publisher namespacing can be added later as metadata
   without changing the local runtime id scheme.
+
+> **Settled metadata questions (Sprint 0 gate):**
+>
+> 1. **Separate ADR vs. in-doc record:** Decisions stay in this document rather
+>    than a separate architecture decision record for v1, so there is one source
+>    of truth for implementers.
+> 2. **Active pointer implementation:** The active pointer uses a symlink-based
+>    model on Unix (`active -> revisions/<revision-id>/`). Windows-friendly
+>    indirection (e.g., a small plaintext pointer file) remains an open
+>    implementation detail for later sprints.
+> 3. **Local/theme element overrides:** The existing project-local and active-
+>    theme element override path remains a special-case authoring workflow. It
+>    is explicitly exempt from installed-pack collision rejection — local
+>    overrides are not the model for third-party packs and do not block
+>    installation of a pack that provides an element id matching a local
+>    override.
 
 Reasoning: stronger public namespacing is useful later, but adding it before a
 registry exists would add ceremony without solving a current local-install
@@ -1218,6 +1284,28 @@ Reasoning: elements are part of the core pack promise. They can remain later in
 the roadmap because they are harder than executors/orchestrators, but the v1
 target should be full working support rather than a partial placeholder.
 
+## Decision Gate Summary
+
+The following table records the v1 answers settled during Sprint 0. Each entry
+represents an unambiguous decision that later sprints can implement without
+reopening product questions.
+
+| Decision Area | v1 Answer | Status | Notes |
+| --- | --- | --- | --- |
+| Threat model | Installed packs are trusted executable code | ✅ Settled | Validation proves structure, not safety |
+| Install mode | Copy-into-ASTRID_HOME/packs with active pointer | ✅ Settled | Symlink-based on Unix; Windows indirection TBD |
+| Activation semantics | 9-step atomic model (copy→validate→activate) | ✅ Settled | Failed validation leaves no active pack |
+| Install record shape | Per-revision `.astrid/install.json` | ✅ Settled | Authoritative for that revision |
+| InstalledPackStore vs PackResolver | InstalledPackStore owns state; PackResolver is read-only locator | ✅ Settled | Boundary per abstraction table |
+| Pack ids | Lowercase ASCII (`^[a-z][a-z0-9_]*$`) with collision rejection | ✅ Settled | Current regex broader; tighten in Sprint 1 |
+| Source identity metadata | Git URL, ref, commit SHA, or local source path in install record | ✅ Settled | Not part of the CLI id |
+| Element collision policy | Collisions rejected for installed packs | ✅ Settled | Local/theme overrides exempt (special workflow) |
+| Validation vs smoke-test boundary | Static validation only | ✅ Settled | No import or execution during validation |
+| Dependency policy | Declaration-only (informational) | ✅ Settled | No automatic provisioning in v1 |
+| ADR format | Decisions stay in this document | ✅ Settled | Single source of truth for v1 |
+| Active pointer implementation | Symlink on Unix; Windows TBD | ✅ Settled | Semantic "active pointer" language preserved |
+| Local/theme element overrides | Special-case authoring workflow, exempt from collision rejection | ✅ Settled | Not the model for third-party packs |
+
 ## Abstraction Levels
 
 The right v1 abstraction level is enough structure to make packs reproducible,
@@ -1226,7 +1314,7 @@ marketplace, or policy engine.
 
 | Area | Right v1 level | Avoid in v1 |
 | --- | --- | --- |
-| `PackResolver` | A read-only concrete resource locator that resolves pack roots, component roots, docs, schemas, runtime files, examples, and assets from known pack roots. It should be the shared path used by validation, discovery, inspect, runtime, and agent-index. | A general plugin framework, dependency solver, trust engine, registry client, install-state manager, or runtime supervisor. |
+| `PackResolver` | A read-only concrete resource locator that resolves pack roots, component roots, docs, schemas, runtime files, examples, and assets from known pack roots. It should be the shared path used by validation, discovery, inspect, runtime, and agent-index. Introducing PackResolver is a cross-cutting call-site change: currently `astrid/orchestrate/cli.py`, `astrid/core/task/lifecycle.py`, and the three registries (executor, orchestrator, element) all call `discover_packs()` with no source argument, defaulting to the built-in `packs_root()`. | A general plugin framework, dependency solver, trust engine, registry client, install-state manager, or runtime supervisor. |
 | `InstalledPackStore` | A small lifecycle/state boundary that owns install roots, staging directories, active pointers, per-revision install records, locks, update, uninstall, and rollback metadata. | A package manager, central database, dependency installer, marketplace client, or security policy engine. |
 | Trust tiers | A small enum or string field used for display and warnings: built-in, local, Git, future curated. | A full trust-policy language, permission graph, signing system, or sandbox substitute. |
 | Generated component inventory | A generated snapshot for install records, inspect output, summaries, and tests. Source of truth remains `pack.yaml` plus component manifests. | A manually authored `provides` file or a second registry format builders must maintain. |
