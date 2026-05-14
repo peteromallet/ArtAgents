@@ -35,8 +35,17 @@ toolchains:
   - name: astrid-video-tools
     install: |
       RUN apt-get update \
-        && apt-get install -y --no-install-recommends ffmpeg \
+        && apt-get install -y --no-install-recommends ffmpeg unzip \
         && rm -rf /var/lib/apt/lists/*
+  - name: shannon-runtime
+    install: |
+      RUN . "$NVM_DIR/nvm.sh" \
+        && npm install -g @dexh/shannon@0.0.2 \
+        && NVBIN=$(ls -d /root/.nvm/versions/node/*/bin | head -1) \
+        && ln -sf "$NVBIN/shannon" /usr/local/bin/shannon
+      RUN curl -fsSL https://bun.sh/install | bash \
+        && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
+        && bun --version
 
 secrets:
   - GITHUB_TOKEN
