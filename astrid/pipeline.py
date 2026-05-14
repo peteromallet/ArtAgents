@@ -40,6 +40,7 @@ _UNBOUND_TOP_LEVEL = {
     "status",
     "sessions",  # sub-verbs handled below
     "init",
+    "packs",  # packs validate / packs new are builder-facing and sessionless
     "-h",
     "--help",
 }
@@ -149,7 +150,12 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     top = raw[0]
     if top in {"-h", "--help"}:
         return True
-    if top in {"attach", "init", "status"}:
+    # 'packs' is builder-facing and sessionless (T5).
+    if top in {"attach", "init", "status", "packs"}:
+        return True
+    # FLAG-S1-002: executors new / orchestrators new are builder-facing
+    # scaffold commands that short-circuit before registry loading (T6).
+    if top in ("executors", "orchestrators") and len(raw) >= 2 and raw[1] == "new":
         return True
     if top == "projects" and len(raw) >= 2 and raw[1] in _UNBOUND_PROJECTS_SUBVERBS:
         return True
@@ -251,6 +257,10 @@ def _dispatch(raw: list[str]) -> int:
         from .skills import cli as skills_cli
 
         return skills_cli.main(raw[1:])
+    if raw and raw[0] == "packs":
+        from .packs import cli as packs_cli
+
+        return packs_cli.main(raw[1:])
     if raw and raw[0] == "executors":
         from .core.executor import cli as executors_cli
 
@@ -761,7 +771,8 @@ Usage:
     python3 -m astrid status
     python3 -m astrid sessions {ls,detach,takeover} ...
   python3 -m astrid skills {list,install,uninstall,sync,doctor} ...
-  python3 -m astrid executors {list,inspect,validate,install,run} ...
+  python3 -m astrid packs {validate,new} ...
+  python3 -m astrid executors {new,list,inspect,validate,install,run} ...
   python3 -m astrid elements {list,inspect,fork,install} ...
   python3 -m astrid projects {create,show,source} ...
   python3 -m astrid timelines {ls,create,show,rename,finalize,tombstone,purge,set-default} ...
@@ -778,6 +789,12 @@ Usage:
 Start here:
   python3 -m astrid attach <project>
   python3 -m astrid status
+Build a new pack:
+  python3 -m astrid packs new <id>
+  python3 -m astrid executors new <pack>.<slug>
+  python3 -m astrid orchestrators new <pack>.<slug>
+  python3 -m astrid packs validate <path>
+Browse available tools:
   python3 -m astrid orchestrators list
   python3 -m astrid executors list
   python3 -m astrid elements list

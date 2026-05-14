@@ -25,6 +25,10 @@ from .schema import ExecutorDefinition, ExecutorValidationError
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    # FLAG-S1-002: 'new' short-circuits BEFORE load_default_registry() so
+    # scaffold commands never load the built-in registry or import pack code.
+    if getattr(args, "command", None) == "new":
+        return int(args.handler(args, registry=None))
     try:
         registry = load_default_registry(_banodoco_config_from_args(args))
         return int(args.handler(args, registry))
@@ -114,7 +118,218 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--playlist-id", help="Optional YouTube playlist ID.")
     run_parser.add_argument("--made-for-kids", action="store_true", help="Mark the video as made for kids.")
     run_parser.set_defaults(handler=_cmd_run)
+
+    new_parser = subparsers.add_parser("new", help="Scaffold a new executor in an existing pack.")
+    new_parser.add_argument(
+        "qualified_id",
+        help="Qualified executor id: <pack>.<slug> (e.g., my_pack.ingest_assets).",
+    )
+    new_parser.set_defaults(handler=_cmd_new)
+
     return parser
+
+
+def _cmd_new(args: argparse.Namespace, registry: Any) -> int:
+    """Scaffold a new executor component into an existing pack (CWD-relative).
+
+    Short-circuits before ``load_default_registry()`` — never imports pack code.
+    """
+    return _scaffold_component(
+        qualified_id=args.qualified_id,
+        component_type="executor",
+        yaml_template=_EXECUTOR_YAML_TEMPLATE,
+        run_py_template=_RUN_PY_TEMPLATE,
+    )
+
+
+def _scaffold_component(
+    qualified_id: str,
+    component_type: str,
+    yaml_template: str,
+    run_py_template: str,
+) -> int:
+    """Shared scaffolding logic for executors new / orchestrators new.
+
+    Args:
+        qualified_id: ``<pack>.<slug>`` identifier.
+        component_type: ``'executor'`` or ``'orchestrator'``.
+        yaml_template: str.format template for the component manifest.
+        run_py_template: str.format template for run.py stub.
+
+    Returns:
+        Exit code (0 on success, non-zero on failure).
+    """
+    from astrid.packs.validate import validate_pack
+
+    # Derive the correct CLI prefix for error messages.
+    _cli_prefix = f"{component_type}s new"
+
+    # --- 1. Validate the qualified id ------------------------------------------
+    if not _QID_RE.fullmatch(qualified_id):
+        print(
+            f"{_cli_prefix}: qualified id {qualified_id!r} must be "
+            f"'<pack>.<slug>' with letters/digits/underscore",
+            file=sys.stderr,
+        )
+        return 2
+
+    pack, slug = qualified_id.split(".", 1)
+
+    # --- 2. Find the target pack root (CWD-relative) ---------------------------
+    pack_root = Path.cwd().resolve()
+    pack_yaml = pack_root / "pack.yaml"
+    if not pack_yaml.is_file():
+        print(
+            f"{_cli_prefix}: pack.yaml not found at {pack_root}. "
+            f"Scaffold the pack first with: python3 -m astrid packs new {pack}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Verify the pack id in pack.yaml matches
+    import yaml as _yaml_module
+    try:
+        with open(pack_yaml, "r", encoding="utf-8") as fh:
+            doc = _yaml_module.safe_load(fh)
+    except Exception as exc:
+        print(f"{_cli_prefix}: cannot read {pack_yaml}: {exc}", file=sys.stderr)
+        return 1
+
+    if isinstance(doc, dict) and doc.get("id") != pack:
+        print(
+            f"{_cli_prefix}: pack id mismatch — {qualified_id!r} expects "
+            f"pack id {pack!r} but {pack_yaml} has id {doc.get('id')!r}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # --- 3. Determine the content root for this component type -----------------
+    content = doc.get("content", {}) if isinstance(doc, dict) else {}
+    rel_dir = content.get(f"{component_type}s", f"{component_type}s")
+    components_root = pack_root / rel_dir
+    component_dir = components_root / slug
+
+    # --- 4. Reject overwrite collisions ----------------------------------------
+    if component_dir.exists():
+        print(
+            f"{_cli_prefix}: {component_dir} already exists; refusing to overwrite",
+            file=sys.stderr,
+        )
+        return 1
+
+    # --- 5. Create the scaffold ------------------------------------------------
+    component_dir.mkdir(parents=True)
+    created: list[str] = []
+
+    # Component manifest (executor.yaml / orchestrator.yaml)
+    manifest_path = component_dir / f"{component_type}.yaml"
+    manifest_text = yaml_template.format(pack=pack, slug=slug, qualified_id=qualified_id)
+    manifest_path.write_text(manifest_text, encoding="utf-8")
+    created.append(str(manifest_path.relative_to(pack_root)))
+
+    # run.py stub
+    run_py_path = component_dir / "run.py"
+    run_py_text = run_py_template.format(qualified_id=qualified_id, component_type=component_type)
+    run_py_path.write_text(run_py_text, encoding="utf-8")
+    created.append(str(run_py_path.relative_to(pack_root)))
+
+    # STAGE.md stub
+    stage_md_path = component_dir / "STAGE.md"
+    stage_md_text = _STAGE_MD_TEMPLATE.format(
+        qualified_id=qualified_id, component_type=component_type.title()
+    )
+    stage_md_path.write_text(stage_md_text, encoding="utf-8")
+    created.append(str(stage_md_path.relative_to(pack_root)))
+
+    # --- 6. Validate the pack after scaffolding --------------------------------
+    errors, warnings = validate_pack(pack_root)
+    if errors:
+        print(
+            f"{_cli_prefix}: scaffolded {component_type} fails validation "
+            f"({len(errors)} error(s))",
+            file=sys.stderr,
+        )
+        for err in errors:
+            print(f"  {err}", file=sys.stderr)
+        return 1
+
+    # --- 7. Report ------------------------------------------------------------
+    for rel in created:
+        print(f"created {rel}")
+    if warnings:
+        for w in warnings:
+            print(f"warning: {w}", file=sys.stderr)
+    print(f"{component_type} {qualified_id!r} created and validated")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Qualified-id validation (matches the v1 _defs.json qualified_id pattern)
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+_QID_RE = _re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+
+# ---------------------------------------------------------------------------
+# Scaffold templates
+# ---------------------------------------------------------------------------
+
+_EXECUTOR_YAML_TEMPLATE = """\
+schema_version: 1
+id: {qualified_id}
+name: {slug}
+version: 0.1.0
+description: \"TODO: describe what this executor does.\"
+
+runtime:
+  type: python-cli
+  entrypoint: run.py
+  callable: main
+"""
+
+_RUN_PY_TEMPLATE = """\
+\"\"\"{qualified_id} — {component_type} runtime entrypoint.
+
+Implement your {component_type} logic here. The function named ``main`` (or
+whatever you set for ``runtime.callable`` in the manifest) is the entrypoint.
+\"\"\"
+
+
+def main(*, inputs: dict, outputs: dict, **kwargs) -> int:
+    \"\"\"Entrypoint for {qualified_id}.
+
+    Args:
+        inputs: Dict of resolved input values (name → path/value).
+        outputs: Dict to populate with output values (name → path/value).
+        **kwargs: Runtime context (project, brief, etc.).
+
+    Returns:
+        Exit code (0 on success, non-zero on failure).
+    \"\"\"
+    # TODO: implement your logic here
+    return 0
+"""
+
+_STAGE_MD_TEMPLATE = """\
+# {qualified_id}
+
+## Purpose
+
+TODO: describe what this {component_type} does and when to use it.
+
+## Inputs
+
+TODO: list the inputs this {component_type} expects.
+
+## Outputs
+
+TODO: list the outputs this {component_type} produces.
+
+## Dependencies
+
+TODO: any Python, npm, or system dependencies.
+"""
 
 
 def _banodoco_config_from_args(args: argparse.Namespace) -> BanodocoCatalogConfig:
