@@ -69,8 +69,15 @@ my-project-pack/
     minimal/
 ```
 
-The exact layout should be declared by `pack.yaml`, not guessed by recursively
-scanning the whole repository.
+The exact layout should be declared by `pack.yaml`.
+
+> **Current implementation note (Sprint 0):** today pack-root discovery in
+> `astrid/core/pack.py` uses `iterdir()` — direct children only under a known
+> packs root. Recursive `rglob` is confined to `_content_roots()` for in-pack
+> executor/orchestrator manifests after a pack is already discovered. Sprint 2
+> changes both: pack-root location moves from implicit-direct-children to
+> `PackResolver`-declared roots, while in-pack content scanning moves from
+> `rglob` to declared content roots in `pack.yaml`.
 
 ## Pack Manifest Contract
 
@@ -615,9 +622,12 @@ Exit criteria:
 
 ### Sprint 2: PackResolver, Deterministic Discovery, And Runtime Path
 
-Goal: stop discovering product surface by accidental recursive scans and prove
-that external-pack-shaped components resolve through the canonical runtime path
-before any install UX ships.
+Goal: replace the current two-tier discovery model — implicit pack-root
+discovery from direct children of a known packs root (`iterdir()`), plus
+recursive in-pack content scanning (`rglob` in `_content_roots()`) — with a
+single `PackResolver`-based declared-root model, and prove that external-pack-shaped
+components resolve through the canonical runtime path before any install UX
+ships.
 
 Deliverables:
 
@@ -1344,7 +1354,9 @@ Pack manifests and discovery:
 
 - `01KRF15VTT59Q0P8N6R2619TRG`: Expand `pack.yaml` into a real contract.
 - `01KRF16M8EEZF7475ATCG7GSJ6`: Replace the custom YAML parser.
-- `01KRF16MJWRHGWEQZ2A8NTSFSY`: Replace loose `rglob` with declared roots.
+- `01KRF16MJWRHGWEQZ2A8NTSFSY`: Replace loose `rglob` in `_content_roots()`
+  (in-pack executor/orchestrator manifest scanning) with declared content roots
+  from `pack.yaml`.
 - `01KRF17GHJN770ZDRYEKT9R3V0`: Warn on likely pack directories with missing
   manifests.
 
