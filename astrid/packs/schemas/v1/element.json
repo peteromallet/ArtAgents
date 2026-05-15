@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "element.json",
+  "type": "object",
+  "required": ["schema_version", "id", "kind", "pack_id", "metadata", "schema", "defaults", "dependencies"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"type": "string"},
+    "kind": {"type": "string", "enum": ["effect", "animation", "transition"]},
+    "pack_id": {"$ref": "_defs.json#/definitions/pack_id"},
+    "metadata": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": {"type": "string"}
+      }
+    },
+    "schema": {
+      "type": "object"
+    },
+    "defaults": {
+      "type": "object"
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "js_packages": {"type": "array", "items": {"type": "string"}},
+        "python_requirements": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "docs": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

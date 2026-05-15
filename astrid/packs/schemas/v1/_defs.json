@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "_defs.json",
+  "definitions": {
+    "qualified_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*\\.[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+    },
+    "version_string": {
+      "type": "string"
+    },
+    "runtime_python_cli": {
+      "type": "object",
+      "required": ["type", "entrypoint"],
+      "properties": {
+        "type": {"type": "string", "const": "python-cli"},
+        "entrypoint": {"type": "string"}
+      }
+    },
+    "runtime_command": {
+      "type": "object",
+      "required": ["type", "command"],
+      "properties": {
+        "type": {"type": "string", "const": "command"},
+        "command": {
+          "type": "object",
+          "required": ["argv"],
+          "properties": {
+            "argv": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

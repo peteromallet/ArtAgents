@@ -1,5 +1,9 @@
 """Phase 9 author-test drift: copy the packs tree to a tmp dir, mutate the
-golden, run with packs_root=<tmp>, assert rc==1 and unified-diff headers."""
+golden, run with packs_root=<tmp>, assert rc==1 and unified-diff headers.
+
+Sprint 2 (T9): the legacy DSL fixture was moved; we restore it into the
+copied packs tree so the legacy ``compile.resolve_orchestrator`` path works.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +14,15 @@ from pathlib import Path
 
 from astrid.orchestrate import cli as author_cli
 
-
 _REPO_PACKS = Path(__file__).resolve().parents[1] / "astrid" / "packs"
+_LEGACY_HYPE = Path(__file__).resolve().parent / "fixtures" / "legacy_hype.py"
 
 
 def test_author_test_reports_drift_with_unified_diff(tmp_path: Path) -> None:
     packs = tmp_path / "packs"
     shutil.copytree(_REPO_PACKS, packs)
+    # Restore the legacy DSL fixture that was moved out of the repo packs.
+    shutil.copy2(_LEGACY_HYPE, packs / "builtin" / "hype.py")
 
     golden = packs / "builtin" / "golden" / "smoke.events.jsonl"
     lines = golden.read_text(encoding="utf-8").splitlines()

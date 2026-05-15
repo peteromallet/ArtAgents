@@ -15,9 +15,9 @@ class PipelineDispatchAliasTest(unittest.TestCase):
 
         help_text = stdout.getvalue()
         self.assertIn("Astrid command gateway", help_text)
-        self.assertIn("python3 -m astrid orchestrators {list,inspect,validate,run}", help_text)
-        self.assertIn("python3 -m astrid executors {new,list,inspect,validate,install,run}", help_text)
-        self.assertIn("python3 -m astrid elements {list,inspect,fork,install}", help_text)
+        self.assertIn("python3 -m astrid orchestrators {list,search,inspect,validate,run}", help_text)
+        self.assertIn("python3 -m astrid executors {new,list,search,inspect,validate,install,run}", help_text)
+        self.assertIn("python3 -m astrid elements {list,search,inspect,validate,fork,install}", help_text)
         self.assertIn("python3 -m astrid is the package entry point", help_text)
         self.assertNotIn("pipeline.py", help_text)
         self.assertNotIn("conductors", help_text)

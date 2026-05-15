@@ -28,16 +28,32 @@ _MANIFEST_FILENAMES = ("executor.yaml", "executor.yml", "executor.json")
 
 
 def discover_folder_executor_roots(root: str | Path) -> tuple[Path, ...]:
-    """Return folders under `root` that contain an executor manifest or executor.py."""
+    """Return folders under `root` that contain an executor manifest or executor.py.
+
+    Only checks the immediate directory (non-recursive) — the resolver already
+    provides specific component roots.  A single root that contains a manifest
+    is returned as-is; a broader root (e.g. the pack root itself when content
+    is undeclared) is scanned one level deep for component directories.
+    """
 
     search_root = Path(root)
     if not search_root.is_dir():
         return ()
-    roots = {
-        path.parent.resolve()
-        for path in search_root.rglob("*")
-        if _is_executor_folder_file(path)
-    }
+
+    # If this directory itself has a manifest, it *is* the component root.
+    if any((search_root / name).is_file() for name in _MANIFEST_FILENAMES) or (search_root / "executor.py").is_file():
+        return (search_root.resolve(),)
+
+    # Otherwise scan direct children only (one level, not recursive rglob).
+    roots: set[Path] = set()
+    try:
+        for child in search_root.iterdir():
+            if not child.is_dir() or child.name.startswith(".") or child.name == "__pycache__":
+                continue
+            if any((child / name).is_file() for name in _MANIFEST_FILENAMES) or (child / "executor.py").is_file():
+                roots.add(child.resolve())
+    except OSError:
+        pass
     return tuple(sorted(roots))
 
 

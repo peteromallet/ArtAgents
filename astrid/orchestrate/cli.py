@@ -179,7 +179,16 @@ def _describe_plan(plan: TaskPlan, builder_costs: dict[str, float]) -> tuple[lis
     for path, step in iter_steps_with_path(plan):
         depth = len(path) - 1
         indent = "  " * depth
-        out.append(f"{indent}{step.id} [{step.kind}]")
+        # Derive kind from v2 Step shape (no .kind attribute).
+        if step.children is not None:
+            kind = "group"
+        elif step.requires_ack:
+            kind = "attested"
+        elif step.command is not None:
+            kind = "code"
+        else:
+            kind = "unknown"
+        out.append(f"{indent}{step.id} [{kind}]")
         # produces (sorted by name for determinism)
         for entry in sorted(step.produces, key=lambda e: e.name):
             out.append(

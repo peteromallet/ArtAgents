@@ -1,0 +1,11 @@
+schema_version: 1
+id: minimal
+name: Minimal Example Pack
+version: 0.1.0
+description: "Minimal example pack demonstrating the external pack contract for Astrid."
+content:
+  executors: executors
+  orchestrators: orchestrators
+  elements: elements
+agent:
+  purpose: "Demonstrate the external pack contract. Contains one executor (ingest_assets) and one orchestrator (make_trailer) for testing and reference."

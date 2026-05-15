@@ -1,6 +1,10 @@
 """Phase 9 author-test --regenerate: copy packs to tmp, truncate the golden,
 rerun with --regenerate, assert rc==0, golden non-empty and byte-equal to the
-committed golden."""
+committed golden.
+
+Sprint 2 (T9): the legacy DSL fixture was moved; we restore it into the
+copied packs tree so the legacy ``compile.resolve_orchestrator`` path works.
+"""
 
 from __future__ import annotations
 
@@ -11,13 +15,15 @@ from pathlib import Path
 
 from astrid.orchestrate import cli as author_cli
 
-
 _REPO_PACKS = Path(__file__).resolve().parents[1] / "astrid" / "packs"
+_LEGACY_HYPE = Path(__file__).resolve().parent / "fixtures" / "legacy_hype.py"
 
 
 def test_author_test_regenerate_rewrites_golden(tmp_path: Path) -> None:
     packs = tmp_path / "packs"
     shutil.copytree(_REPO_PACKS, packs)
+    # Restore the legacy DSL fixture that was moved out of the repo packs.
+    shutil.copy2(_LEGACY_HYPE, packs / "builtin" / "hype.py")
 
     committed_bytes = (_REPO_PACKS / "builtin" / "golden" / "smoke.events.jsonl").read_bytes()
     golden = packs / "builtin" / "golden" / "smoke.events.jsonl"

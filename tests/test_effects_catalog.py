@@ -305,15 +305,20 @@ class EffectsCatalogTest(unittest.TestCase):
             write_plugin("transitions", "crossfade", root=theme)
 
             from astrid.core.element import registry as element_registry
-            from astrid.core.pack import discover_packs as real_discover_packs
+            from astrid.core.pack import PackResolver, packs_root
 
             old_tools_dir = gen_effect_registry.TOOLS_DIR
             old_themes_root = gen_effect_registry.THEMES_ROOT
-            old_discover = element_registry.discover_packs
+            old_load_pack_elements = element_registry.load_pack_elements
             try:
                 gen_effect_registry.TOOLS_DIR = project
                 gen_effect_registry.THEMES_ROOT = workspace / "themes"
-                element_registry.discover_packs = lambda root=None: real_discover_packs() + real_discover_packs(local_pack.parent)
+                # Patch load_pack_elements to include the local pack via resolver
+                def patched_load_pack_elements(*, extra_pack_roots=(), resolver=None, **kwargs):
+                    if resolver is None:
+                        resolver = PackResolver(packs_root(), local_pack.parent, *extra_pack_roots)
+                    return old_load_pack_elements(resolver=resolver, **kwargs)
+                element_registry.load_pack_elements = patched_load_pack_elements
 
                 effects = gen_effect_registry.generate_element_registry("effects", theme_dir=theme)
                 animations = gen_effect_registry.generate_element_registry("animations", theme_dir=theme)
@@ -343,7 +348,7 @@ class EffectsCatalogTest(unittest.TestCase):
             finally:
                 gen_effect_registry.TOOLS_DIR = old_tools_dir
                 gen_effect_registry.THEMES_ROOT = old_themes_root
-                element_registry.discover_packs = old_discover
+                element_registry.load_pack_elements = old_load_pack_elements
 
     def test_theme_effect_collision_warns_and_theme_version_wins(self) -> None:
         result = self._run_generator("--theme", str(THEME_FIXTURE))

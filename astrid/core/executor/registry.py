@@ -7,7 +7,7 @@ from dataclasses import replace
 from types import MappingProxyType
 from typing import Any, Iterable
 
-from astrid.core.pack import discover_packs, iter_executor_roots, validate_content_id_in_pack
+from astrid.core.pack import PackResolver, discover_packs, iter_executor_roots, packs_root, validate_content_id_in_pack
 
 from .banodoco_catalog import BanodocoCatalogConfig, load_banodoco_catalog_executors
 from .folder import load_folder_executors
@@ -91,9 +91,13 @@ class ExecutorRegistry:
                     raise ExecutorRegistryError(f"executor {executor.id!r} cannot depend on itself")
 
 
-def load_default_registry(banodoco_config: BanodocoCatalogConfig | None = None) -> ExecutorRegistry:
+def load_default_registry(
+    banodoco_config: BanodocoCatalogConfig | None = None,
+    *,
+    extra_pack_roots: tuple[str, ...] = (),
+) -> ExecutorRegistry:
     registry = ExecutorRegistry()
-    for executor in load_pack_executors():
+    for executor in load_pack_executors(extra_pack_roots=extra_pack_roots):
         registry.register(executor)
     if banodoco_config is not None and banodoco_config.enabled:
         for executor in load_banodoco_catalog_executors(banodoco_config):
@@ -102,12 +106,23 @@ def load_default_registry(banodoco_config: BanodocoCatalogConfig | None = None) 
     return registry
 
 
-def load_pack_executors() -> tuple[ExecutorDefinition, ...]:
+def load_pack_executors(
+    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+) -> tuple[ExecutorDefinition, ...]:
     executors: list[ExecutorDefinition] = []
-    for pack in discover_packs():
-        for root in iter_executor_roots(pack):
+    seen_ids: dict[str, str] = {}  # executor_id -> pack_id for duplicate detection
+    if resolver is None:
+        resolver = PackResolver(packs_root(), *extra_pack_roots)
+    for pack in resolver.packs:
+        for root in resolver.iter_executor_roots(pack):
             for executor in load_folder_executors(root):
                 validate_content_id_in_pack(executor.id, pack, content_type="executor")
+                if executor.id in seen_ids:
+                    raise ExecutorRegistryError(
+                        f"duplicate executor id {executor.id!r} across packs "
+                        f"{seen_ids[executor.id]!r} and {pack.id!r}"
+                    )
+                seen_ids[executor.id] = pack.id
                 executors.append(_attach_pack_metadata(executor, pack.id))
     return tuple(executors)
 

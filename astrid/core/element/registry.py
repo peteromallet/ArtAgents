@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Iterable
 
 from astrid._paths import REPO_ROOT
-from astrid.core.pack import discover_packs, iter_element_roots, validate_element_pack_id
+from astrid.core.pack import PackResolver, discover_packs, iter_element_roots, packs_root, validate_element_pack_id
 
 from .schema import ELEMENT_KINDS, ElementDefinition, ElementKind, ElementValidationError, load_element_definition
 
@@ -104,9 +104,10 @@ def load_default_registry(
     active_theme: str | Path | None = None,
     project_root: str | Path = REPO_ROOT,
     include_missing_roots: bool = False,
+    extra_pack_roots: tuple[str, ...] = (),
 ) -> ElementRegistry:
     registry = ElementRegistry()
-    for element in load_pack_elements():
+    for element in load_pack_elements(extra_pack_roots=extra_pack_roots):
         registry.register(element)
     for source in default_sources(active_theme=active_theme, project_root=project_root):
         if not source.root.exists():
@@ -132,11 +133,15 @@ def default_sources(*, active_theme: str | Path | None = None, project_root: str
     return tuple(sources)
 
 
-def load_pack_elements() -> tuple[ElementDefinition, ...]:
+def load_pack_elements(
+    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+) -> tuple[ElementDefinition, ...]:
     elements: list[ElementDefinition] = []
-    for pack in discover_packs():
+    if resolver is None:
+        resolver = PackResolver(packs_root(), *extra_pack_roots)
+    for pack in resolver.packs:
         priority = 10 if pack.id == "local" else 30
-        for kind, root in iter_element_roots(pack):
+        for kind, root in resolver.iter_element_roots(pack):
             element = load_element_definition(
                 root,
                 kind=kind,
@@ -145,6 +150,8 @@ def load_pack_elements() -> tuple[ElementDefinition, ...]:
                 priority=priority,
             )
             validate_element_pack_id(element.metadata.get("pack_id"), pack, element_root=root)
+            # Note: duplicate (kind, id) pairs are expected across packs.
+            # The ElementRegistry resolves them by priority (local > builtin).
             elements.append(element)
     return tuple(elements)
 

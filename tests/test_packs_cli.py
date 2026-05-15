@@ -76,6 +76,15 @@ def _astrid_env() -> dict:
     return env
 
 
+def _scaffold_pack_in_static(tmp: Path, pack_id: str) -> Path:
+    """Scaffold a pack in tmp and return the pack root directory."""
+    with _chdir_context(tmp):
+        rc = packs_cli.cmd_new([pack_id])
+        if rc != 0:
+            raise RuntimeError(f"cmd_new({pack_id}) failed with exit code {rc}")
+    return tmp / pack_id
+
+
 def _run_packs(*args: str, cwd: str, check: bool = False) -> subprocess.CompletedProcess:
     """Run a packs subcommand in the given CWD with astrid importable."""
     return subprocess.run(
@@ -576,6 +585,106 @@ class TestScaffoldFixture(unittest.TestCase):
                 errors, [],
                 f"Zero-touch scaffolded pack should validate cleanly: {errors}",
             )
+
+
+class TestScaffoldResolverIntegration(unittest.TestCase):
+    """Prove scaffolded components can be inspected and resolved through the
+    same resolver-backed path as shipped and --pack-root pack components."""
+
+    def test_scaffolded_executor_inspectable_via_pack_root(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_executors("new", "test_pack.my_exec", cwd=str(pack_dir), check=True)
+
+            # Inspect through --pack-root (must come BEFORE subcommand)
+            result = _run_executors(
+                "--pack-root", str(pack_dir),
+                "inspect", "test_pack.my_exec",
+                cwd=str(tmp),
+            )
+            self.assertEqual(
+                result.returncode, 0,
+                f"executors inspect with --pack-root should exit 0; stderr: {result.stderr!r}",
+            )
+            self.assertIn("test_pack.my_exec", result.stdout)
+
+    def test_scaffolded_orchestrator_inspectable_via_pack_root(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_orchestrators("new", "test_pack.my_orch", cwd=str(pack_dir), check=True)
+
+            # Inspect through --pack-root (must come BEFORE subcommand)
+            result = _run_orchestrators(
+                "--pack-root", str(pack_dir),
+                "inspect", "test_pack.my_orch",
+                cwd=str(tmp),
+            )
+            self.assertEqual(
+                result.returncode, 0,
+                f"orchestrators inspect with --pack-root should exit 0; stderr: {result.stderr!r}",
+            )
+            self.assertIn("test_pack.my_orch", result.stdout)
+
+    def test_scaffolded_orchestrator_resolves_through_canonical_runtime(self) -> None:
+        """resolve_orchestrator_runtime must resolve scaffolded orchestrators."""
+        import sys as _sys
+        from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
+
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_orchestrators("new", "test_pack.my_orch", cwd=str(pack_dir), check=True)
+
+            # The temp dir must be on sys.path for module resolution
+            tmp_str = str(tmp)
+            if tmp_str not in _sys.path:
+                _sys.path.insert(0, tmp_str)
+            try:
+                module_path, entrypoint = resolve_orchestrator_runtime(
+                    "test_pack.my_orch",
+                    extra_pack_roots=(str(pack_dir),),
+                )
+                self.assertTrue(module_path, f"Should resolve to a module path: {module_path}")
+                self.assertEqual(entrypoint, "main")
+                self.assertIn("test_pack", module_path)
+                self.assertIn("my_orch", module_path)
+            finally:
+                if tmp_str in _sys.path:
+                    _sys.path.remove(tmp_str)
+
+    def test_scaffolded_pack_validate_via_resolver_integration(self) -> None:
+        """Scaffolded pack validates clean through the pack validation system."""
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_executors("new", "test_pack.my_exec", cwd=str(pack_dir), check=True)
+            _run_orchestrators("new", "test_pack.my_orch", cwd=str(pack_dir), check=True)
+
+            # Validate via CLI (which uses the static validator)
+            result = _run_packs("validate", str(pack_dir), cwd=str(tmp))
+            self.assertEqual(result.returncode, 0,
+                           f"Scaffolded pack should validate cleanly: {result.stderr!r}")
+
+    def test_scaffolded_pack_listable_via_pack_root(self) -> None:
+        """Scaffolded executors/orchestrators appear in list via --pack-root."""
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_executors("new", "test_pack.my_exec", cwd=str(pack_dir), check=True)
+            _run_orchestrators("new", "test_pack.my_orch", cwd=str(pack_dir), check=True)
+
+            result = _run_executors(
+                "--pack-root", str(pack_dir),
+                "list",
+                cwd=str(tmp),
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("test_pack.my_exec", result.stdout)
+
+            result = _run_orchestrators(
+                "--pack-root", str(pack_dir),
+                "list",
+                cwd=str(tmp),
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("test_pack.my_orch", result.stdout)
 
 
 class TestCLIBackwardCompat(unittest.TestCase):

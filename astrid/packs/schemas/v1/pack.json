@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pack.json",
+  "type": "object",
+  "required": ["schema_version", "id", "name", "version"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"$ref": "_defs.json#/definitions/pack_id"},
+    "name": {"type": "string"},
+    "version": {"$ref": "_defs.json#/definitions/version_string"},
+    "description": {"type": "string"},
+    "content": {
+      "type": "object",
+      "properties": {
+        "executors": {"type": "string"},
+        "orchestrators": {"type": "string"},
+        "elements": {"type": "string"},
+        "schemas": {"type": "string"},
+        "examples": {"type": "string"},
+        "docs": {"type": "string"}
+      }
+    },
+    "docs": {
+      "type": "object"
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "purpose": {"type": "string"}
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

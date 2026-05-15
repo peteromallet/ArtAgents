@@ -223,3 +223,60 @@ def test_bound_session_missing_file_errors_with_hint(
     # The SessionBindingError message is what surfaces, not the bare
     # "no session bound" gate hint.
     assert "no session file" in stderr or "session:" in stderr
+
+
+# ----- Sprint 2 (T5): --pack-root unbound evaluation verbs -----------------
+
+UNBOUND_EVAL_WITH_PACKROOT = [
+    pytest.param(["executors", "list", "--pack-root", "/tmp/fake"], id="executors-list+pack-root"),
+    pytest.param(["executors", "search", "foo", "--pack-root", "/tmp/fake"], id="executors-search+pack-root"),
+    pytest.param(["executors", "inspect", "x.y", "--pack-root", "/tmp/fake"], id="executors-inspect+pack-root"),
+    pytest.param(["executors", "validate", "--pack-root", "/tmp/fake"], id="executors-validate+pack-root"),
+    pytest.param(["orchestrators", "list", "--pack-root", "/tmp/fake"], id="orchestrators-list+pack-root"),
+    pytest.param(["orchestrators", "search", "foo", "--pack-root", "/tmp/fake"], id="orchestrators-search+pack-root"),
+    pytest.param(["orchestrators", "inspect", "x.y", "--pack-root", "/tmp/fake"], id="orchestrators-inspect+pack-root"),
+    pytest.param(["orchestrators", "validate", "--pack-root", "/tmp/fake"], id="orchestrators-validate+pack-root"),
+    pytest.param(["elements", "list", "--pack-root", "/tmp/fake"], id="elements-list+pack-root"),
+    pytest.param(["elements", "search", "foo", "--pack-root", "/tmp/fake"], id="elements-search+pack-root"),
+    pytest.param(["elements", "inspect", "effects", "x", "--pack-root", "/tmp/fake"], id="elements-inspect+pack-root"),
+    pytest.param(["elements", "validate", "--pack-root", "/tmp/fake"], id="elements-validate+pack-root"),
+]
+
+
+@pytest.mark.parametrize("argv", UNBOUND_EVAL_WITH_PACKROOT)
+def test_eval_verbs_unbound_allowed_with_pack_root(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> None:
+    """list|search|inspect|validate with --pack-root and no --project skips the gate."""
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, _stdout, stderr = _run_pipeline(argv)
+    # The command may fail (fake pack root), but the SESSION gate must NOT
+    # be what fails it.
+    assert "no session bound" not in stderr
+
+
+# Mutating verbs remain session-gated even WITH --pack-root.
+
+GATED_EVEN_WITH_PACKROOT = [
+    pytest.param(["executors", "run", "x.y", "--pack-root", "/tmp/fake"], id="executors-run+pack-root"),
+    pytest.param(["executors", "install", "x.y", "--pack-root", "/tmp/fake"], id="executors-install+pack-root"),
+    pytest.param(["orchestrators", "run", "x.y", "--pack-root", "/tmp/fake"], id="orchestrators-run+pack-root"),
+    pytest.param(["elements", "fork", "effects", "x", "--pack-root", "/tmp/fake"], id="elements-fork+pack-root"),
+    pytest.param(["elements", "install", "effects", "x", "--pack-root", "/tmp/fake"], id="elements-install+pack-root"),
+    # --project always gates, even with --pack-root
+    pytest.param(["executors", "list", "--pack-root", "/tmp/fake", "--project", "demo"], id="executors-list+pack-root+project"),
+    pytest.param(["orchestrators", "list", "--pack-root", "/tmp/fake", "--project", "demo"], id="orchestrators-list+pack-root+project"),
+    pytest.param(["elements", "list", "--pack-root", "/tmp/fake", "--project", "demo"], id="elements-list+pack-root+project"),
+]
+
+
+@pytest.mark.parametrize("argv", GATED_EVEN_WITH_PACKROOT)
+def test_mutating_and_project_verbs_stay_gated_with_pack_root(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> None:
+    """run/install/fork and any --project invocation remain session-gated."""
+    monkeypatch.delenv(ASTRID_SESSION_ID_ENV, raising=False)
+    rc, _stdout, stderr = _run_pipeline(argv)
+    assert rc == 2
+    assert "no session bound" in stderr
+    assert "astrid attach" in stderr

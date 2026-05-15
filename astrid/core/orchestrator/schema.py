@@ -69,12 +69,28 @@ def validate_orchestrator_definition(raw: Any) -> OrchestratorDefinition:
 
 def load_orchestrator_manifest(path: str | Path) -> OrchestratorDefinition:
     manifest_path = Path(path)
+    text = manifest_path.read_text(encoding="utf-8")
     try:
-        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise OrchestratorValidationError(f"orchestrator manifest not found: {manifest_path}") from exc
-    except json.JSONDecodeError as exc:
-        raise OrchestratorValidationError(f"invalid JSON-compatible orchestrator manifest {manifest_path}: {exc.msg}") from exc
+        raw = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        # Try YAML for .yaml / .yml manifests (same contract as executor manifests).
+        if manifest_path.suffix.lower() in {".yaml", ".yml"}:
+            import yaml as _yaml
+
+            try:
+                raw = _yaml.safe_load(text)
+            except Exception as exc:
+                raise OrchestratorValidationError(
+                    f"invalid YAML orchestrator manifest {manifest_path}: {exc}"
+                ) from exc
+            if raw is None:
+                raise OrchestratorValidationError(
+                    f"empty YAML orchestrator manifest {manifest_path}"
+                )
+        else:
+            raise OrchestratorValidationError(
+                f"invalid JSON-compatible orchestrator manifest {manifest_path}"
+            )
     try:
         return validate_orchestrator_definition(raw)
     except OrchestratorValidationError as exc:
@@ -138,6 +154,26 @@ def _canonical_child_list(data: dict[str, Any], *, legacy_key: str, canonical_ke
 
 def _parse_runtime(raw: Any, path: str) -> RuntimeSpec:
     data = _require_mapping(raw, path)
+    # v1 external manifest uses "type" (python-cli / command) instead of "kind".
+    if "type" in data and "kind" not in data:
+        v1_type = _require_string(data, "type", f"{path}.type")
+        if v1_type == "python-cli":
+            # entrypoint is a path relative to the component root (e.g. run.py),
+            # callable is the function name (defaults to "main").
+            entrypoint = _optional_string(data, "entrypoint", f"{path}.entrypoint", default="run.py")
+            callable_name = _optional_string(data, "callable", f"{path}.callable", default="main")
+            return RuntimeSpec(
+                kind="python",
+                module=None,  # resolved later via PackResolver component-root
+                function=callable_name,
+            )
+        if v1_type == "command":
+            command = _parse_command(data.get("command"), f"{path}.command")
+            return RuntimeSpec(kind="command", command=command)
+        raise OrchestratorValidationError(
+            f"{path}.type must be 'python-cli' or 'command', got {v1_type!r}"
+        )
+    # Legacy path: expects "kind" field.
     kind = _require_string(data, "kind", f"{path}.kind")
     if kind == "python":
         return RuntimeSpec(
@@ -266,7 +302,11 @@ def _validate_runtime(runtime: RuntimeSpec) -> None:
     if runtime.kind not in RUNTIME_KINDS:
         raise OrchestratorValidationError(f"runtime.kind must be one of {sorted(RUNTIME_KINDS)}")
     if runtime.kind == "python":
-        _validate_non_empty_string(runtime.module, "runtime.module")
+        # v1 external manifests may leave module=None (resolved later via
+        # PackResolver component-root resolution). Only require module for
+        # legacy built_in orchestrators.
+        if runtime.module is not None:
+            _validate_non_empty_string(runtime.module, "runtime.module")
         _validate_non_empty_string(runtime.function, "runtime.function")
         if runtime.command is not None:
             raise OrchestratorValidationError("python runtime cannot include runtime.command")

@@ -18,6 +18,11 @@ from .runner import (
     build_orchestrator_command,
     run_orchestrator,
 )
+from .runtime import (
+    OrchestratorRuntimeResolutionError,
+    resolve_orchestrator_runtime,
+    resolve_python_module_from_file,
+)
 from .schema import (
     CachePolicy,
     CommandSpec,
@@ -44,6 +49,7 @@ __all__ = [
     "OrchestratorRunRequest",
     "OrchestratorRunResult",
     "OrchestratorRunnerError",
+    "OrchestratorRuntimeResolutionError",
     "OrchestratorSpec",
     "OrchestratorValidationError",
     "Output",
@@ -56,6 +62,8 @@ __all__ = [
     "load_folder_orchestrators",
     "load_orchestrator_manifest",
     "orchestrator",
+    "resolve_orchestrator_runtime",
+    "resolve_python_module_from_file",
     "run_orchestrator",
     "validate_orchestrator_definition",
 ]

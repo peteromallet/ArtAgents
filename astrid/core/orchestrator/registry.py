@@ -8,7 +8,7 @@ from types import MappingProxyType
 from typing import Any, Iterable
 
 from astrid.core.executor.registry import ExecutorRegistry, load_default_registry as load_default_executor_registry
-from astrid.core.pack import discover_packs, iter_orchestrator_roots, validate_content_id_in_pack
+from astrid.core.pack import PackResolver, discover_packs, iter_orchestrator_roots, packs_root, validate_content_id_in_pack
 
 from .schema import (
     OrchestratorDefinition,
@@ -130,21 +130,33 @@ def load_default_registry(
     *,
     executor_registry: ExecutorRegistry | None = None,
     banodoco_config: Any | None = None,
+    extra_pack_roots: tuple[str, ...] = (),
 ) -> OrchestratorRegistry:
     active_executor_registry = executor_registry
     registry = OrchestratorRegistry(executor_registry=active_executor_registry)
-    for orchestrator in load_pack_orchestrators():
+    for orchestrator in load_pack_orchestrators(extra_pack_roots=extra_pack_roots):
         registry.register(orchestrator)
     registry.validate_all(executor_registry=active_executor_registry)
     return registry
 
 
-def load_pack_orchestrators() -> tuple[OrchestratorDefinition, ...]:
+def load_pack_orchestrators(
+    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+) -> tuple[OrchestratorDefinition, ...]:
     orchestrators: list[OrchestratorDefinition] = []
-    for pack in discover_packs():
-        for root in iter_orchestrator_roots(pack):
+    seen_ids: dict[str, str] = {}  # orchestrator_id -> pack_id for duplicate detection
+    if resolver is None:
+        resolver = PackResolver(packs_root(), *extra_pack_roots)
+    for pack in resolver.packs:
+        for root in resolver.iter_orchestrator_roots(pack):
             for orchestrator in load_folder_orchestrators(root):
                 validate_content_id_in_pack(orchestrator.id, pack, content_type="orchestrator")
+                if orchestrator.id in seen_ids:
+                    raise OrchestratorRegistryError(
+                        f"duplicate orchestrator id {orchestrator.id!r} across packs "
+                        f"{seen_ids[orchestrator.id]!r} and {pack.id!r}"
+                    )
+                seen_ids[orchestrator.id] = pack.id
                 orchestrators.append(_attach_pack_metadata(orchestrator, pack.id))
     return tuple(orchestrators)
 

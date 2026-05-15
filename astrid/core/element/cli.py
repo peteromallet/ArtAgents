@@ -23,7 +23,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        registry = load_default_registry(active_theme=args.theme, project_root=REPO_ROOT)
+        registry = load_default_registry(
+            active_theme=args.theme,
+            project_root=REPO_ROOT,
+            extra_pack_roots=tuple(args.pack_root),
+        )
         return int(args.handler(args, registry))
     except (KeyError, ElementRegistryError, ElementValidationError, ValueError) as exc:
         print(f"elements: {exc}", file=sys.stderr)
@@ -35,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python3 -m astrid elements",
         description="List, inspect, validate, fork, and install Astrid render elements.",
     )
+    parser.add_argument("--pack-root", action="append", default=[], metavar="PATH", help="Extra pack root directory to discover elements from; may be repeated.")
     parser.add_argument("--theme", help="Active theme id, theme directory, or path to theme.json.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 

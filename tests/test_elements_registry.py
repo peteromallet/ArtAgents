@@ -117,10 +117,7 @@ class ElementRegistryTest(unittest.TestCase):
         )
 
     def test_local_pack_wins_over_builtin_and_fork_target_uses_local_pack(self) -> None:
-        from unittest import mock
-
-        from astrid.core.element import registry as registry_module
-        from astrid.core.pack import discover_packs as real_discover_packs
+        from astrid.core.pack import PackResolver, packs_root
 
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "project"
@@ -128,13 +125,10 @@ class ElementRegistryTest(unittest.TestCase):
             local_pack_root = project / "astrid" / "packs" / "local"
             write_pack_element(local_pack_root, "animations", "fade", pack_id="local", label="Local Fade")
 
-            with mock.patch.object(
-                registry_module,
-                "discover_packs",
-                side_effect=lambda root=None: real_discover_packs() + real_discover_packs(local_pack_root.parent),
-            ):
-                registry = load_default_registry(project_root=project)
-                target = registry.fork_target("animations", "fade", project_root=project)
+            # Build a resolver that includes both built-in packs and the local pack
+            resolver = PackResolver(packs_root(), local_pack_root.parent)
+            registry = load_default_registry(project_root=project, extra_pack_roots=(str(local_pack_root.parent),))
+            target = registry.fork_target("animations", "fade", project_root=project)
 
         winner = registry.get("animations", "fade")
         self.assertEqual(winner.source, "pack:local")

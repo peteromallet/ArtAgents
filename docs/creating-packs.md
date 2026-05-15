@@ -179,6 +179,17 @@ Validate it with:
 python3 -m astrid packs validate examples/packs/minimal
 ```
 
+Inspect components without a session:
+
+```bash
+python3 -m astrid executors --pack-root examples/packs/minimal inspect minimal.ingest_assets
+python3 -m astrid orchestrators --pack-root examples/packs/minimal inspect minimal.make_trailer
+```
+
+The ``--pack-root`` flag must appear **before** the subcommand (e.g.,
+``inspect``) because it is an option on the parent ``executors`` /
+``orchestrators`` parser.
+
 This example lives at the repo root and is *not* a built-in
 discovered pack — it demonstrates the external pack contract.
 

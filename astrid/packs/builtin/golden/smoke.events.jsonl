@@ -1,4 +1,5 @@
-{"actor":"author_test","kind":"run_started","plan_hash":"sha256:b46d0f86815c06b4db7500fb74f8d032b20d24ccf468bc02eaa8b081166e7870"}
-{"command":"python3 -c 'print('\"'\"'ok'\"'\"')'","kind":"step_dispatched","plan_step_id":"noop"}
-{"kind":"step_completed","plan_step_id":"noop","returncode":0}
-{"attestor_id":"author_test","attestor_kind":"actor","evidence":[],"kind":"step_attested","plan_step_id":"review","source":"author_test"}
+{"actor":"author_test","kind":"run_started","plan_hash":"sha256:a13780f702d3a31a9fa7c137ea64f09a56b2d2035c7ac111f46e049db41a388f"}
+{"adapter":"local","command":"python3 -c 'print('\"'\"'ok'\"'\"')'","kind":"step_dispatched","plan_step_path":["noop"],"step_version":1}
+{"adapter":"local","kind":"step_completed","plan_step_path":["noop"],"returncode":0}
+{"adapter":"local","command":"echo review","kind":"step_dispatched","plan_step_path":["review"],"step_version":1}
+{"adapter":"local","kind":"step_completed","plan_step_path":["review"],"returncode":0}

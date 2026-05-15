@@ -130,6 +130,31 @@ def main(argv: list[str] | None = None) -> int:
             task_gate.record_dispatch_complete(decision, returncode)
 
 
+# Sprint 2 (T5): non-mutating evaluation verbs that are unbound-allowed
+# ONLY with --pack-root and WITHOUT --project.
+_UNBOUND_EVAL_VERBS = {"list", "search", "inspect", "validate"}
+_UNBOUND_EVAL_TOPS = {"executors", "orchestrators", "elements"}
+
+
+def _find_sub_verb(raw: list[str], candidates: set[str]) -> str | None:
+    """Find the first sub-verb from *candidates* in *raw*, skipping flag pairs.
+
+    For ``executors --pack-root PATH inspect ...`` this returns ``"inspect"``,
+    not ``"--pack-root"``.
+    """
+    skip_next = False
+    for token in raw[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if token in candidates:
+            return token
+        # Skip known flags that consume a value.
+        if token in ("--pack-root", "--project"):
+            skip_next = True
+    return None
+
+
 def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     """Decide whether the invocation may run without a bound session.
 
@@ -142,6 +167,11 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     * ``sessions ls`` / ``sessions takeover`` / ``sessions detach``.
     * ``author test --project <slug>`` — documented exception for the
       workflow test runner.
+
+    Sprint 2 (T5) adds executors/orchestrators/elements
+    list|search|inspect|validate as unbound-allowed ONLY when
+    ``--pack-root`` is present AND ``--project`` is absent.  All
+    run/install/fork verbs remain session-gated regardless.
     """
 
     if not raw:
@@ -157,6 +187,16 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     # scaffold commands that short-circuit before registry loading (T6).
     if top in ("executors", "orchestrators") and len(raw) >= 2 and raw[1] == "new":
         return True
+    # Sprint 2 (T5): executors/orchestrators/elements list|search|inspect|validate
+    # are unbound-allowed ONLY with --pack-root and WITHOUT --project.
+    # The sub-verb may appear after --pack-root PATH, so scan past flag pairs.
+    if top in _UNBOUND_EVAL_TOPS and len(raw) >= 2:
+        sub_verb = _find_sub_verb(raw, _UNBOUND_EVAL_VERBS)
+        if sub_verb is not None:
+            has_pack_root = "--pack-root" in raw
+            has_project = "--project" in raw
+            if has_pack_root and not has_project:
+                return True
     if top == "projects" and len(raw) >= 2 and raw[1] in _UNBOUND_PROJECTS_SUBVERBS:
         return True
     if top == "timelines" and len(raw) >= 2 and raw[1] == "ls":
@@ -728,16 +768,32 @@ def _extract_project_slug(raw: list[str]) -> str | None:
 def _run_default_brief_orchestrator(argv: list[str]) -> int:
     from importlib import import_module
 
-    from .core.orchestrator.registry import load_default_registry
+    from .core.orchestrator.runtime import resolve_orchestrator_runtime
 
-    registry = load_default_registry()
-    orchestrator = registry.get("builtin.hype")
-    runtime_module = orchestrator.metadata.get("runtime_module")
-    runtime_entrypoint = orchestrator.metadata.get("runtime_entrypoint", "main")
-    if not isinstance(runtime_module, str) or not runtime_module:
-        raise RuntimeError("builtin.hype manifest is missing metadata.runtime_module")
-    module = import_module(runtime_module)
-    entrypoint = getattr(module, runtime_entrypoint)
+    # Resolve builtin.hype through the canonical manifest-backed path:
+    #   qualified id → registry → PackResolver → component root →
+    #   runtime file → Python module → entrypoint
+    try:
+        module_path, entrypoint_name = resolve_orchestrator_runtime("builtin.hype")
+    except Exception as exc:
+        # Fall back to the legacy metadata.runtime_module path for
+        # backward compatibility while the transition completes.
+        from .core.orchestrator.registry import load_default_registry
+
+        registry = load_default_registry()
+        orchestrator = registry.get("builtin.hype")
+        runtime_module = orchestrator.metadata.get("runtime_module")
+        runtime_entrypoint = orchestrator.metadata.get("runtime_entrypoint", "main")
+        if not isinstance(runtime_module, str) or not runtime_module:
+            raise RuntimeError(
+                f"cannot resolve runtime for builtin.hype: {exc}"
+            ) from exc
+        module = import_module(runtime_module)
+        entrypoint = getattr(module, runtime_entrypoint)
+        return int(entrypoint(argv))
+
+    module = import_module(module_path)
+    entrypoint = getattr(module, entrypoint_name)
     return int(entrypoint(argv))
 
 
@@ -748,7 +804,7 @@ def _print_entrypoint_help() -> None:
 Usage:
   python3 -m astrid doctor
   python3 -m astrid setup [--apply]
-  python3 -m astrid orchestrators {list,inspect,validate,run} ...
+  python3 -m astrid orchestrators {list,search,inspect,validate,run} [--pack-root PATH] ...
   python3 -m astrid author {new,check,describe,compile,test,explain} <pack>.<name>
   Task-mode operator verbs:
     python3 -m astrid start <pack>.<name> --project <slug> [--name <run-id>]
@@ -772,8 +828,9 @@ Usage:
     python3 -m astrid sessions {ls,detach,takeover} ...
   python3 -m astrid skills {list,install,uninstall,sync,doctor} ...
   python3 -m astrid packs {validate,new} ...
-  python3 -m astrid executors {new,list,inspect,validate,install,run} ...
-  python3 -m astrid elements {list,inspect,fork,install} ...
+  python3 -m astrid executors {new,list,search,inspect,validate,install,run} [--pack-root PATH] ...
+  python3 -m astrid orchestrators {new,list,search,inspect,validate,run} [--pack-root PATH] ...
+  python3 -m astrid elements {list,search,inspect,validate,fork,install} [--pack-root PATH] ...
   python3 -m astrid projects {create,show,source} ...
   python3 -m astrid timelines {ls,create,show,rename,finalize,tombstone,purge,set-default} ...
   python3 -m astrid modalities {list,inspect} ...
@@ -800,6 +857,11 @@ Browse available tools:
   python3 -m astrid elements list
   python3 -m astrid projects show --project PROJECT
   python3 -m astrid modalities list
+
+Evaluate an external pack without installation:
+  python3 -m astrid executors --pack-root examples/packs/minimal inspect <pack>.<executor>
+  python3 -m astrid orchestrators --pack-root examples/packs/minimal inspect <pack>.<orchestrator>
+  python3 -m astrid elements --pack-root examples/packs/minimal list
 
 Inspect before running:
   python3 -m astrid orchestrators inspect builtin.hype --json

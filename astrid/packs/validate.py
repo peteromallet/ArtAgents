@@ -154,6 +154,10 @@ class PackValidator:
         self.errors = []
         self.warnings = []
 
+        # Check .no-pack marker — explicit opt-out, skip silently
+        if (self.pack_root / ".no-pack").exists():
+            return self.errors
+
         pack_yaml = self.pack_root / "pack.yaml"
         if not pack_yaml.is_file():
             self.errors.append(f"{self._rel(pack_yaml)}: pack.yaml not found")
@@ -190,8 +194,9 @@ class PackValidator:
                     f"{self._rel(doc_path)}: recommended file not found"
                 )
 
-        # Validate component manifests
+        # Validate component manifests and detect stray manifests
         self._validate_components(content)
+        self._check_stray_manifests(content)
 
         return self.errors
 
@@ -448,6 +453,58 @@ class PackValidator:
 
                 rel = self._rel(manifest_path)
                 self._validate_manifest(data, "element", rel)
+
+    def _check_stray_manifests(self, content: dict[str, Any]) -> None:
+        """Detect manifests outside declared content roots and report as stray."""
+        # Build a set of declared root directories (resolved absolute paths)
+        declared_roots: set[Path] = set()
+        _CONTENT_KEYS = ("executors", "orchestrators", "elements")
+        for key in _CONTENT_KEYS:
+            root_rel = content.get(key)
+            if isinstance(root_rel, str) and root_rel.strip():
+                declared_roots.add((self.pack_root / root_rel).resolve())
+
+        # Scan the pack root for component manifests (executor.yaml/orchestrator.yaml/element.yaml)
+        # but only one level deep — we're looking for manifests accidentally placed
+        # in directories that are NOT under declared content roots.
+        _MANIFEST_NAMES = (
+            "executor.yaml", "executor.yml", "executor.json",
+            "orchestrator.yaml", "orchestrator.yml", "orchestrator.json",
+            "element.yaml", "element.yml", "element.json",
+        )
+        # Also check for executor.py / orchestrator.py at pack root level
+        try:
+            for child in sorted(self.pack_root.iterdir()):
+                if not child.is_dir() or child.name.startswith("."):
+                    continue
+                if child.name == "__pycache__":
+                    continue
+                # Skip the declared content root directories themselves
+                if child.resolve() in declared_roots:
+                    continue
+                # Check if any child of this directory is within a declared root
+                child_is_under_declared = any(
+                    child.resolve() == dr or str(child.resolve()).startswith(str(dr) + "/")
+                    for dr in declared_roots
+                )
+                if child_is_under_declared:
+                    continue
+                # Check for stray manifests
+                for mf_name in _MANIFEST_NAMES:
+                    if (child / mf_name).is_file():
+                        self.warnings.append(
+                            f"{self._rel(child / mf_name)}: stray manifest outside declared content roots"
+                        )
+                        break  # one warning per directory
+                # Check for legacy .py files
+                for py_name in ("executor.py", "orchestrator.py"):
+                    if (child / py_name).is_file():
+                        self.warnings.append(
+                            f"{self._rel(child / py_name)}: stray runtime file outside declared content roots"
+                        )
+                        break
+        except OSError:
+            pass
 
     def _rel(self, path: Path) -> str:
         """Return a path relative to the pack root for error messages."""

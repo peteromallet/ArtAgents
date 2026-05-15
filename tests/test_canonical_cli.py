@@ -245,5 +245,92 @@ class CapabilityDiscoveryTest(unittest.TestCase):
         self.assertIn("lowercase", str(ctx.exception))
 
 
+class PackRootCanonicalTests(unittest.TestCase):
+    """Prove --pack-root integration with the canonical CLI path."""
+
+    def capture(self, fn, argv):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            result = fn(argv)
+        return result, stdout.getvalue(), stderr.getvalue()
+
+    def test_executors_list_with_pack_root_discovers_minimal(self) -> None:
+        from pathlib import Path
+        minimal = Path(__file__).resolve().parent.parent / "examples" / "packs" / "minimal"
+        result, stdout, stderr = self.capture(
+            executors_cli.main,
+            ["--pack-root", str(minimal), "list"],
+        )
+        self.assertEqual(result, 0, stderr)
+        self.assertIn("minimal.ingest_assets", stdout)
+
+    def test_orchestrators_inspect_with_pack_root_works(self) -> None:
+        from pathlib import Path
+        minimal = Path(__file__).resolve().parent.parent / "examples" / "packs" / "minimal"
+        result, stdout, stderr = self.capture(
+            orchestrators_cli.main,
+            ["--pack-root", str(minimal), "inspect", "minimal.make_trailer"],
+        )
+        self.assertEqual(result, 0, stderr)
+        self.assertIn("minimal.make_trailer", stdout)
+
+    def test_orchestrators_validate_with_pack_root_works(self) -> None:
+        from pathlib import Path
+        minimal = Path(__file__).resolve().parent.parent / "examples" / "packs" / "minimal"
+        result, stdout, stderr = self.capture(
+            orchestrators_cli.main,
+            ["--pack-root", str(minimal), "validate"],
+        )
+        self.assertEqual(result, 0, stderr)
+
+    def test_elements_list_with_pack_root_works(self) -> None:
+        from pathlib import Path
+        minimal = Path(__file__).resolve().parent.parent / "examples" / "packs" / "minimal"
+        result, stdout, stderr = self.capture(
+            elements_cli.main,
+            ["--pack-root", str(minimal), "list", "--kind", "effects"],
+        )
+        self.assertEqual(result, 0, stderr)
+
+
+class OrchestratorResolutionConsistencyTests(unittest.TestCase):
+    """Prove consistent orchestrator resolution from all canonical call sites."""
+
+    def test_builtin_hype_resolves_via_runtime_module(self) -> None:
+        from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
+        module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
+        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(entrypoint, "main")
+
+    def test_builtin_hype_resolves_via_runtime(self) -> None:
+        from astrid.core.orchestrator.runtime import (
+            resolve_orchestrator_runtime,
+            OrchestratorRuntimeResolutionError,
+        )
+        module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
+        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(entrypoint, "main")
+
+    def test_builtin_foley_map_resolves_via_runtime_module(self) -> None:
+        from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
+        module_path, entrypoint = resolve_orchestrator_runtime("builtin.foley_map")
+        self.assertTrue(module_path)
+        self.assertIn("foley_map", module_path)
+
+    def test_minimal_make_trailer_resolves_via_runtime(self) -> None:
+        from pathlib import Path
+        from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
+        minimal = Path(__file__).resolve().parent.parent / "examples" / "packs" / "minimal"
+        module_path, entrypoint = resolve_orchestrator_runtime(
+            "minimal.make_trailer",
+            extra_pack_roots=(str(minimal),),
+        )
+        self.assertTrue(module_path)
+        self.assertIn("minimal", module_path)
+        self.assertIn("make_trailer", module_path)
+        self.assertEqual(entrypoint, "main")
+
+
 if __name__ == "__main__":
     unittest.main()

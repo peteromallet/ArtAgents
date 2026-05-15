@@ -128,6 +128,27 @@ def _resolve_packs_root(packs_root: Optional[Path]) -> Path:
     return DEFAULT_PACKS_ROOT
 
 
+def _resolve_build_path(
+    qualified_id: str,
+    packs_root: Path,
+) -> Path | None:
+    """Find the compiled plan path for *qualified_id* using PackResolver.
+
+    Returns *None* when the resolver cannot locate the pack, letting the
+    caller fall back to the legacy ``<packs_root>/<pack>/build/<name>.json``
+    convention.
+    """
+    pack, name = _qualified_split(qualified_id)
+    try:
+        from astrid.core.pack import PackResolver
+
+        resolver = PackResolver(packs_root)
+        pack_def = resolver.get_pack(pack)
+        return pack_def.root / "build" / f"{name}.json"
+    except Exception:
+        return None
+
+
 def _qualified_split(qualified_id: str) -> tuple[str, str]:
     if not isinstance(qualified_id, str) or "." not in qualified_id:
         raise ValueError(
@@ -233,7 +254,10 @@ def cmd_start(
         return 1
 
     packs = _resolve_packs_root(packs_root)
-    build_path = packs / pack / "build" / f"{name}.json"
+    # Sprint 2 (T8): try resolver-backed build path first, then legacy.
+    build_path = _resolve_build_path(args.orchestrator_id, packs)
+    if build_path is None:
+        build_path = packs / pack / "build" / f"{name}.json"
     if not build_path.is_file():
         _print_err(
             f"start: compiled plan not found at {build_path}; "

@@ -26,14 +26,32 @@ class FolderOrchestratorError(OrchestratorValidationError):
 
 
 def discover_folder_orchestrator_roots(root: str | Path) -> tuple[Path, ...]:
-    """Return folders under `root` that contain orchestrator metadata."""
+    """Return folders under `root` that contain orchestrator metadata.
+
+    Only checks the immediate directory (non-recursive) — the resolver already
+    provides specific component roots.  A single root that contains a manifest
+    is returned as-is; a broader root (e.g. the pack root itself when content
+    is undeclared) is scanned one level deep for component directories.
+    """
 
     search_root = Path(root)
     if not search_root.is_dir():
         return ()
-    roots = {path.parent.resolve() for path in search_root.rglob("orchestrator.py") if _is_orchestrator_file(path)}
-    for manifest_name in _MANIFEST_NAMES:
-        roots.update(path.parent.resolve() for path in search_root.rglob(manifest_name) if _is_orchestrator_file(path))
+
+    # If this directory itself has a manifest, it *is* the component root.
+    if any((search_root / name).is_file() for name in _MANIFEST_NAMES) or (search_root / "orchestrator.py").is_file():
+        return (search_root.resolve(),)
+
+    # Otherwise scan direct children only (one level, not recursive rglob).
+    roots: set[Path] = set()
+    try:
+        for child in search_root.iterdir():
+            if not child.is_dir() or child.name.startswith(".") or child.name == "__pycache__":
+                continue
+            if any((child / name).is_file() for name in _MANIFEST_NAMES) or (child / "orchestrator.py").is_file():
+                roots.add(child.resolve())
+    except OSError:
+        pass
     return tuple(sorted(roots))
 
 

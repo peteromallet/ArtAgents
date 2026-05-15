@@ -30,7 +30,10 @@ def main(argv: list[str] | None = None) -> int:
     if getattr(args, "command", None) == "new":
         return int(args.handler(args, registry=None))
     try:
-        registry = load_default_registry(_banodoco_config_from_args(args))
+        registry = load_default_registry(
+            _banodoco_config_from_args(args),
+            extra_pack_roots=tuple(args.pack_root),
+        )
         return int(args.handler(args, registry))
     except (KeyError, ExecutorValidationError, ProjectRunError, ValueError) as exc:
         print(f"executors: {exc}", file=sys.stderr)
@@ -43,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="List, inspect, validate, install, and run Astrid executors.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    parser.add_argument("--pack-root", action="append", default=[], metavar="PATH", help="Extra pack root directory to discover executors from; may be repeated.")
     parser.add_argument("--banodoco-agent-executors", action="store_true", help="Opt in to loading executors from the Banodoco website catalog.")
     parser.add_argument("--banodoco-catalog-url", help="Banodoco website agent-executor catalog Edge Function URL.")
     parser.add_argument("--banodoco-cache-dir", help="Cache directory for git-backed Banodoco executors.")
@@ -279,6 +283,7 @@ _EXECUTOR_YAML_TEMPLATE = """\
 schema_version: 1
 id: {qualified_id}
 name: {slug}
+kind: external
 version: 0.1.0
 description: \"TODO: describe what this executor does.\"
 

@@ -70,6 +70,51 @@ def _load_module_isolated(module_path: Path, qualified_id: str):
     return module
 
 
+def _resolve_orchestrator_module_path(
+    qualified_id: str,
+    packs_root: Path,
+) -> Path | None:
+    """Find the ``<name>.py`` file for a DSL orchestrator.
+
+    Tries the resolver-backed path first (using PackResolver to discover
+    the pack and its declared orchestrator roots), then falls back to the
+    legacy ``<packs_root>/<pack>/<name>.py`` convention.
+    """
+    pack, name = _qualified_split(qualified_id)
+
+    # 1. Resolver-backed: use PackResolver to find the pack.
+    try:
+        from astrid.core.pack import PackResolver
+
+        resolver = PackResolver(packs_root)
+        try:
+            pack_def = resolver.get_pack(pack)
+        except KeyError:
+            pass
+        else:
+            # Check each declared orchestrator root for <name>.py.
+            for orch_root in resolver.iter_orchestrator_roots(pack_def):
+                candidate = orch_root / f"{name}.py"
+                if candidate.is_file():
+                    return candidate
+                # Also check a subdirectory matching the name (manifest-backed
+                # orchestrator) — the DSL fixture might be at
+                # <orch_root>/<name>/<name>.py or <orch_root>/<name>.py.
+                sub_candidate = orch_root / name / f"{name}.py"
+                if sub_candidate.is_file():
+                    return sub_candidate
+    except Exception:
+        # Resolver failure should not prevent legacy fallback.
+        pass
+
+    # 2. Legacy fallback: <packs_root>/<pack>/<name>.py
+    legacy = packs_root / pack / f"{name}.py"
+    if legacy.is_file():
+        return legacy
+
+    return None
+
+
 def resolve_orchestrator(
     qualified_id: str,
     *,
@@ -78,15 +123,15 @@ def resolve_orchestrator(
 ) -> _PlanBuilder:
     pack, name = _qualified_split(qualified_id)
     root = Path(packs_root) if packs_root is not None else DEFAULT_PACKS_ROOT
-    pack_root = root / pack
-    if not pack_root.is_dir():
+
+    # Sprint 2 (T8): try resolver-backed component-root lookup first so
+    # declared content roots drive discovery.  Falls back to the legacy
+    # <pack_root>/<pack>/<name>.py convention for non-registry fixtures.
+    module_path = _resolve_orchestrator_module_path(qualified_id, root)
+    if module_path is None:
         raise OrchestrateDefinitionError(
-            f"orchestrator {qualified_id!r}: pack directory not found at {pack_root}"
-        )
-    module_path = pack_root / f"{name}.py"
-    if not module_path.is_file():
-        raise OrchestrateDefinitionError(
-            f"orchestrator {qualified_id!r}: module file not found at {module_path}"
+            f"orchestrator {qualified_id!r}: module file not found "
+            f"(checked resolver-backed and legacy paths under {root})"
         )
     module = _load_module_isolated(module_path, qualified_id)
 
@@ -126,6 +171,27 @@ def _resolver_for(packs_root: Optional[Path]):
     return _resolve
 
 
+def _resolve_build_path(
+    qualified_id: str,
+    packs_root: Path,
+) -> Path | None:
+    """Find the build output directory for a compiled orchestrator plan.
+
+    Uses PackResolver to locate the pack, then returns
+    ``<pack_root>/build/<name>.json``.  Falls back to *None* if the pack
+    cannot be resolved, letting the caller use the legacy convention.
+    """
+    pack, name = _qualified_split(qualified_id)
+    try:
+        from astrid.core.pack import PackResolver
+
+        resolver = PackResolver(packs_root)
+        pack_def = resolver.get_pack(pack)
+        return pack_def.root / "build" / f"{name}.json"
+    except Exception:
+        return None
+
+
 def compile_to_path(
     qualified_id: str,
     *,
@@ -139,7 +205,10 @@ def compile_to_path(
     if dest is not None:
         out_path = Path(dest)
     else:
-        out_path = root / pack / "build" / f"{name}.json"
+        # Sprint 2 (T8): try resolver-backed output path first.
+        out_path = _resolve_build_path(qualified_id, root)
+        if out_path is None:
+            out_path = root / pack / "build" / f"{name}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",

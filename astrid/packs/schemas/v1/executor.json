@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "executor.json",
+  "type": "object",
+  "required": ["schema_version", "id", "name", "version", "runtime"],
+  "properties": {
+    "schema_version": {"type": "integer"},
+    "id": {"$ref": "_defs.json#/definitions/qualified_id"},
+    "name": {"type": "string"},
+    "version": {"$ref": "_defs.json#/definitions/version_string"},
+    "description": {"type": "string"},
+    "kind": {"type": "string", "enum": ["built_in", "external"]},
+    "runtime": {
+      "oneOf": [
+        {"$ref": "_defs.json#/definitions/runtime_python_cli"},
+        {"$ref": "_defs.json#/definitions/runtime_command"}
+      ]
+    },
+    "docs": {
+      "type": "object",
+      "properties": {
+        "stage": {"type": "string"}
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}
