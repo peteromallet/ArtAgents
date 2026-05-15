@@ -1,0 +1,58 @@
+schema_version: 1
+id: media
+name: Media Production Pack
+version: 0.1.0
+description: A realistic media production pack for video trailer creation with AI-assisted workflows.
+
+content:
+  executors: executors
+  orchestrators: orchestrators
+  elements: elements
+  schemas: schemas
+  examples: examples
+
+agent:
+  purpose: Provides AI-assisted media production capabilities including asset ingestion, trailer orchestration, and Remotion visual effects.
+  normal_entrypoints:
+    - ingest_assets
+    - make_trailer
+  do_not_use_for: |
+    This pack is for media production pipelines only. Do not use for general computation,
+    data processing, or tasks unrelated to video/asset production.
+  required_context:
+    - brief
+    - project_config
+
+secrets:
+  - name: OPENAI_API_KEY
+    required: true
+    description: Required for AI-assisted media generation and analysis.
+  - name: UNSPLASH_ACCESS_KEY
+    required: false
+    description: Optional. Used for stock image search and retrieval.
+
+dependencies:
+  python:
+    - openai>=1.0.0
+    - requests
+  npm:
+    - "@remotion/player@4.0.0"
+  system:
+    - ffmpeg
+
+keywords:
+  - media
+  - video
+  - trailer
+  - remotion
+  - ai
+
+capabilities:
+  - asset_ingestion
+  - trailer_generation
+  - visual_effects
+
+docs:
+  readme: README.md
+  agents: AGENTS.md
+  stage: STAGE.md

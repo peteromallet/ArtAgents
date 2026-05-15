@@ -21,7 +21,12 @@ import jsonschema
 import yaml
 from referencing import Registry, Resource
 
-from astrid.core.pack import pack_manifest_path
+from astrid.core.pack import (
+    EXECUTOR_MANIFEST_NAMES,
+    ORCHESTRATOR_MANIFEST_NAMES,
+    pack_manifest_path,
+)
+from astrid.core.element.schema import ELEMENT_MANIFEST_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +46,119 @@ KNOWN_SCHEMA_VERSIONS: dict[int, dict[str, Path]] = {
 }
 
 KNOWN_VERSIONS_STR = ", ".join(str(v) for v in sorted(KNOWN_SCHEMA_VERSIONS))
+
+
+# ---------------------------------------------------------------------------
+# Standalone semantic check helpers (callable from PackValidator and
+# extract_trust_summary).
+# ---------------------------------------------------------------------------
+
+
+def _check_semantic_secrets(data: dict[str, Any]) -> list[str]:
+    """Check secrets declarations for semantic issues.
+
+    Returns a list of warning strings.  Does **not** abort validation;
+    problems are surfaced as warnings so the pack is still installable.
+
+    Checks:
+    * Every secret dict has a non-empty ``name`` string.
+    * Required secrets have ``required: true`` stated.
+    * Optional secrets (required absent or false) include a meaningful
+      description.
+    """
+    warnings: list[str] = []
+    secrets_raw = data.get("secrets")
+    if not isinstance(secrets_raw, list):
+        return warnings
+
+    for idx, s_obj in enumerate(secrets_raw):
+        if not isinstance(s_obj, dict):
+            warnings.append(
+                f"secrets[{idx}]: not a mapping, skipping"
+            )
+            continue
+
+        name = s_obj.get("name")
+        if not name or not isinstance(name, str) or not name.strip():
+            warnings.append(
+                f"secrets[{idx}]: empty or missing secret name"
+            )
+            continue
+
+        name_str = name.strip()
+        required = s_obj.get("required", False)
+        description = s_obj.get("description")
+
+        if required:
+            # Required secret — ensure required is actually True
+            if required is not True:
+                warnings.append(
+                    f"secret '{name_str}': declared as required but "
+                    f"'required' value is {required!r} (expected true)"
+                )
+        else:
+            # Optional secret — should have a meaningful description
+            if not description or not isinstance(description, str) or not description.strip():
+                warnings.append(
+                    f"secret '{name_str}': optional secret has no description"
+                )
+
+    return warnings
+
+
+def _check_semantic_deps(data: dict[str, Any]) -> list[str]:
+    """Check dependency declarations for likely-broken patterns.
+
+    Returns a list of warning strings.  Does **not** abort validation.
+
+    Checks:
+    * ``python`` entries are well-formed pip requirement strings.
+    * ``npm`` entries follow ``name`` or ``name@version`` format.
+    * ``system`` entries are single-word command names.
+    """
+    warnings: list[str] = []
+    deps = data.get("dependencies")
+    if not isinstance(deps, dict):
+        return warnings
+
+    # Python deps — must be non-empty and look like pip requirements
+    python_deps = deps.get("python")
+    if isinstance(python_deps, list):
+        for idx, d in enumerate(python_deps):
+            if not isinstance(d, str) or not d.strip():
+                warnings.append(f"dependencies.python[{idx}]: empty entry")
+            elif not _re.match(r"^[A-Za-z0-9_.-]+(\s*[><=!~]+\s*[A-Za-z0-9_.*-]+)*(\s*;\s*.*)?$", d.strip()):
+                # Broad regex: package name optionally followed by version spec
+                warnings.append(
+                    f"dependencies.python[{idx}]: '{d}' does not look like "
+                    f"a pip requirement"
+                )
+
+    # npm deps — name or name@version
+    npm_deps = deps.get("npm")
+    if isinstance(npm_deps, list):
+        for idx, d in enumerate(npm_deps):
+            if not isinstance(d, str) or not d.strip():
+                warnings.append(f"dependencies.npm[{idx}]: empty entry")
+            elif not _re.match(r"^@?[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?(@[A-Za-z0-9_.-]+)?$", d.strip()):
+                warnings.append(
+                    f"dependencies.npm[{idx}]: '{d}' does not look like "
+                    f"a valid npm package (expected name or name@version)"
+                )
+
+    # system deps — single-word command names
+    system_deps = deps.get("system")
+    if isinstance(system_deps, list):
+        for idx, d in enumerate(system_deps):
+            if not isinstance(d, str) or not d.strip():
+                warnings.append(f"dependencies.system[{idx}]: empty entry")
+            elif not _re.match(r"^[A-Za-z0-9_.-]+$", d.strip()):
+                warnings.append(
+                    f"dependencies.system[{idx}]: '{d}' does not look like "
+                    f"a single command name"
+                )
+
+    return warnings
 
 
 def _check_schema_version(version_value: Any, manifest_relpath: str) -> int:
@@ -199,6 +317,10 @@ class PackValidator:
         # Validate component manifests and detect stray manifests
         self._validate_components(content)
         self._check_stray_manifests(content)
+
+        # Semantic checks for secrets and dependencies
+        self._validate_secrets(pack_data)
+        self._validate_dependencies(pack_data)
 
         return self.errors
 
@@ -390,17 +512,32 @@ class PackValidator:
         self, root_dir: Path, manifest_kind: str
     ) -> None:
         """Validate all component directories under a content root."""
-        manifest_name = f"{manifest_kind}.yaml"
+        # Map manifest_kind to the tuple of allowed manifest names
+        if manifest_kind == "executor":
+            manifest_names = EXECUTOR_MANIFEST_NAMES
+        elif manifest_kind == "orchestrator":
+            manifest_names = ORCHESTRATOR_MANIFEST_NAMES
+        else:
+            # Fallback for unknown kinds — preserve old behaviour
+            manifest_names = (f"{manifest_kind}.yaml",)
+
         for comp_dir in sorted(root_dir.iterdir()):
             if not comp_dir.is_dir() or comp_dir.name.startswith("."):
                 continue
             if comp_dir.name == "__pycache__":
                 continue
 
-            manifest_path = comp_dir / manifest_name
-            if not manifest_path.is_file():
+            # Try each allowed extension; use the first found
+            manifest_path: Path | None = None
+            for name in manifest_names:
+                candidate = comp_dir / name
+                if candidate.is_file():
+                    manifest_path = candidate
+                    break
+
+            if manifest_path is None:
                 self.errors.append(
-                    f"{self._rel(manifest_path)}: {manifest_kind} manifest not found"
+                    f"{self._rel(comp_dir)}: {manifest_kind} manifest not found"
                 )
                 continue
 
@@ -453,10 +590,17 @@ class PackValidator:
                 if elem_dir.name == "__pycache__":
                     continue
 
-                manifest_path = elem_dir / "element.yaml"
-                if not manifest_path.is_file():
+                # Try each allowed extension; use the first found
+                manifest_path: Path | None = None
+                for name in ELEMENT_MANIFEST_NAMES:
+                    candidate = elem_dir / name
+                    if candidate.is_file():
+                        manifest_path = candidate
+                        break
+
+                if manifest_path is None:
                     self.errors.append(
-                        f"{self._rel(manifest_path)}: element manifest not found"
+                        f"{self._rel(elem_dir)}: element manifest not found"
                     )
                     continue
 
@@ -465,7 +609,33 @@ class PackValidator:
                     continue
 
                 rel = self._rel(manifest_path)
-                self._validate_manifest(data, "element", rel)
+                version = self._validate_manifest(data, "element", rel)
+                if version is None:
+                    continue
+
+                # Check component.tsx exists
+                component_tsx = elem_dir / "component.tsx"
+                if not component_tsx.is_file():
+                    self.errors.append(
+                        f"{rel}: element missing component.tsx"
+                    )
+
+                # Check pack_id matches owning pack
+                element_pack_id = data.get("pack_id")
+                owning_pack_id = self._pack_data.get("id") if self._pack_data else None
+                if isinstance(element_pack_id, str) and isinstance(owning_pack_id, str):
+                    if element_pack_id != owning_pack_id:
+                        self.errors.append(
+                            f"{rel}: element declares pack_id {element_pack_id!r} but pack id is {owning_pack_id!r}"
+                        )
+
+    def _validate_secrets(self, data: dict[str, Any]) -> None:
+        """Run semantic secret checks and append warnings."""
+        self.warnings.extend(_check_semantic_secrets(data))
+
+    def _validate_dependencies(self, data: dict[str, Any]) -> None:
+        """Run semantic dependency checks and append warnings."""
+        self.warnings.extend(_check_semantic_deps(data))
 
     def _check_stray_manifests(self, content: dict[str, Any]) -> None:
         """Detect manifests outside declared content roots and report as stray."""
@@ -675,6 +845,10 @@ def extract_trust_summary(pack_root: str | Path) -> dict[str, Any]:
             declared_path = root / comp_root_rel
             if not declared_path.exists():
                 warnings.append(f"Declared content root does not exist: {comp_root_rel}")
+
+    # Semantic warnings for secrets and dependencies
+    warnings.extend(_check_semantic_secrets(data))
+    warnings.extend(_check_semantic_deps(data))
 
     # New agent fields
     do_not_use_for = str(agent.get("do_not_use_for")) if agent.get("do_not_use_for") else None

@@ -9,8 +9,6 @@ Proves:
 
 from __future__ import annotations
 
-import contextlib
-import io
 import json
 import os
 import shutil
@@ -1196,6 +1194,459 @@ class TestInspectJSON(unittest.TestCase):
             self.assertIsInstance(excerpt, str)
             self.assertGreater(len(excerpt), 0,
                 f"Component {comp['id']} should have non-empty stage_excerpt")
+
+
+class TestElementScanningInAgentIndex(unittest.TestCase):
+    """Prove elements appear in agent-index and inspect output."""
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.mkdtemp(prefix="test-elem-scan-")
+        self._astrid_home = Path(self._tmpdir) / "astrid_home"
+        self._astrid_home.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _make_pack_with_elements(self, pack_id: str) -> Path:
+        """Create a temp pack with executors, orchestrators, and elements."""
+        src = Path(self._tmpdir) / "sources" / pack_id
+        src.mkdir(parents=True)
+        (src / "pack.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}
+                name: {pack_id.replace('_', ' ').title()}
+                version: 0.1.0
+                description: Test pack with elements.
+                content:
+                  executors: executors
+                  orchestrators: orchestrators
+                  elements: elements
+                agent:
+                  purpose: Test element scanning
+            """),
+            encoding="utf-8",
+        )
+        (src / "AGENTS.md").write_text(f"# {pack_id}\n\nAgent guide.\n")
+        (src / "README.md").write_text(f"# {pack_id}\n\nUser docs.\n")
+        (src / "STAGE.md").write_text("## Purpose\n\nTesting element scanning.\n")
+        (src / "executors").mkdir(parents=True)
+        (src / "orchestrators").mkdir(parents=True)
+        (src / "elements" / "effects").mkdir(parents=True)
+
+        # Add an executor
+        exec_dir = src / "executors" / "my_exec"
+        exec_dir.mkdir()
+        (exec_dir / "executor.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}.my_exec
+                name: My Exec
+                version: 0.1.0
+                description: Test executor.
+                runtime:
+                  type: python-cli
+                  entrypoint: run.py
+            """),
+        )
+        (exec_dir / "run.py").write_text("print('hello')\n")
+        (exec_dir / "STAGE.md").write_text("## Stage\n\nExec stage.\n")
+
+        # Add an element
+        elem_dir = src / "elements" / "effects" / "my_effect"
+        elem_dir.mkdir()
+        (elem_dir / "element.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}.my_effect
+                kind: effect
+                pack_id: {pack_id}
+                metadata:
+                  label: My Effect
+                schema:
+                  title: string
+                defaults:
+                  title: Default
+                dependencies: {{}}
+            """),
+        )
+        (elem_dir / "component.tsx").write_text(
+            "export default function MyEffect() { return null; }\n"
+        )
+        (elem_dir / "STAGE.md").write_text("## Stage\n\nEffect stage.\n")
+
+        return src
+
+    def test_elements_appear_in_build_agent_index(self) -> None:
+        """Elements appear in build_agent_index output via API."""
+        from astrid.packs.agent_index import build_agent_index
+        from astrid.core.pack import PackResolver
+
+        src = self._make_pack_with_elements("elem_scan_test")
+        resolver = PackResolver(str(src.parent))
+        index = build_agent_index(resolver=resolver, pack_id="elem_scan_test")
+        self.assertIsNotNone(index, "build_agent_index should return pack dict")
+        self.assertIsInstance(index, dict)
+        components = index.get("components", [])
+        # Should have at least the executor and the element
+        comp_ids = [c["id"] for c in components]
+        self.assertIn("elem_scan_test.my_exec", comp_ids,
+                      f"Executor should be in components, got: {comp_ids}")
+        self.assertIn("elem_scan_test.my_effect", comp_ids,
+                      f"Element should be in components, got: {comp_ids}")
+        # Verify element fields
+        elem = next(c for c in components if c["id"] == "elem_scan_test.my_effect")
+        self.assertEqual(elem["kind"], "effect")
+        self.assertEqual(elem["name"], "My Effect")
+        self.assertIsNone(elem["runtime"], "Elements should have no runtime")
+        self.assertFalse(elem["is_entrypoint"], "Elements should not be entrypoints")
+
+    def test_elements_appear_in_inspect_json(self) -> None:
+        """Elements appear in packs inspect --json output."""
+        src = self._make_pack_with_elements("inspect_elem_test")
+
+        # Install the pack
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "install", str(src), "--yes"],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        self.assertEqual(result.returncode, 0,
+                         f"Install failed: {result.stderr}")
+
+        # Inspect
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "inspect", "inspect_elem_test", "--json"],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        self.assertEqual(result.returncode, 0,
+                         f"inspect --json failed: {result.stderr}")
+        try:
+            data = json.loads(result.stdout)
+        except Exception as e:
+            self.fail(f"inspect --json output is not valid JSON: {e}")
+
+        components = data.get("components", [])
+        comp_ids = [c["id"] for c in components]
+        self.assertIn("inspect_elem_test.my_exec", comp_ids,
+                      f"Executor should be in inspect components, got: {comp_ids}")
+        self.assertIn("inspect_elem_test.my_effect", comp_ids,
+                      f"Element should be in inspect components, got: {comp_ids}")
+        # Verify element fields
+        elem = next(c for c in components if c["id"] == "inspect_elem_test.my_effect")
+        self.assertEqual(elem["kind"], "effect")
+        self.assertIsNone(elem["runtime"], "Elements should have no runtime")
+        self.assertFalse(elem["is_entrypoint"], "Elements should not be entrypoints")
+
+
+class TestFullPathRegression(unittest.TestCase):
+    """Full validate→install→list→inspect→agent-index→run pipeline
+    plus element-specific failure-path tests with clear error messages."""
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.mkdtemp(prefix="test-fullpath-")
+        self._astrid_home = Path(self._tmpdir) / "astrid_home"
+        self._astrid_home.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _env(self) -> dict:
+        """Environment with isolated ASTRID_HOME and PYTHONPATH set."""
+        env = os.environ.copy()
+        env["ASTRID_HOME"] = str(self._astrid_home)
+        existing = env.get("PYTHONPATH", "")
+        repo = str(_REPO_ROOT)
+        env["PYTHONPATH"] = f"{repo}{os.pathsep}{existing}" if existing else repo
+        return env
+
+    def _run_packs_env(self, *args: str, cwd: str | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", *args],
+            capture_output=True, text=True,
+            cwd=cwd or str(_REPO_ROOT),
+            env=self._env(),
+        )
+
+    # ------------------------------------------------------------------
+    # (a) Full pipeline: validate → install → list → inspect → agent-index → run
+    # ------------------------------------------------------------------
+
+    def test_full_pipeline_media_pack(self) -> None:
+        """End-to-end pipeline on the rich media example pack."""
+        media_pack = _REPO_ROOT / "examples" / "packs" / "media"
+
+        # ── 1. Validate ──────────────────────────────────────────────
+        val = self._run_packs_env("validate", str(media_pack))
+        self.assertEqual(val.returncode, 0,
+                         f"validate media pack should exit 0, got {val.returncode}; "
+                         f"stderr: {val.stderr!r}")
+        self.assertIn("valid:", val.stdout)
+
+        # ── 2. Install ──────────────────────────────────────────────
+        inst = self._run_packs_env("install", str(media_pack), "--yes")
+        self.assertEqual(inst.returncode, 0,
+                         f"install media pack should exit 0, got {inst.returncode}; "
+                         f"stdout: {inst.stdout!r}\nstderr: {inst.stderr!r}")
+
+        # ── 3. List ─────────────────────────────────────────────────
+        lst = self._run_packs_env("list")
+        self.assertEqual(lst.returncode, 0,
+                         f"list should exit 0, got {lst.returncode}; "
+                         f"stderr: {lst.stderr!r}")
+        self.assertIn("media", lst.stdout,
+                      f"list should mention 'media' pack; stdout: {lst.stdout!r}")
+
+        # ── 4. Inspect --json ───────────────────────────────────────
+        insp = self._run_packs_env("inspect", "media", "--json")
+        self.assertEqual(insp.returncode, 0,
+                         f"inspect --json should exit 0, got {insp.returncode}; "
+                         f"stderr: {insp.stderr!r}")
+        try:
+            insp_data = json.loads(insp.stdout)
+        except Exception as e:
+            self.fail(f"inspect --json output is not valid JSON: {e}")
+
+        # Check executors, orchestrators, elements in components
+        components = insp_data.get("components", [])
+        comp_ids = [c["id"] for c in components]
+        self.assertIn("media.ingest_assets", comp_ids,
+                      f"Should have executor media.ingest_assets; got {comp_ids}")
+        self.assertIn("media.make_trailer", comp_ids,
+                      f"Should have orchestrator media.make_trailer; got {comp_ids}")
+        self.assertIn("project-title-card", comp_ids,
+                      f"Should have element project-title-card; got {comp_ids}")
+
+        # Verify element fields
+        elem = next(c for c in components if c["id"] == "project-title-card")
+        self.assertEqual(elem["kind"], "effect")
+        self.assertIsNone(elem["runtime"], "Elements should have no runtime")
+        self.assertFalse(elem["is_entrypoint"], "Elements should not be entrypoints")
+
+        # ── 5. Inspect --agent ──────────────────────────────────────
+        insp_agent = self._run_packs_env("inspect", "media", "--agent")
+        self.assertEqual(insp_agent.returncode, 0,
+                         f"inspect --agent should exit 0, got {insp_agent.returncode}; "
+                         f"stderr: {insp_agent.stderr!r}")
+        self.assertIn("Agent View", insp_agent.stdout,
+                      "inspect --agent should show Agent View header")
+        self.assertIn("media", insp_agent.stdout,
+                      "inspect --agent should mention pack id 'media'")
+        self.assertIn("Purpose:", insp_agent.stdout,
+                      "inspect --agent should show Purpose line")
+
+        # ── 6. Agent Index (via build_agent_index API) ──────────────
+        from astrid.packs.agent_index import build_agent_index
+
+        # Use InstalledPackStore; build_agent_index will find the
+        # installed pack via active_revision_path().
+        from astrid.core.pack_store import InstalledPackStore
+        store = InstalledPackStore(str(self._astrid_home / "packs"))
+        rev_dir = store.active_revision_path("media")
+        self.assertIsNotNone(rev_dir, "Active revision directory should exist after install")
+
+        # Use the store-based lookup: build_agent_index handles
+        # installed packs via store.list_installed() and
+        # store.active_revision_path() internally.
+        index = build_agent_index(store=store, pack_id="media")
+        self.assertIsNotNone(index, "build_agent_index should return a pack dict")
+        self.assertIsInstance(index, dict)
+        idx_components = index.get("components", [])
+        idx_comp_ids = [c["id"] for c in idx_components]
+        self.assertIn("media.ingest_assets", idx_comp_ids,
+                      f"Agent index should include executor; got {idx_comp_ids}")
+        self.assertIn("project-title-card", idx_comp_ids,
+                      f"Agent index should include element; got {idx_comp_ids}")
+
+        # ── 7. Run installed executor's run.py ──────────────────────
+        exec_dir = rev_dir / "executors" / "ingest_assets"
+        run_py = exec_dir / "run.py"
+        self.assertTrue(run_py.is_file(),
+                        f"Installed executor run.py should exist at {run_py}")
+        run_result = subprocess.run(
+            [sys.executable, str(run_py)],
+            capture_output=True, text=True,
+            cwd=str(exec_dir),
+            env=self._env(),
+        )
+        self.assertEqual(run_result.returncode, 0,
+                         f"Installed executor run.py should exit 0, got "
+                         f"{run_result.returncode}; stderr: {run_result.stderr!r}")
+        self.assertIn("ingest_assets:", run_result.stdout,
+                      "run.py output should mention ingest_assets")
+
+    # ------------------------------------------------------------------
+    # (b) Element-specific failure-path tests
+    # ------------------------------------------------------------------
+
+    def _write_broken_element_pack(
+        self, pack_id: str, *, element_yaml: str,
+        include_component_tsx: bool = True,
+    ) -> Path:
+        """Create a temporary pack with a single element under elements/effects/."""
+        src = Path(self._tmpdir) / "sources" / pack_id
+        src.mkdir(parents=True)
+        (src / "pack.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}
+                name: {pack_id.replace('_', ' ').title()}
+                version: 0.1.0
+                description: Test pack for failure paths.
+                content:
+                  elements: elements
+                agent:
+                  purpose: Test element failure paths
+            """),
+            encoding="utf-8",
+        )
+        (src / "AGENTS.md").write_text(f"# {pack_id}\n\nAgent guide.\n")
+        (src / "README.md").write_text(f"# {pack_id}\n\nUser docs.\n")
+        (src / "STAGE.md").write_text("## Purpose\n\nTest.\n")
+        elem_dir = src / "elements" / "effects" / "broken_elem"
+        elem_dir.mkdir(parents=True)
+        (elem_dir / "element.yaml").write_text(element_yaml, encoding="utf-8")
+        if include_component_tsx:
+            (elem_dir / "component.tsx").write_text(
+                "export default function Broken() { return null; }\n"
+            )
+        (elem_dir / "STAGE.md").write_text("## Stage\n\nBroken element stage.\n")
+        return src
+
+    def test_element_missing_metadata_label_reports_error(self) -> None:
+        """Element manifest missing metadata.label → clear error message."""
+        yaml_content = textwrap.dedent("""\
+            schema_version: 1
+            id: broken-elem
+            kind: effect
+            pack_id: fail_pack_label
+            metadata:
+              description: Missing the required label field
+            schema:
+              title: string
+            defaults: {}
+            dependencies: {}
+        """)
+        src = self._write_broken_element_pack(
+            "fail_pack_label", element_yaml=yaml_content,
+        )
+        result = self._run_packs_env("validate", str(src))
+        self.assertNotEqual(result.returncode, 0,
+                            f"Validate should fail; got exit {result.returncode}")
+        combined = result.stdout + result.stderr
+        self.assertIn("elements/effects/broken_elem", combined,
+                      f"Error should reference element path; output: {combined!r}")
+        self.assertTrue(
+            "label" in combined.lower() or "metadata" in combined.lower(),
+            f"Error should mention missing label/metadata field; output: {combined!r}"
+        )
+
+    def test_element_missing_kind_reports_error(self) -> None:
+        """Element manifest missing 'kind' → clear error message."""
+        yaml_content = textwrap.dedent("""\
+            schema_version: 1
+            id: broken-elem
+            pack_id: fail_pack_kind
+            metadata:
+              label: No Kind Element
+            schema:
+              title: string
+            defaults: {}
+            dependencies: {}
+        """)
+        src = self._write_broken_element_pack(
+            "fail_pack_kind", element_yaml=yaml_content,
+        )
+        result = self._run_packs_env("validate", str(src))
+        self.assertNotEqual(result.returncode, 0,
+                            f"Validate should fail; got exit {result.returncode}")
+        combined = result.stdout + result.stderr
+        self.assertIn("elements/effects/broken_elem", combined,
+                      f"Error should reference element path; output: {combined!r}")
+        self.assertTrue(
+            "kind" in combined.lower(),
+            f"Error should mention missing 'kind' field; output: {combined!r}"
+        )
+
+    def test_element_missing_schema_reports_error(self) -> None:
+        """Element manifest missing 'schema' → clear error message."""
+        yaml_content = textwrap.dedent("""\
+            schema_version: 1
+            id: broken-elem
+            kind: effect
+            pack_id: fail_pack_schema
+            metadata:
+              label: No Schema Element
+            defaults: {}
+            dependencies: {}
+        """)
+        src = self._write_broken_element_pack(
+            "fail_pack_schema", element_yaml=yaml_content,
+        )
+        result = self._run_packs_env("validate", str(src))
+        self.assertNotEqual(result.returncode, 0,
+                            f"Validate should fail; got exit {result.returncode}")
+        combined = result.stdout + result.stderr
+        self.assertIn("elements/effects/broken_elem", combined,
+                      f"Error should reference element path; output: {combined!r}")
+        self.assertTrue(
+            "schema" in combined.lower(),
+            f"Error should mention missing 'schema' field; output: {combined!r}"
+        )
+
+    def test_element_missing_component_tsx_reports_error(self) -> None:
+        """Element missing component.tsx → clear error message."""
+        yaml_content = textwrap.dedent("""\
+            schema_version: 1
+            id: broken-tsx
+            kind: effect
+            pack_id: fail_pack_tsx
+            metadata:
+              label: Missing TSX Element
+            schema:
+              title: string
+            defaults: {}
+            dependencies: {}
+        """)
+        src = self._write_broken_element_pack(
+            "fail_pack_tsx", element_yaml=yaml_content,
+            include_component_tsx=False,
+        )
+        result = self._run_packs_env("validate", str(src))
+        self.assertNotEqual(result.returncode, 0,
+                            f"Validate should fail; got exit {result.returncode}")
+        combined = result.stdout + result.stderr
+        self.assertIn("elements/effects/broken_elem", combined,
+                      f"Error should reference element path; output: {combined!r}")
+        self.assertIn("component.tsx", combined,
+                      f"Error should mention missing component.tsx; output: {combined!r}")
+
+    def test_element_pack_id_mismatch_reports_error(self) -> None:
+        """Element pack_id differs from owning pack id → clear error message."""
+        yaml_content = textwrap.dedent("""\
+            schema_version: 1
+            id: broken-mismatch
+            kind: effect
+            pack_id: WRONG_PACK
+            metadata:
+              label: Mismatched Pack Element
+            schema:
+              title: string
+            defaults: {}
+            dependencies: {}
+        """)
+        src = self._write_broken_element_pack(
+            "fail_pack_mismatch", element_yaml=yaml_content,
+        )
+        result = self._run_packs_env("validate", str(src))
+        self.assertNotEqual(result.returncode, 0,
+                            f"Validate should fail; got exit {result.returncode}")
+        combined = result.stdout + result.stderr
+        self.assertIn("elements/effects/broken_elem", combined,
+                      f"Error should reference element path; output: {combined!r}")
+        self.assertIn("pack_id", combined.lower(),
+                      f"Error should mention pack_id mismatch; output: {combined!r}")
 
 
 if __name__ == "__main__":

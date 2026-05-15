@@ -1,0 +1,12 @@
+schema_version: 1
+id: media.make_trailer
+name: Make Trailer
+version: 0.1.0
+description: "Coordinate asset ingestion and assembly into a video trailer using AI-assisted scene planning."
+kind: external
+runtime:
+  type: python-cli
+  entrypoint: run.py
+  callable: main
+docs:
+  stage: STAGE.md

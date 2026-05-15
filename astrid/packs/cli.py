@@ -581,10 +581,13 @@ def _print_agent_view(view: dict) -> None:
 # Full inspect helpers
 # ---------------------------------------------------------------------------
 
+from astrid.core.element.schema import ELEMENT_MANIFEST_NAMES
+
 # Recognised component manifest filenames keyed by kind.
 _INSPECT_COMPONENT_MANIFEST_NAMES: dict[str, tuple[str, ...]] = {
     "executor": ("executor.yaml", "executor.yml", "executor.json"),
     "orchestrator": ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json"),
+    "element": ELEMENT_MANIFEST_NAMES,
 }
 
 
@@ -713,6 +716,69 @@ def _scan_inspect_components(
                 "docs_paths": docs_paths,
                 "stage_excerpt": stage_excerpt,
             })
+
+    # Elements: two-level structure — elements/<kind>/<element_name>/
+    elements_root_rel = content.get("elements")
+    if isinstance(elements_root_rel, str) and elements_root_rel.strip():
+        elements_root = rev_dir / elements_root_rel
+        if elements_root.is_dir():
+            for kind_dir in sorted(elements_root.iterdir()):
+                if not kind_dir.is_dir() or kind_dir.name.startswith("."):
+                    continue
+                if kind_dir.name == "__pycache__":
+                    continue
+
+                for elem_dir in sorted(kind_dir.iterdir()):
+                    if not elem_dir.is_dir() or elem_dir.name.startswith("."):
+                        continue
+                    if elem_dir.name == "__pycache__":
+                        continue
+
+                    mf_path = _find_component_manifest(elem_dir, "element")
+                    if mf_path is None:
+                        continue
+
+                    data: dict[str, Any] | None
+                    try:
+                        if mf_path.suffix == ".json":
+                            import json as _json_inspect
+                            data = _json_inspect.loads(mf_path.read_text(encoding="utf-8"))
+                        else:
+                            data = yaml.safe_load(mf_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        continue
+
+                    if not isinstance(data, dict):
+                        continue
+
+                    comp_id = str(data.get("id", elem_dir.name))
+                    name = str(data.get("metadata", {}).get("label", comp_id)) if isinstance(data.get("metadata"), dict) else str(data.get("name", comp_id))
+                    description = str(data.get("description", ""))
+                    kind = str(data.get("kind", kind_dir.name.rstrip("s")))
+
+                    # Elements have no runtime/entrypoint
+                    runtime = None
+                    is_entrypoint = False
+
+                    # Docs paths
+                    docs = data.get("docs", {}) if isinstance(data.get("docs"), dict) else {}
+                    stage_rel = docs.get("stage", "STAGE.md")
+                    stage_path = elem_dir / stage_rel
+                    docs_paths: dict[str, str] = {"stage": str(stage_path)}
+
+                    # Stage excerpt
+                    stage_excerpt = _read_stage_excerpt(stage_path)
+
+                    components.append({
+                        "id": comp_id,
+                        "name": name,
+                        "kind": kind,
+                        "description": description,
+                        "runtime": runtime,
+                        "is_entrypoint": is_entrypoint,
+                        "docs_paths": docs_paths,
+                        "stage_excerpt": stage_excerpt,
+                    })
 
     # Sort by id for determinism
     components.sort(key=lambda c: c["id"])

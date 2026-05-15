@@ -695,5 +695,350 @@ runtime:
         )
 
 
+class TestMultiExtensionManifests(MinimalPackTestCase):
+    """Manifest discovery must accept .yaml, .yml, and .json extensions."""
+
+    def _write_executor_yaml(self, root: Path, ext: str) -> None:
+        """Write an executor manifest with the given extension."""
+        content = """schema_version: 1
+id: test_pack.my_exec
+name: My Executor
+version: 0.1.0
+runtime:
+  type: python-cli
+  entrypoint: run.py
+"""
+        _write(root / "executors" / "my_exec" / f"executor{ext}", content)
+        _write(root / "executors" / "my_exec" / "run.py", "print('ok')\n")
+
+    def _write_orchestrator_yaml(self, root: Path, ext: str) -> None:
+        """Write an orchestrator manifest with the given extension."""
+        content = """schema_version: 1
+id: test_pack.my_orch
+name: My Orchestrator
+version: 0.1.0
+runtime:
+  type: python-cli
+  entrypoint: run.py
+"""
+        _write(root / "orchestrators" / "my_orch" / f"orchestrator{ext}", content)
+        _write(root / "orchestrators" / "my_orch" / "run.py", "print('ok')\n")
+
+    def _write_element_yaml(self, root: Path, ext: str) -> None:
+        """Write an element manifest with the given extension."""
+        content = """schema_version: 1
+id: test_elem
+kind: effect
+pack_id: test_pack
+metadata:
+  label: Test Element
+schema:
+  title: string
+defaults:
+  title: Default
+dependencies: {}
+"""
+        _write(root / "elements" / "effects" / "test_elem" / f"element{ext}", content)
+        _write(root / "elements" / "effects" / "test_elem" / "component.tsx",
+               "export default function TestElem() { return null; }\n")
+
+    def test_executor_json_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_executor_yaml(root, ".json")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+    def test_executor_yml_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_executor_yaml(root, ".yml")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+    def test_orchestrator_json_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_orchestrator_yaml(root, ".json")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+    def test_orchestrator_yml_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_orchestrator_yaml(root, ".yml")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+    def test_element_json_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_element_yaml(root, ".json")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+    def test_element_yml_passes(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_element_yaml(root, ".yml")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+
+
+class TestElementComponentTsxCheck(MinimalPackTestCase):
+    """Validation must check for component.tsx in element directories."""
+
+    def _write_valid_element_no_tsx(self, root: Path) -> Path:
+        """Write a valid element manifest but omit component.tsx."""
+        elem_dir = root / "elements" / "effects" / "test_elem"
+        _write(
+            elem_dir / "element.yaml",
+            """schema_version: 1
+id: test_elem
+kind: effect
+pack_id: test_pack
+metadata:
+  label: Test Element
+schema:
+  title: string
+defaults:
+  title: Default
+dependencies: {}
+""",
+        )
+        return elem_dir
+
+    def test_element_missing_component_tsx_fails(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        self._write_valid_element_no_tsx(root)
+        errors, _ = validate_pack(root)
+        self.assertGreater(len(errors), 0,
+                           f"Expected errors for missing component.tsx, got none")
+        self.assertTrue(
+            any("missing component.tsx" in e for e in errors),
+            f"Expected 'missing component.tsx' error, got: {errors}",
+        )
+
+    def test_schema_invalid_element_no_false_component_error(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root)
+        elem_dir = root / "elements" / "effects" / "bad_elem"
+        _write(
+            elem_dir / "element.yaml",
+            """schema_version: 1
+id: test_pack.bad_elem
+kind: effect
+pack_id: test_pack
+# metadata is missing -- schema-invalid
+schema:
+  title: string
+defaults:
+  title: Bad
+dependencies: {}
+""",
+        )
+        errors, _ = validate_pack(root)
+        self.assertGreater(len(errors), 0,
+                           f"Expected schema errors, got none")
+        self.assertFalse(
+            any("missing component.tsx" in e for e in errors),
+            f"Schema-invalid element should NOT produce 'missing component.tsx' "
+            f"error (guard broken). Got: {errors}",
+        )
+
+
+class TestElementPackIdCheck(MinimalPackTestCase):
+    """Element validation must check pack_id matches owning pack."""
+
+    def _write_valid_element_with_pack_id(
+        self, root: Path, element_pack_id: str,
+        owning_pack_id: str = "test_pack",
+    ) -> Path:
+        elem_dir = root / "elements" / "effects" / "test_elem"
+        _write(
+            elem_dir / "element.yaml",
+            f"""schema_version: 1
+id: test_pack.test_elem
+kind: effect
+pack_id: {element_pack_id}
+metadata:
+  label: Test Element
+schema:
+  title: string
+defaults:
+  title: Default
+dependencies: {{}}
+""",
+        )
+        _write(elem_dir / "component.tsx",
+               "export default function TestElem() { return null; }\n")
+        return elem_dir
+
+    def test_matching_pack_id_passes_silently(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root, pack_id="test_pack")
+        self._write_valid_element_with_pack_id(root, element_pack_id="test_pack")
+        errors, _ = validate_pack(root)
+        self.assertEqual(errors, [],
+                         f"Expected no errors for matching pack_id, got: {errors}")
+
+    def test_pack_id_mismatch_produces_error(self) -> None:
+        root = self.make_pack_root()
+        self.write_valid_pack(root, pack_id="test_pack")
+        self._write_valid_element_with_pack_id(root, element_pack_id="wrong_pack")
+        errors, _ = validate_pack(root)
+        self.assertGreater(len(errors), 0,
+                           f"Expected errors for pack_id mismatch, got none")
+        self.assertTrue(
+            any("element declares pack_id" in e and "but pack id is" in e
+                for e in errors),
+            f"Expected pack_id mismatch error, got: {errors}",
+        )
+
+
+class TestSemanticSecretsAndDeps(MinimalPackTestCase):
+    """Semantic validation of secrets and dependencies in PackValidator
+    and extract_trust_summary."""
+
+    def _write_pack_with_secrets_and_deps(
+        self, root: Path,
+        secrets_yaml: str = "",
+        deps_yaml: str = "",
+    ) -> None:
+        yaml_content = f"""schema_version: 1
+id: test_semantic
+name: Semantic Test Pack
+version: 0.1.0
+description: test
+content:
+  executors: executors
+  orchestrators: orchestrators
+agent:
+  purpose: Testing
+{secrets_yaml}
+{deps_yaml}
+"""
+        _write(root / "pack.yaml", yaml_content)
+        (root / "executors").mkdir(parents=True, exist_ok=True)
+        (root / "orchestrators").mkdir(parents=True, exist_ok=True)
+
+    def test_empty_secret_name_produces_warning(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(root, secrets_yaml="""secrets:
+  - name: ""
+    required: true
+    description: Missing name
+""")
+        errors, warnings = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+        self.assertTrue(
+            any("empty or missing secret name" in w for w in warnings),
+            f"Expected warning about empty secret name, got: {warnings}",
+        )
+
+    def test_missing_description_on_optional_secret_produces_warning(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(root, secrets_yaml="""secrets:
+  - name: OPT_KEY
+    required: false
+""")
+        errors, warnings = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+        self.assertTrue(
+            any("optional secret has no description" in w for w in warnings),
+            f"Expected warning about missing description, got: {warnings}",
+        )
+
+    def test_malformed_python_dep_produces_warning(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(root, deps_yaml="""dependencies:
+  python:
+    - "not a valid package!!!"
+""")
+        errors, warnings = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+        self.assertTrue(
+            any("does not look like a pip requirement" in w for w in warnings),
+            f"Expected warning about malformed pip dep, got: {warnings}",
+        )
+
+    def test_malformed_system_dep_produces_warning(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(root, deps_yaml="""dependencies:
+  system:
+    - "ffmpeg --help"
+""")
+        errors, warnings = validate_pack(root)
+        self.assertEqual(errors, [], f"Expected no errors, got: {errors}")
+        self.assertTrue(
+            any("does not look like a single command name" in w for w in warnings),
+            f"Expected warning about malformed system dep, got: {warnings}",
+        )
+
+    def test_valid_secrets_and_deps_produce_no_warnings(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(
+            root,
+            secrets_yaml="""secrets:
+  - name: API_KEY
+    required: true
+    description: Required API key
+  - name: OPTIONAL_KEY
+    required: false
+    description: Optional key for extra features
+""",
+            deps_yaml="""dependencies:
+  python:
+    - openai>=1.0.0
+    - requests
+  npm:
+    - "@remotion/player@4.0.0"
+  system:
+    - ffmpeg
+""",
+        )
+        errors, warnings = validate_pack(root)
+        self.assertEqual(errors, [])
+        semantic_warnings = [
+            w for w in warnings
+            if "secret" in w.lower() or "dependencies" in w.lower()
+        ]
+        self.assertEqual(
+            semantic_warnings, [],
+            f"Expected no semantic warnings, got: {semantic_warnings}",
+        )
+
+    def test_semantic_warnings_appear_in_extract_trust_summary(self) -> None:
+        root = self.make_pack_root()
+        self._write_pack_with_secrets_and_deps(
+            root,
+            secrets_yaml="""secrets:
+  - name: ""
+    required: true
+""",
+            deps_yaml="""dependencies:
+  python:
+    - "not a valid package!!!"
+""",
+        )
+        (root / "AGENTS.md").write_text("# AGENTS", encoding="utf-8")
+        (root / "README.md").write_text("# README", encoding="utf-8")
+
+        from astrid.packs.validate import extract_trust_summary
+
+        summary = extract_trust_summary(root)
+        trust_warnings = summary["warnings"]
+
+        self.assertTrue(
+            any("empty or missing secret name" in w for w in trust_warnings),
+            f"Expected secret warning in trust summary, got: {trust_warnings}",
+        )
+        self.assertTrue(
+            any("does not look like a pip requirement" in w for w in trust_warnings),
+            f"Expected dep warning in trust summary, got: {trust_warnings}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

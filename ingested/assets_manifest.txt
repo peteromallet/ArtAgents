@@ -1,0 +1,11 @@
+.gitignore
+.gitmodules
+AGENTS.md
+LICENSE
+README.md
+SKILL.md
+idea.md
+package-lock.json
+package.json
+project.md
+requirements.txt

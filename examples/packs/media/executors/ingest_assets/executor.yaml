@@ -1,0 +1,12 @@
+schema_version: 1
+id: media.ingest_assets
+name: Ingest Assets
+version: 0.1.0
+description: "Ingest and validate project assets from a source directory — images, video clips, audio files, and scripts."
+kind: external
+runtime:
+  type: python-cli
+  entrypoint: run.py
+  callable: main
+docs:
+  stage: STAGE.md

@@ -60,10 +60,13 @@ def _read_stage_excerpt(stage_path: Path, *, max_lines: int = 30) -> str | None:
 # Component manifest scanning
 # ---------------------------------------------------------------------------
 
+from astrid.core.element.schema import ELEMENT_MANIFEST_NAMES
+
 # Recognised manifest filenames keyed by kind.
 _COMPONENT_MANIFEST_NAMES: dict[str, tuple[str, ...]] = {
     "executor": EXECUTOR_MANIFEST_NAMES,
     "orchestrator": ORCHESTRATOR_MANIFEST_NAMES,
+    "element": ELEMENT_MANIFEST_NAMES,
 }
 
 
@@ -168,6 +171,60 @@ def _scan_components(root: Path, content: dict[str, Any]) -> list[dict[str, Any]
                 "docs_paths": docs_paths,
                 "stage_excerpt": stage_excerpt,
             })
+
+    # Elements: two-level structure — elements/<kind>/<element_name>/
+    elements_root_rel = content.get("elements")
+    if isinstance(elements_root_rel, str) and elements_root_rel.strip():
+        elements_root = root / elements_root_rel
+        if elements_root.is_dir():
+            for kind_dir in sorted(elements_root.iterdir()):
+                if not kind_dir.is_dir() or kind_dir.name.startswith("."):
+                    continue
+                if kind_dir.name == "__pycache__":
+                    continue
+
+                for elem_dir in sorted(kind_dir.iterdir()):
+                    if not elem_dir.is_dir() or elem_dir.name.startswith("."):
+                        continue
+                    if elem_dir.name == "__pycache__":
+                        continue
+
+                    manifest_path = _find_manifest(elem_dir, "element")
+                    if manifest_path is None:
+                        continue
+                    data = _load_yaml_or_json(manifest_path)
+                    if data is None:
+                        continue
+
+                    comp_id = data.get("id", elem_dir.name)
+                    name = data.get("metadata", {}).get("label", comp_id) if isinstance(data.get("metadata"), dict) else comp_id
+                    description = data.get("description", "")
+                    kind = data.get("kind", kind_dir.name.rstrip("s"))
+
+                    # Elements have no runtime/entrypoint
+                    runtime_info = None
+                    is_entrypoint = False
+
+                    # Docs paths
+                    docs = data.get("docs", {}) if isinstance(data.get("docs"), dict) else {}
+                    docs_paths: dict[str, str] = {}
+                    stage_rel = docs.get("stage", "STAGE.md")
+                    docs_paths["stage"] = str(elem_dir / stage_rel)
+
+                    # Stage excerpt
+                    stage_path = elem_dir / stage_rel
+                    stage_excerpt = _read_stage_excerpt(stage_path)
+
+                    components.append({
+                        "id": str(comp_id),
+                        "name": str(name),
+                        "kind": str(kind),
+                        "description": str(description) if description else "",
+                        "runtime": runtime_info,
+                        "is_entrypoint": is_entrypoint,
+                        "docs_paths": docs_paths,
+                        "stage_excerpt": stage_excerpt,
+                    })
 
     return components
 
