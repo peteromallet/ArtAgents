@@ -389,7 +389,7 @@ class TestMissingDocsAndFiles(MinimalPackTestCase):
         root = self.make_pack_root()
         errors, _ = validate_pack(root)
         self.assertGreater(len(errors), 0)
-        self.assertIn("pack.yaml not found", errors[0])
+        self.assertIn("pack manifest not found", errors[0])
 
 
 class TestUndeclaredContentRoots(MinimalPackTestCase):
@@ -611,7 +611,7 @@ class TestPackValidatorClass(MinimalPackTestCase):
         validator = PackValidator(root)
         errors = validator.validate()
         self.assertGreater(len(errors), 0)
-        self.assertIn("pack.yaml not found", errors[0])
+        self.assertIn("pack manifest not found", errors[0])
 
     def test_validate_pack_function(self) -> None:
         root = self.make_pack_root()

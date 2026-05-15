@@ -21,6 +21,8 @@ import jsonschema
 import yaml
 from referencing import Registry, Resource
 
+from astrid.core.pack import pack_manifest_path
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -158,20 +160,20 @@ class PackValidator:
         if (self.pack_root / ".no-pack").exists():
             return self.errors
 
-        pack_yaml = self.pack_root / "pack.yaml"
-        if not pack_yaml.is_file():
-            self.errors.append(f"{self._rel(pack_yaml)}: pack.yaml not found")
+        manifest_path = pack_manifest_path(self.pack_root)
+        if manifest_path is None:
+            self.errors.append(f"{self._rel(self.pack_root)}: pack manifest not found (pack.yaml, pack.yml, or pack.json)")
             return self.errors
 
-        # Parse pack.yaml
-        pack_data = self._load_yaml(pack_yaml)
+        # Parse pack manifest
+        pack_data = self._load_yaml(manifest_path)
         if pack_data is None:
             return self.errors  # parse error already recorded
         self._pack_data = pack_data
 
         # Check schema_version and validate against JSON Schema
         version = self._validate_manifest(
-            pack_data, "pack", self._rel(pack_yaml)
+            pack_data, "pack", self._rel(manifest_path)
         )
         if version is None:
             return self.errors  # schema_version error already recorded
@@ -199,6 +201,17 @@ class PackValidator:
         self._check_stray_manifests(content)
 
         return self.errors
+
+    @property
+    def pack_data(self) -> Optional[dict[str, Any]]:
+        """Return the parsed pack manifest data if validation succeeded.
+
+        Returns ``None`` if validation has not run, failed, or the manifest
+        could not be parsed.
+        """
+        if self.errors:
+            return None
+        return self._pack_data
 
     def _load_yaml(self, path: Path) -> Optional[dict[str, Any]]:
         """Load a YAML file with safe_load. Returns None on error."""
@@ -533,8 +546,118 @@ def json_loads(text: str) -> Any:
     return _json.loads(text)
 
 
+def extract_trust_summary(pack_root: str | Path) -> dict[str, Any]:
+    """Extract a trust-summary dict from a pack root directory.
+
+    Reads the pack manifest with ``yaml.safe_load`` and returns a
+    dictionary with keys: pack_id, name, version, schema_version,
+    source_path, component_counts, entrypoints, declared_secrets,
+    dependencies, docs, and warnings.
+
+    Does **not** run full schema validation — this is a lightweight
+    extraction intended for dry-run and install-summary display.
+    """
+    root = Path(pack_root).resolve()
+    manifest_path = pack_manifest_path(root)
+    if manifest_path is None:
+        raise ValidationError(f"No pack manifest found in {root}")
+
+    # Determine format
+    if manifest_path.suffix == ".json":
+        try:
+            data = _json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise ValidationError(f"Failed to parse {manifest_path}: {e}") from e
+    else:
+        try:
+            data = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as e:
+            raise ValidationError(f"Failed to parse {manifest_path}: {e}") from e
+
+    if not isinstance(data, dict):
+        raise ValidationError(f"Pack manifest {manifest_path} is not a mapping")
+
+    pack_id = data.get("id", root.name)
+    name = data.get("name", pack_id)
+    version = data.get("version", "0.0.0")
+    schema_version = data.get("schema_version", "unknown")
+
+    # Component counts
+    content = data.get("content", {}) if isinstance(data.get("content"), dict) else {}
+    component_counts: dict[str, int] = {}
+    for key in ("executors", "orchestrators", "elements"):
+        comp_root_rel = content.get(key) if isinstance(content, dict) else None
+        if isinstance(comp_root_rel, str) and comp_root_rel.strip():
+            comp_dir = root / comp_root_rel
+            if comp_dir.is_dir():
+                count = sum(1 for child in comp_dir.iterdir() if child.is_dir() and not child.name.startswith("."))
+                component_counts[key] = count
+            else:
+                component_counts[key] = 0
+        else:
+            component_counts[key] = 0
+
+    # Entrypoints
+    agent = data.get("agent", {}) if isinstance(data.get("agent"), dict) else {}
+    entrypoints: list[str] = []
+    if isinstance(agent.get("entrypoints"), list):
+        entrypoints = [str(ep) for ep in agent["entrypoints"] if ep]
+
+    # Declared secrets
+    secrets = data.get("secrets", {}) if isinstance(data.get("secrets"), dict) else {}
+    declared_secrets: list[str] = []
+    if isinstance(secrets.get("required"), list):
+        declared_secrets = [str(s) for s in secrets["required"] if s]
+
+    # Dependencies
+    deps_raw = data.get("dependencies", {}) if isinstance(data.get("dependencies"), dict) else {}
+    dependencies: list[str] = []
+    if isinstance(deps_raw.get("packs"), list):
+        dependencies = [str(d) for d in deps_raw["packs"] if d]
+
+    # Docs
+    docs = data.get("docs", {}) if isinstance(data.get("docs"), dict) else {}
+    doc_info: dict[str, str | None] = {}
+    if isinstance(docs, dict):
+        for doc_key in ("readme", "agents", "stage"):
+            val = docs.get(doc_key)
+            doc_info[doc_key] = str(val) if val else None
+    else:
+        doc_info = {"readme": None, "agents": None, "stage": None}
+
+    # Warnings
+    warnings: list[str] = []
+
+    # Check AGENTS.md and README.md
+    for doc_name in ("AGENTS.md", "README.md"):
+        if not (root / doc_name).is_file():
+            warnings.append(f"Recommended file not found: {doc_name}")
+
+    # Check declared content roots exist
+    for key, comp_root_rel in content.items():
+        if isinstance(comp_root_rel, str):
+            declared_path = root / comp_root_rel
+            if not declared_path.exists():
+                warnings.append(f"Declared content root does not exist: {comp_root_rel}")
+
+    return {
+        "pack_id": pack_id,
+        "name": name,
+        "version": version,
+        "schema_version": schema_version,
+        "source_path": str(root),
+        "component_counts": component_counts,
+        "entrypoints": entrypoints,
+        "declared_secrets": declared_secrets,
+        "dependencies": dependencies,
+        "docs": doc_info,
+        "warnings": warnings,
+    }
+
+
 __all__ = [
     "PackValidator",
     "ValidationError",
     "validate_pack",
+    "extract_trust_summary",
 ]

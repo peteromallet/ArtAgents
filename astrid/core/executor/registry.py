@@ -95,9 +95,12 @@ def load_default_registry(
     banodoco_config: BanodocoCatalogConfig | None = None,
     *,
     extra_pack_roots: tuple[str, ...] = (),
+    include_installed: bool = True,
 ) -> ExecutorRegistry:
     registry = ExecutorRegistry()
-    for executor in load_pack_executors(extra_pack_roots=extra_pack_roots):
+    for executor in load_pack_executors(
+        extra_pack_roots=extra_pack_roots, include_installed=include_installed
+    ):
         registry.register(executor)
     if banodoco_config is not None and banodoco_config.enabled:
         for executor in load_banodoco_catalog_executors(banodoco_config):
@@ -107,12 +110,19 @@ def load_default_registry(
 
 
 def load_pack_executors(
-    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+    *,
+    extra_pack_roots: tuple[str, ...] = (),
+    resolver: PackResolver | None = None,
+    include_installed: bool = True,
 ) -> tuple[ExecutorDefinition, ...]:
     executors: list[ExecutorDefinition] = []
     seen_ids: dict[str, str] = {}  # executor_id -> pack_id for duplicate detection
     if resolver is None:
-        resolver = PackResolver(packs_root(), *extra_pack_roots)
+        all_roots = [packs_root(), *extra_pack_roots]
+        if include_installed:
+            from astrid.core.pack_store import installed_pack_roots
+            all_roots.extend(installed_pack_roots())
+        resolver = PackResolver(*all_roots)
     for pack in resolver.packs:
         for root in resolver.iter_executor_roots(pack):
             for executor in load_folder_executors(root):

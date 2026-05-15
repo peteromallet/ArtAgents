@@ -17,6 +17,7 @@ IDENTITY_FILENAME = "identity.json"
 USER_CONFIG_FILENAME = "config.json"
 WORKSPACE_CONFIG_DIRNAME = ".astrid"
 WORKSPACE_CONFIG_FILENAME = "config.json"
+PACKS_DIRNAME = "packs"
 
 
 def astrid_home() -> Path:
@@ -46,3 +47,8 @@ def user_config_path() -> Path:
 def workspace_config_path(cwd: str | Path | None = None) -> Path:
     base = Path(cwd) if cwd is not None else Path.cwd()
     return base / WORKSPACE_CONFIG_DIRNAME / WORKSPACE_CONFIG_FILENAME
+
+
+def installed_packs_root() -> Path:
+    """Return the per-user installed packs directory (honors ``ASTRID_HOME``)."""
+    return astrid_home() / PACKS_DIRNAME

@@ -2,10 +2,19 @@ schema_version: 1
 id: minimal
 name: Minimal Example Pack
 version: 0.1.0
-description: "Minimal example pack demonstrating the external pack contract for Astrid."
+description: A minimal external pack fixture for install and validation tests.
+
 content:
   executors: executors
   orchestrators: orchestrators
   elements: elements
+
 agent:
-  purpose: "Demonstrate the external pack contract. Contains one executor (ingest_assets) and one orchestrator (make_trailer) for testing and reference."
+  purpose: Demonstrates the minimal structure required for a valid external pack.
+  entrypoints:
+    - validate
+    - install
+
+docs:
+  readme: README.md
+  agents: AGENTS.md

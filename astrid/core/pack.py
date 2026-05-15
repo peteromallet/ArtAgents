@@ -14,7 +14,7 @@ EXECUTOR_MANIFEST_NAMES = ("executor.yaml", "executor.yml", "executor.json")
 ORCHESTRATOR_MANIFEST_NAMES = ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json")
 ELEMENT_KINDS = ("effects", "animations", "transitions")
 ElementKind = str
-_PACK_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+_PACK_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 # Content root keys recognised in pack.yaml content:{} declarations.
 _CONTENT_ROOT_KEYS = ("executors", "orchestrators", "elements", "schemas", "examples", "docs")

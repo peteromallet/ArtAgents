@@ -68,8 +68,15 @@ def resolve_orchestrator_runtime(
             f"orchestrator {orchestrator_id!r} has no source_pack in metadata"
         )
 
-    # 3. Build a resolver that includes the pack.
-    resolver = PackResolver(packs_root(), *extra_pack_roots)
+    # 3. Build a resolver that includes the pack and any installed packs.
+    all_roots = [packs_root(), *extra_pack_roots]
+    try:
+        from astrid.core.pack_store import installed_pack_roots
+
+        all_roots.extend(installed_pack_roots())
+    except ImportError:
+        pass
+    resolver = PackResolver(*all_roots)
     pack = resolver.get_pack(source_pack)
 
     # 4. Find the component root for this orchestrator.

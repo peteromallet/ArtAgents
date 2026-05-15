@@ -105,9 +105,12 @@ def load_default_registry(
     project_root: str | Path = REPO_ROOT,
     include_missing_roots: bool = False,
     extra_pack_roots: tuple[str, ...] = (),
+    include_installed: bool = True,
 ) -> ElementRegistry:
     registry = ElementRegistry()
-    for element in load_pack_elements(extra_pack_roots=extra_pack_roots):
+    for element in load_pack_elements(
+        extra_pack_roots=extra_pack_roots, include_installed=include_installed
+    ):
         registry.register(element)
     for source in default_sources(active_theme=active_theme, project_root=project_root):
         if not source.root.exists():
@@ -134,11 +137,18 @@ def default_sources(*, active_theme: str | Path | None = None, project_root: str
 
 
 def load_pack_elements(
-    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+    *,
+    extra_pack_roots: tuple[str, ...] = (),
+    resolver: PackResolver | None = None,
+    include_installed: bool = True,
 ) -> tuple[ElementDefinition, ...]:
     elements: list[ElementDefinition] = []
     if resolver is None:
-        resolver = PackResolver(packs_root(), *extra_pack_roots)
+        all_roots = [packs_root(), *extra_pack_roots]
+        if include_installed:
+            from astrid.core.pack_store import installed_pack_roots
+            all_roots.extend(installed_pack_roots())
+        resolver = PackResolver(*all_roots)
     for pack in resolver.packs:
         priority = 10 if pack.id == "local" else 30
         for kind, root in resolver.iter_element_roots(pack):

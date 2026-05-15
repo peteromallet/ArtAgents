@@ -131,22 +131,32 @@ def load_default_registry(
     executor_registry: ExecutorRegistry | None = None,
     banodoco_config: Any | None = None,
     extra_pack_roots: tuple[str, ...] = (),
+    include_installed: bool = True,
 ) -> OrchestratorRegistry:
     active_executor_registry = executor_registry
     registry = OrchestratorRegistry(executor_registry=active_executor_registry)
-    for orchestrator in load_pack_orchestrators(extra_pack_roots=extra_pack_roots):
+    for orchestrator in load_pack_orchestrators(
+        extra_pack_roots=extra_pack_roots, include_installed=include_installed
+    ):
         registry.register(orchestrator)
     registry.validate_all(executor_registry=active_executor_registry)
     return registry
 
 
 def load_pack_orchestrators(
-    *, extra_pack_roots: tuple[str, ...] = (), resolver: PackResolver | None = None
+    *,
+    extra_pack_roots: tuple[str, ...] = (),
+    resolver: PackResolver | None = None,
+    include_installed: bool = True,
 ) -> tuple[OrchestratorDefinition, ...]:
     orchestrators: list[OrchestratorDefinition] = []
     seen_ids: dict[str, str] = {}  # orchestrator_id -> pack_id for duplicate detection
     if resolver is None:
-        resolver = PackResolver(packs_root(), *extra_pack_roots)
+        all_roots = [packs_root(), *extra_pack_roots]
+        if include_installed:
+            from astrid.core.pack_store import installed_pack_roots
+            all_roots.extend(installed_pack_roots())
+        resolver = PackResolver(*all_roots)
     for pack in resolver.packs:
         for root in resolver.iter_orchestrator_roots(pack):
             for orchestrator in load_folder_orchestrators(root):
