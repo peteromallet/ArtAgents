@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
+import inspect
 import os
 import re
 import subprocess
@@ -196,22 +198,164 @@ def build_orchestrator_command(request: OrchestratorRunRequest, registry: Orches
 
 def _run_python_orchestrator(orchestrator: OrchestratorDefinition, request: OrchestratorRunRequest) -> OrchestratorRunResult:
     runtime = orchestrator.runtime
-    if not runtime.module or not runtime.function:
+    if not runtime.function:
         raise OrchestratorRunnerError(f"orchestrator {orchestrator.id!r} has an invalid Python runtime")
-    try:
-        module = importlib.import_module(runtime.module)
-    except Exception as exc:
-        raise OrchestratorRunnerError(f"failed to import orchestrator runtime module {runtime.module!r}: {exc}") from exc
+    if runtime.module:
+        module_name = runtime.module
+        try:
+            module = importlib.import_module(runtime.module)
+        except Exception as exc:
+            raise OrchestratorRunnerError(f"failed to import orchestrator runtime module {runtime.module!r}: {exc}") from exc
+    else:
+        module_name, module = _module_from_resolver_metadata(orchestrator)
     target = getattr(module, runtime.function, None)
     if not callable(target):
-        raise OrchestratorRunnerError(f"orchestrator runtime target {runtime.module}.{runtime.function} is not callable")
+        raise OrchestratorRunnerError(f"orchestrator runtime target {module_name}.{runtime.function} is not callable")
     try:
-        raw_result = target(request, orchestrator)
+        raw_result = _invoke_python_orchestrator_target(target, orchestrator, request)
     except OrchestratorRunnerError:
         raise
     except Exception as exc:
         raise OrchestratorRunnerError(f"orchestrator {orchestrator.id!r} Python runtime failed: {exc}") from exc
     return _normalize_python_result(orchestrator, request, raw_result)
+
+
+def _module_from_resolver_metadata(orchestrator: OrchestratorDefinition) -> tuple[str, Any]:
+    root_raw = orchestrator.metadata.get("orchestrator_root")
+    if not isinstance(root_raw, str) or not root_raw:
+        raise OrchestratorRunnerError(
+            f"orchestrator {orchestrator.id!r} has no resolver-backed component root"
+        )
+    runtime_file = orchestrator.metadata.get("runtime_file", "run.py")
+    if not isinstance(runtime_file, str) or not runtime_file:
+        raise OrchestratorRunnerError(f"orchestrator {orchestrator.id!r} has no runtime file")
+    runtime_path = (Path(root_raw) / runtime_file).resolve()
+    if not runtime_path.is_file():
+        raise OrchestratorRunnerError(
+            f"runtime file not found for orchestrator {orchestrator.id!r}: {runtime_path}"
+        )
+    try:
+        from .runtime import resolve_python_module_from_file
+
+        module_name = resolve_python_module_from_file(runtime_path)
+    except Exception:
+        module_name = None
+    if module_name:
+        try:
+            module = importlib.import_module(module_name)
+        except Exception as exc:
+            raise OrchestratorRunnerError(
+                f"failed to import orchestrator runtime module {module_name!r}: {exc}"
+            ) from exc
+    else:
+        module_name = _file_module_name(orchestrator, runtime_path)
+        spec = importlib.util.spec_from_file_location(module_name, runtime_path)
+        if spec is None or spec.loader is None:
+            raise OrchestratorRunnerError(
+                f"cannot load orchestrator runtime file for {orchestrator.id!r}: {runtime_path}"
+            )
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:
+            raise OrchestratorRunnerError(
+                f"failed to execute orchestrator runtime file {runtime_path}: {exc}"
+            ) from exc
+    return module_name, module
+
+
+def _file_module_name(orchestrator: OrchestratorDefinition, runtime_path: Path) -> str:
+    digest = abs(hash(str(runtime_path))) % (10**12)
+    slug = re.sub(r"[^A-Za-z0-9_]", "_", orchestrator.id)
+    return f"_astrid_pack_runtime_{slug}_{digest}"
+
+
+def _invoke_python_orchestrator_target(
+    target: Any,
+    orchestrator: OrchestratorDefinition,
+    request: OrchestratorRunRequest,
+) -> Any:
+    if orchestrator.runtime.module:
+        return target(request, orchestrator)
+    if _looks_like_cli_entrypoint(target):
+        if not _positional_parameters(target):
+            return target()
+        return target(_python_cli_argv(request))
+    kwargs = {
+        "inputs": dict(request.inputs),
+        "outputs": dict(request.outputs),
+        "out": Path(request.out).expanduser().resolve() if request.out is not None else None,
+        "brief": Path(request.brief).expanduser().resolve() if request.brief is not None else None,
+        "project": request.project,
+        "dry_run": request.dry_run,
+        "verbose": request.verbose,
+        "thread": request.thread,
+        "variants": request.variants,
+        "from_ref": request.from_ref,
+        "orchestrator_args": tuple(request.orchestrator_args),
+        "request": request,
+        "orchestrator": orchestrator,
+    }
+    return target(**_accepted_kwargs(target, kwargs))
+
+
+def _looks_like_cli_entrypoint(target: Any) -> bool:
+    positional = _positional_parameters(target)
+    keyword_only = _required_keyword_only_parameters(target)
+    return len(positional) <= 1 and not keyword_only
+
+
+def _positional_parameters(target: Any) -> list[inspect.Parameter]:
+    try:
+        signature = inspect.signature(target)
+    except (TypeError, ValueError):
+        return []
+    return [
+        parameter
+        for parameter in signature.parameters.values()
+        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
+    ]
+
+
+def _required_keyword_only_parameters(target: Any) -> list[inspect.Parameter]:
+    try:
+        signature = inspect.signature(target)
+    except (TypeError, ValueError):
+        return []
+    return [
+        parameter
+        for parameter in signature.parameters.values()
+        if parameter.kind == parameter.KEYWORD_ONLY
+        and parameter.default is parameter.empty
+    ]
+
+
+def _accepted_kwargs(target: Any, kwargs: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        signature = inspect.signature(target)
+    except (TypeError, ValueError):
+        return dict(kwargs)
+    if any(parameter.kind == parameter.VAR_KEYWORD for parameter in signature.parameters.values()):
+        return dict(kwargs)
+    accepted = {
+        name
+        for name, parameter in signature.parameters.items()
+        if parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY)
+    }
+    return {key: value for key, value in kwargs.items() if key in accepted}
+
+
+def _python_cli_argv(request: OrchestratorRunRequest) -> list[str]:
+    argv: list[str] = []
+    if request.out is not None:
+        argv.extend(["--out", str(Path(request.out).expanduser().resolve())])
+    if request.brief is not None:
+        argv.extend(["--brief", str(Path(request.brief).expanduser().resolve())])
+    for key, value in request.inputs.items():
+        argv.extend(["--input", f"{key}={_stringify_value(value)}"])
+    argv.extend(request.orchestrator_args)
+    return argv
 
 
 def _run_command_orchestrator(
