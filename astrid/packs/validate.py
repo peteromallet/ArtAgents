@@ -597,23 +597,59 @@ def extract_trust_summary(pack_root: str | Path) -> dict[str, Any]:
         else:
             component_counts[key] = 0
 
-    # Entrypoints
+    # Entrypoints — prefer normal_entrypoints, fall back to entrypoints
     agent = data.get("agent", {}) if isinstance(data.get("agent"), dict) else {}
+    normal_entrypoints: list[str] = []
+    if isinstance(agent.get("normal_entrypoints"), list):
+        normal_entrypoints = [str(ep) for ep in agent["normal_entrypoints"] if ep]
     entrypoints: list[str] = []
     if isinstance(agent.get("entrypoints"), list):
         entrypoints = [str(ep) for ep in agent["entrypoints"] if ep]
+    # Prefer canonical field
+    display_entrypoints = normal_entrypoints if normal_entrypoints else entrypoints
 
-    # Declared secrets
-    secrets = data.get("secrets", {}) if isinstance(data.get("secrets"), dict) else {}
-    declared_secrets: list[str] = []
-    if isinstance(secrets.get("required"), list):
-        declared_secrets = [str(s) for s in secrets["required"] if s]
+    # Declared secrets — handle both old and new formats
+    secrets_raw = data.get("secrets")
+    secrets_list: list[str] = []
+    if isinstance(secrets_raw, list):
+        # New format: list of {name, required, description}
+        for s_obj in secrets_raw:
+            if isinstance(s_obj, dict) and s_obj.get("name"):
+                name = str(s_obj["name"])
+                req = " (required)" if s_obj.get("required") else ""
+                desc = s_obj.get("description", "")
+                label = f"{name}{req}"
+                if desc:
+                    label += f": {desc}"
+                secrets_list.append(label)
+    elif isinstance(secrets_raw, dict):
+        # Old format: dict with 'required' list
+        declared_secrets: list[str] = []
+        if isinstance(secrets_raw.get("required"), list):
+            declared_secrets = [str(s) for s in secrets_raw["required"] if s]
+        secrets_list = declared_secrets
 
-    # Dependencies
+    # Dependencies — handle both old and new formats
     deps_raw = data.get("dependencies", {}) if isinstance(data.get("dependencies"), dict) else {}
     dependencies: list[str] = []
+    # New format: object with python/npm/system keys
+    for eco in ("python", "npm", "system"):
+        eco_deps = deps_raw.get(eco) if isinstance(deps_raw, dict) else None
+        if isinstance(eco_deps, list):
+            for d in eco_deps:
+                if d:
+                    dependencies.append(f"{eco}:{d}")
+    # Old format: packs list
     if isinstance(deps_raw.get("packs"), list):
-        dependencies = [str(d) for d in deps_raw["packs"] if d]
+        for d in deps_raw["packs"]:
+            if d and str(d) not in dependencies:
+                dependencies.append(str(d))
+    # Structured dependencies as dict
+    dependencies_struct: dict[str, list[str]] = {}
+    for eco in ("python", "npm", "system"):
+        eco_deps = deps_raw.get(eco) if isinstance(deps_raw, dict) else None
+        if isinstance(eco_deps, list):
+            dependencies_struct[eco] = [str(d) for d in eco_deps if d]
 
     # Docs
     docs = data.get("docs", {}) if isinstance(data.get("docs"), dict) else {}
@@ -640,6 +676,26 @@ def extract_trust_summary(pack_root: str | Path) -> dict[str, Any]:
             if not declared_path.exists():
                 warnings.append(f"Declared content root does not exist: {comp_root_rel}")
 
+    # New agent fields
+    do_not_use_for = str(agent.get("do_not_use_for")) if agent.get("do_not_use_for") else None
+    required_context: list[str] = []
+    if isinstance(agent.get("required_context"), list):
+        required_context = [str(rc) for rc in agent["required_context"] if rc]
+
+    # Keywords and capabilities from manifest
+    keywords: list[str] = []
+    kw_raw = data.get("keywords")
+    if isinstance(kw_raw, list):
+        keywords = [str(k) for k in kw_raw if k]
+
+    capabilities: list[str] = []
+    cap_raw = data.get("capabilities")
+    if isinstance(cap_raw, list):
+        capabilities = [str(c) for c in cap_raw if c]
+
+    # astrid_version from manifest
+    astrid_version = data.get("astrid_version")
+
     return {
         "pack_id": pack_id,
         "name": name,
@@ -647,11 +703,18 @@ def extract_trust_summary(pack_root: str | Path) -> dict[str, Any]:
         "schema_version": schema_version,
         "source_path": str(root),
         "component_counts": component_counts,
-        "entrypoints": entrypoints,
-        "declared_secrets": declared_secrets,
+        "entrypoints": display_entrypoints,
+        "normal_entrypoints": normal_entrypoints,
+        "declared_secrets": secrets_list,
         "dependencies": dependencies,
+        "dependencies_struct": dependencies_struct,
         "docs": doc_info,
         "warnings": warnings,
+        "do_not_use_for": do_not_use_for,
+        "required_context": required_context,
+        "keywords": keywords,
+        "capabilities": capabilities,
+        "astrid_version": astrid_version,
     }
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -919,6 +920,282 @@ class TestCLIBackwardCompat(unittest.TestCase):
     def test_packs_cli_main_new_rejects_bad_id(self) -> None:
         exit_code = packs_cli.main(["new", "BAD"])
         self.assertNotEqual(exit_code, 0)
+
+
+class TestAgentIndexCLI(unittest.TestCase):
+    """Prove: packs agent-index --json returns valid structured output."""
+
+    def test_agent_index_json_returns_valid_json_with_packs_array(self) -> None:
+        """``packs agent-index --json`` returns valid JSON with top-level packs array."""
+        result = _run_packs("agent-index", "--json", cwd=str(_REPO_ROOT))
+        self.assertEqual(
+            result.returncode, 0,
+            f"agent-index --json should exit 0; stderr: {result.stderr!r}",
+        )
+        try:
+            data = json.loads(result.stdout)
+        except Exception as e:
+            self.fail(f"agent-index --json output is not valid JSON: {e}")
+        self.assertIn("packs", data, "Top-level key 'packs' missing")
+        self.assertIsInstance(data["packs"], list, "'packs' should be an array")
+        self.assertGreater(len(data["packs"]), 0, "Expected at least one pack in index")
+
+    def test_agent_index_pack_id_filter(self) -> None:
+        """``packs agent-index --json --pack-id builtin`` returns single pack."""
+        result = _run_packs("agent-index", "--json", "--pack-id", "builtin", cwd=str(_REPO_ROOT))
+        self.assertEqual(result.returncode, 0)
+        try:
+            data = json.loads(result.stdout)
+        except Exception as e:
+            self.fail(f"agent-index --json with --pack-id output is not valid JSON: {e}")
+        # When filtering by pack_id, result is a single pack dict (not wrapped in packs array)
+        self.assertIsInstance(data, dict, "Expected a single pack dict for --pack-id filter")
+        self.assertEqual(data.get("pack_id"), "builtin")
+        self.assertIn("name", data)
+        self.assertIn("version", data)
+        self.assertIn("components", data)
+
+    def test_agent_index_output_includes_new_fields(self) -> None:
+        """agent-index output includes normal_entrypoints, do_not_use_for,
+        required_context, secrets, dependencies, keywords, capabilities."""
+        result = _run_packs("agent-index", "--json", cwd=str(_REPO_ROOT))
+        self.assertEqual(result.returncode, 0)
+        data = json.loads(result.stdout)
+        packs = data.get("packs", [])
+        self.assertGreater(len(packs), 0)
+        first = packs[0]
+        # Check new structured fields exist
+        for field in (
+            "normal_entrypoints", "do_not_use_for", "required_context",
+            "secrets", "dependencies", "keywords", "capabilities",
+            "component_counts", "components",
+        ):
+            self.assertIn(field, first, f"pack entry missing field: {field}")
+        # Check components have required sub-fields
+        components = first.get("components", [])
+        if components:
+            comp = components[0]
+            for field in ("id", "name", "kind", "description", "runtime",
+                          "is_entrypoint", "docs_paths", "stage_excerpt"):
+                self.assertIn(field, comp, f"component missing field: {field}")
+
+    def test_agent_index_handles_missing_pack_gracefully(self) -> None:
+        """``packs agent-index --json --pack-id nonexistent`` returns null/empty."""
+        result = _run_packs("agent-index", "--json", "--pack-id", "nonexistent_pack_xyz", cwd=str(_REPO_ROOT))
+        # Should still exit 0 but return null
+        self.assertEqual(result.returncode, 0)
+        # null is valid JSON
+        data = json.loads(result.stdout)
+        self.assertIsNone(data, f"Expected null for missing pack, got: {data!r}")
+
+    def test_agent_index_is_deterministic(self) -> None:
+        """Two runs of agent-index --json produce identical output."""
+        result1 = _run_packs("agent-index", "--json", cwd=str(_REPO_ROOT))
+        result2 = _run_packs("agent-index", "--json", cwd=str(_REPO_ROOT))
+        self.assertEqual(result1.returncode, 0)
+        self.assertEqual(result2.returncode, 0)
+        self.assertEqual(
+            json.loads(result1.stdout), json.loads(result2.stdout),
+            "agent-index output should be deterministic",
+        )
+
+
+class TestInspectJSON(unittest.TestCase):
+    """Prove: packs inspect --json includes new structured fields."""
+
+    def setUp(self) -> None:
+        self._tmpdir = tempfile.mkdtemp(prefix="test-inspect-json-")
+        self._astrid_home = Path(self._tmpdir) / "astrid_home"
+        self._astrid_home.mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _make_installable_pack(self, pack_id: str) -> Path:
+        """Create a temp pack with an executor and orchestrator, return source root."""
+        src = Path(self._tmpdir) / "sources" / pack_id
+        src.mkdir(parents=True)
+        (src / "pack.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}
+                name: {pack_id.replace('_', ' ').title()}
+                version: 0.1.0
+                description: Test pack for inspect --json.
+                content:
+                  executors: executors
+                  orchestrators: orchestrators
+                agent:
+                  purpose: Test inspect --json output
+                  entrypoints:
+                    - validate
+                  normal_entrypoints:
+                    - main_workflow
+                  do_not_use_for: Production critical paths
+                  required_context:
+                    - API key
+                    - workspace path
+                secrets:
+                  - name: API_TOKEN
+                    required: true
+                    description: API authentication token
+                dependencies:
+                  python:
+                    - requests>=2.28
+                  system:
+                    - ffmpeg
+                keywords:
+                  - testing
+                  - json
+                capabilities:
+                  - inspect
+                  - validate
+                astrid_version: ">=0.1"
+            """),
+            encoding="utf-8",
+        )
+        (src / "AGENTS.md").write_text(f"# {pack_id}\n\nAgent guide.\n")
+        (src / "README.md").write_text(f"# {pack_id}\n\nUser docs.\n")
+        (src / "STAGE.md").write_text("## Purpose\n\nTesting inspect --json.\n")
+        (src / "executors").mkdir(parents=True)
+        (src / "orchestrators").mkdir(parents=True)
+
+        # Add an executor
+        exec_dir = src / "executors" / "my_exec"
+        exec_dir.mkdir()
+        (exec_dir / "executor.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}.my_exec
+                name: My Exec
+                kind: external
+                version: 0.1.0
+                description: Test executor for inspect.
+                runtime:
+                  type: python-cli
+                  entrypoint: run.py
+                  callable: main
+            """),
+        )
+        (exec_dir / "run.py").write_text("def main():\\n    print('ok')\\n    return 0\\n")
+        (exec_dir / "STAGE.md").write_text("## Stage\n\nFirst stage.\n## Section2\n\nMore content.\n")
+
+        # Add an orchestrator
+        orch_dir = src / "orchestrators" / "my_orch"
+        orch_dir.mkdir()
+        (orch_dir / "orchestrator.yaml").write_text(
+            textwrap.dedent(f"""\
+                schema_version: 1
+                id: {pack_id}.my_orch
+                name: My Orch
+                kind: external
+                version: 0.1.0
+                description: Test orchestrator for inspect.
+                runtime:
+                  type: python-cli
+                  entrypoint: run.py
+                  callable: main
+            """),
+        )
+        (orch_dir / "run.py").write_text("def main():\\n    print('ok')\\n    return 0\\n")
+        (orch_dir / "STAGE.md").write_text("## Stage\n\nOrch stage excerpt.\n")
+
+        return src
+
+    def _install_pack(self, src: Path, pack_id: str) -> None:
+        """Install a pack using subprocess to our isolated ASTRID_HOME."""
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "install", str(src), "--yes"],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Install failed: {result.stderr}")
+
+    def test_inspect_json_includes_new_fields(self) -> None:
+        """``packs inspect <pack_id> --json`` includes normal_entrypoints,
+        do_not_use_for, required_context, structured secrets, dependencies,
+        keywords, capabilities, and components."""
+        src = self._make_installable_pack("inspect_json_test")
+        self._install_pack(src, "inspect_json_test")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "inspect", "inspect_json_test", "--json"],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        self.assertEqual(result.returncode, 0, f"inspect --json failed: {result.stderr}")
+        try:
+            data = json.loads(result.stdout)
+        except Exception as e:
+            self.fail(f"inspect --json output is not valid JSON: {e}")
+
+        # Check new structured fields
+        self.assertIn("normal_entrypoints", data)
+        self.assertEqual(data["normal_entrypoints"], ["main_workflow"])
+        self.assertEqual(data.get("do_not_use_for"), "Production critical paths")
+        self.assertIn("required_context", data)
+        self.assertIn("API key", data["required_context"])
+        self.assertIn("keywords", data)
+        self.assertEqual(data["keywords"], ["testing", "json"])
+        self.assertIn("capabilities", data)
+        self.assertEqual(data["capabilities"], ["inspect", "validate"])
+
+        # Check structured secrets
+        self.assertIn("secrets", data)
+        secrets = data["secrets"]
+        self.assertIsInstance(secrets, list)
+        self.assertGreater(len(secrets), 0)
+        self.assertEqual(secrets[0]["name"], "API_TOKEN")
+        self.assertTrue(secrets[0]["required"])
+
+        # Check structured dependencies
+        self.assertIn("dependencies_struct", data)
+        deps_struct = data["dependencies_struct"]
+        self.assertIsInstance(deps_struct, dict)
+
+        # Check components
+        self.assertIn("components", data)
+        components = data["components"]
+        self.assertIsInstance(components, list)
+        self.assertGreater(len(components), 0)
+        comp_ids = [c["id"] for c in components]
+        self.assertIn("inspect_json_test.my_exec", comp_ids)
+        self.assertIn("inspect_json_test.my_orch", comp_ids)
+
+        # Verify component sub-fields
+        for comp in components:
+            self.assertIn("id", comp)
+            self.assertIn("name", comp)
+            self.assertIn("kind", comp)
+            self.assertIn("description", comp)
+            self.assertIn("runtime", comp)
+            self.assertIn("is_entrypoint", comp)
+            self.assertIn("docs_paths", comp)
+            self.assertIn("stage_excerpt", comp)
+            # stage_excerpt should be bounded to first ## heading
+            excerpt = comp.get("stage_excerpt", "")
+            self.assertIsInstance(excerpt, str)
+
+    def test_inspect_json_components_have_stage_excerpts(self) -> None:
+        """Components in inspect --json have non-empty stage_excerpt from STAGE.md."""
+        src = self._make_installable_pack("stage_excerpt_test")
+        self._install_pack(src, "stage_excerpt_test")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "inspect", "stage_excerpt_test", "--json"],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        self.assertEqual(result.returncode, 0)
+        data = json.loads(result.stdout)
+        components = data.get("components", [])
+        self.assertGreater(len(components), 0)
+        for comp in components:
+            excerpt = comp.get("stage_excerpt", "")
+            self.assertIsInstance(excerpt, str)
+            self.assertGreater(len(excerpt), 0,
+                f"Component {comp['id']} should have non-empty stage_excerpt")
 
 
 if __name__ == "__main__":

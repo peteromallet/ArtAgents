@@ -16,11 +16,12 @@ import json as _json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 
 from astrid.core.pack import pack_manifest_path
+from astrid.packs.agent_index import build_agent_index
 from astrid.packs.validate import extract_trust_summary, validate_pack
 
 # Must match the pack_id pattern in _defs.json: lowercase, digits, underscore
@@ -54,14 +55,33 @@ _AGENTS_MD_STUB = """# {pack_name} — Agent Guide
 ## When to Use This Pack
 
 Explain in 1-2 sentences when an agent should choose this pack.
+What problems does it solve? What triggers its use?
 
 ## Entrypoints
 
 List the orchestrators agents should start with for common tasks.
+These are the high-level, safe entry points designed for agent consumption.
+(Synced from the `agent.normal_entrypoints` and `agent.entrypoints` fields in pack.yaml.)
 
-## Executors
+## Low-Level Executors
 
-Briefly describe each executor and its purpose.
+Describe executors that are building blocks, not primary entrypoints.
+Agents should prefer orchestrators unless they know exactly which executor they need.
+
+## Required Context
+
+What inputs, environment variables, or prior knowledge does this pack assume?
+(Synced from `agent.required_context` in pack.yaml.)
+
+## Do Not Use For
+
+Scenarios where this pack should NOT be used.
+(Synced from `agent.do_not_use_for` in pack.yaml.)
+
+## Secrets and Dependencies
+
+List required and optional secrets, plus any Python, npm, or system dependencies.
+(Synced from `secrets` and `dependencies` in pack.yaml.)
 """
 
 
@@ -191,12 +211,40 @@ id: {pack_id}
 name: {pack_name}
 version: 0.1.0
 description: {description}
+# astrid_version: "1.0.0"
+# keywords:
+#   - example
+#   - template
+# capabilities:
+#   - file_io
+#   - network
 content:
   executors: executors
   orchestrators: orchestrators
   elements: elements
 agent:
   purpose: "TODO: describe what this pack is for"
+  # normal_entrypoints:
+  #   - my_orchestrator
+  # entrypoints:
+  #   - legacy_entrypoint
+  # do_not_use_for: "Destructive operations that cannot be undone"
+  # required_context:
+  #   - "API key for external service"
+# secrets:
+#   - name: API_KEY
+#     required: true
+#     description: "API key for the external service"
+#   - name: OPTIONAL_FLAG
+#     required: false
+#     description: "Optional feature flag"
+# dependencies:
+#   python:
+#     - requests>=2.28
+#   npm:
+#     - chalk@5
+#   system:
+#     - git
 """,
         encoding="utf-8",
     )
@@ -401,7 +449,7 @@ def cmd_inspect(argv: list[str]) -> int:
         return 0
 
     # ── Full inspect output ──
-    full_data = _build_full_inspect(record, manifest, trust_summary)
+    full_data = _build_full_inspect(record, manifest, trust_summary, rev_dir=rev_dir)
     if args.json_output:
         print(_json.dumps(full_data, indent=2, default=str))
     else:
@@ -418,7 +466,7 @@ def cmd_inspect(argv: list[str]) -> int:
 def _build_agent_view(manifest: dict, trust_summary: dict) -> dict:
     """Build an agent-focused subset of a pack manifest."""
     agent_section = manifest.get("agent", {}) if isinstance(manifest.get("agent"), dict) else {}
-    secrets_section = manifest.get("secrets", {}) if isinstance(manifest.get("secrets"), dict) else {}
+    secrets_section = manifest.get("secrets")
 
     view: dict = {}
 
@@ -427,12 +475,17 @@ def _build_agent_view(manifest: dict, trust_summary: dict) -> dict:
     if purpose:
         view["purpose"] = str(purpose)
 
-    # Entrypoints
+    # Entrypoints — prefer normal_entrypoints, fall back to entrypoints
+    normal_entrypoints = trust_summary.get("normal_entrypoints", [])
+    if not normal_entrypoints and isinstance(agent_section.get("normal_entrypoints"), list):
+        normal_entrypoints = [str(ep) for ep in agent_section["normal_entrypoints"] if ep]
     entrypoints = trust_summary.get("entrypoints", [])
     if not entrypoints and isinstance(agent_section.get("entrypoints"), list):
         entrypoints = [str(ep) for ep in agent_section["entrypoints"] if ep]
-    if entrypoints:
-        view["entrypoints"] = entrypoints
+    display_entrypoints = normal_entrypoints if normal_entrypoints else entrypoints
+    if display_entrypoints:
+        view["normal_entrypoints"] = normal_entrypoints if normal_entrypoints else None
+        view["entrypoints"] = display_entrypoints
 
     # Constraints (from agent section or metadata)
     constraints = agent_section.get("constraints")
@@ -450,12 +503,43 @@ def _build_agent_view(manifest: dict, trust_summary: dict) -> dict:
     if context:
         view["context"] = context if isinstance(context, str) else str(context)
 
-    # Secrets
-    secrets_list = trust_summary.get("declared_secrets", [])
-    if not secrets_list and isinstance(secrets_section.get("required"), list):
-        secrets_list = [str(s) for s in secrets_section["required"] if s]
-    if secrets_list:
-        view["secrets"] = secrets_list
+    # do_not_use_for and required_context from agent section
+    do_not_use_for = agent_section.get("do_not_use_for")
+    if do_not_use_for:
+        view["do_not_use_for"] = str(do_not_use_for)
+
+    required_context = agent_section.get("required_context")
+    if isinstance(required_context, list):
+        view["required_context"] = [str(rc) for rc in required_context if rc]
+
+    # Secrets — handle both new and old formats
+    if isinstance(secrets_section, list):
+        # New format: list of {name, required, description}
+        structured_secrets = []
+        for s_obj in secrets_section:
+            if isinstance(s_obj, dict) and s_obj.get("name"):
+                structured_secrets.append({
+                    "name": str(s_obj["name"]),
+                    "required": bool(s_obj.get("required", False)),
+                    "description": str(s_obj.get("description", "")),
+                })
+        view["secrets"] = structured_secrets
+    elif isinstance(secrets_section, dict):
+        # Old format: dict with 'required' list
+        secrets_list = trust_summary.get("declared_secrets", [])
+        if not secrets_list and isinstance(secrets_section.get("required"), list):
+            secrets_list = [str(s) for s in secrets_section["required"] if s]
+        if secrets_list:
+            view["secrets"] = secrets_list
+
+    # Keywords and capabilities from manifest
+    keywords_raw = manifest.get("keywords")
+    if isinstance(keywords_raw, list):
+        view["keywords"] = [str(k) for k in keywords_raw if k]
+
+    capabilities_raw = manifest.get("capabilities")
+    if isinstance(capabilities_raw, list):
+        view["capabilities"] = [str(c) for c in capabilities_raw if c]
 
     return view
 
@@ -464,27 +548,219 @@ def _print_agent_view(view: dict) -> None:
     """Pretty-print an agent-focused pack view."""
     print(f"━━━ Agent View: {view.get('pack_id', '?')} ━━━")
     if "purpose" in view:
-        print(f"Purpose:     {view['purpose']}")
+        print(f"Purpose:        {view['purpose']}")
     if "entrypoints" in view:
-        print(f"Entrypoints: {', '.join(view['entrypoints'])}")
+        eps = view["entrypoints"]
+        if isinstance(eps, list):
+            print(f"Entrypoints:    {', '.join(eps)}")
+    if "normal_entrypoints" in view and view.get("normal_entrypoints"):
+        print(f"Normal EPts:    {', '.join(view['normal_entrypoints'])}")
     if "constraints" in view:
-        print(f"Constraints: {view['constraints']}")
+        print(f"Constraints:    {view['constraints']}")
     if "context" in view:
-        print(f"Context:     {view['context']}")
+        print(f"Context:        {view['context']}")
+    if "do_not_use_for" in view:
+        print(f"Do Not Use For: {view['do_not_use_for']}")
+    if "required_context" in view:
+        print(f"Req. Context:   {', '.join(view['required_context'])}")
     if "secrets" in view:
-        print(f"Secrets:     {', '.join(view['secrets'])}")
+        secrets = view["secrets"]
+        if isinstance(secrets, list) and secrets and isinstance(secrets[0], dict):
+            for s_obj in secrets:
+                req = " (required)" if s_obj.get("required") else ""
+                print(f"Secret:         {s_obj['name']}{req}: {s_obj.get('description', '')}")
+        else:
+            print(f"Secrets:        {', '.join(secrets)}")
+    if "keywords" in view:
+        print(f"Keywords:       {', '.join(view['keywords'])}")
+    if "capabilities" in view:
+        print(f"Capabilities:   {', '.join(view['capabilities'])}")
 
 
 # ---------------------------------------------------------------------------
 # Full inspect helpers
 # ---------------------------------------------------------------------------
 
+# Recognised component manifest filenames keyed by kind.
+_INSPECT_COMPONENT_MANIFEST_NAMES: dict[str, tuple[str, ...]] = {
+    "executor": ("executor.yaml", "executor.yml", "executor.json"),
+    "orchestrator": ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json"),
+}
+
+
+def _find_component_manifest(comp_dir: Path, kind: str) -> Path | None:
+    """Return the first manifest file found in *comp_dir* for *kind*."""
+    names = _INSPECT_COMPONENT_MANIFEST_NAMES.get(kind, ())
+    for name in sorted(names):
+        candidate = comp_dir / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _read_stage_excerpt(stage_path: Path, *, max_lines: int = 30) -> str | None:
+    """Return a bounded excerpt from a STAGE.md file.
+
+    Reads at most *max_lines* lines, stopping early at the first ``##``
+    heading (ATX level-2).  Returns ``None`` when the file cannot be read.
+    """
+    if not stage_path.is_file():
+        return None
+    try:
+        text = stage_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    lines = text.splitlines()
+    excerpt_lines: list[str] = []
+    for i, line in enumerate(lines):
+        if i >= max_lines:
+            break
+        if line.startswith("##") and i > 0:
+            break
+        excerpt_lines.append(line)
+    return "\n".join(excerpt_lines).strip() or None
+
+
+def _scan_inspect_components(
+    rev_dir: Path | None, manifest: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Scan component manifests under declared content roots in *rev_dir*.
+
+    Returns a deterministic (sorted by id) list of component overview dicts.
+    Each dict includes: id, name, kind, description, runtime, is_entrypoint,
+    docs_paths, stage_excerpt.
+    """
+    if rev_dir is None:
+        return []
+
+    content = manifest.get("content", {}) if isinstance(manifest.get("content"), dict) else {}
+    agent = manifest.get("agent", {}) if isinstance(manifest.get("agent"), dict) else {}
+    normal_eps = set()
+    if isinstance(agent.get("normal_entrypoints"), list):
+        normal_eps = {str(ep) for ep in agent["normal_entrypoints"] if ep}
+    if not normal_eps and isinstance(agent.get("entrypoints"), list):
+        normal_eps = {str(ep) for ep in agent["entrypoints"] if ep}
+
+    components: list[dict[str, Any]] = []
+
+    for comp_kind in ("executors", "orchestrators"):
+        comp_root_rel = content.get(comp_kind)
+        if not isinstance(comp_root_rel, str) or not comp_root_rel.strip():
+            continue
+        comp_root = rev_dir / comp_root_rel
+        if not comp_root.is_dir():
+            continue
+
+        manifest_kind = comp_kind.rstrip("s")  # "executors" -> "executor"
+
+        for comp_dir in sorted(comp_root.iterdir()):
+            if not comp_dir.is_dir() or comp_dir.name.startswith("."):
+                continue
+            if comp_dir.name == "__pycache__":
+                continue
+
+            mf_path = _find_component_manifest(comp_dir, manifest_kind)
+            if mf_path is None:
+                continue
+
+            data: dict[str, Any] | None
+            try:
+                if mf_path.suffix == ".json":
+                    import json as _json_inspect
+                    data = _json_inspect.loads(mf_path.read_text(encoding="utf-8"))
+                else:
+                    data = yaml.safe_load(mf_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+
+            if not isinstance(data, dict):
+                continue
+
+            comp_id = str(data.get("id", comp_dir.name))
+            name = str(data.get("name", comp_id))
+            description = str(data.get("description", ""))
+            kind = str(data.get("kind", manifest_kind))
+
+            # Runtime
+            runtime_raw = data.get("runtime", {}) if isinstance(data.get("runtime"), dict) else {}
+            runtime: dict[str, Any] | None = None
+            if runtime_raw:
+                runtime = {
+                    "type": runtime_raw.get("type"),
+                    "entrypoint": runtime_raw.get("entrypoint"),
+                    "callable": runtime_raw.get("callable"),
+                }
+
+            # Is entrypoint?
+            is_entrypoint = comp_id in normal_eps
+
+            # Docs paths
+            docs = data.get("docs", {}) if isinstance(data.get("docs"), dict) else {}
+            stage_rel = docs.get("stage", "STAGE.md")
+            stage_path = comp_dir / stage_rel
+            docs_paths: dict[str, str] = {"stage": str(stage_path)}
+
+            # Stage excerpt
+            stage_excerpt = _read_stage_excerpt(stage_path)
+
+            components.append({
+                "id": comp_id,
+                "name": name,
+                "kind": kind,
+                "description": description,
+                "runtime": runtime,
+                "is_entrypoint": is_entrypoint,
+                "docs_paths": docs_paths,
+                "stage_excerpt": stage_excerpt,
+            })
+
+    # Sort by id for determinism
+    components.sort(key=lambda c: c["id"])
+    return components
+
 
 def _build_full_inspect(
-    record: "InstallRecord", manifest: dict, trust_summary: dict
+    record: "InstallRecord", manifest: dict, trust_summary: dict,
+    *, rev_dir: "Path | None" = None,
 ) -> dict:
-    """Build a full inspect dict for JSON or pretty-print output."""
-    return {
+    """Build a full inspect dict for JSON or pretty-print output.
+
+    When *rev_dir* is provided, component manifests under declared content
+    roots are scanned and STAGE.md excerpts are extracted for each component.
+    """
+    # ── Structured secrets ──────────────────────────────────────────
+    secrets_raw = manifest.get("secrets")
+    structured_secrets: list[dict[str, Any]] = []
+    if isinstance(secrets_raw, list):
+        for s_obj in secrets_raw:
+            if isinstance(s_obj, dict) and s_obj.get("name"):
+                structured_secrets.append({
+                    "name": str(s_obj["name"]),
+                    "required": bool(s_obj.get("required", False)),
+                    "description": str(s_obj.get("description", "")),
+                })
+    elif isinstance(secrets_raw, dict):
+        req_list = secrets_raw.get("required")
+        if isinstance(req_list, list):
+            for s in req_list:
+                if s:
+                    structured_secrets.append({
+                        "name": str(s), "required": True, "description": "",
+                    })
+
+    # ── Structured dependencies ─────────────────────────────────────
+    deps_raw = manifest.get("dependencies")
+    structured_deps: dict[str, list[str]] = {}
+    if isinstance(deps_raw, dict):
+        for eco in ("python", "npm", "system"):
+            eco_deps = deps_raw.get(eco)
+            if isinstance(eco_deps, list):
+                structured_deps[eco] = [str(d) for d in eco_deps if d]
+
+    # ── Components scan ─────────────────────────────────────────────
+    components = _scan_inspect_components(rev_dir, manifest) if rev_dir is not None else []
+
+    result = {
         "pack_id": record.pack_id,
         "name": record.name,
         "version": record.version,
@@ -496,7 +772,9 @@ def _build_full_inspect(
         "component_counts": trust_summary.get("component_counts", {}),
         "entrypoints": trust_summary.get("entrypoints", []),
         "declared_secrets": trust_summary.get("declared_secrets", []),
+        "secrets": structured_secrets,  # structured: [{name, required, description}]
         "dependencies": trust_summary.get("dependencies", []),
+        "dependencies_struct": trust_summary.get("dependencies_struct", {}),
         "docs": trust_summary.get("docs", {}),
         "warnings": trust_summary.get("warnings", []),
         "agent": manifest.get("agent") if isinstance(manifest.get("agent"), dict) else None,
@@ -505,11 +783,20 @@ def _build_full_inspect(
         "commit_sha": record.commit_sha,
         "source_type": record.source_type,
         "requested_ref": record.requested_ref,
-        "astrid_version": record.astrid_version,
+        "astrid_version": record.astrid_version if hasattr(record, 'astrid_version') else None,
         "trust_tier": record.trust_tier,
-        "manifest_digest": record.manifest_digest,
-        "previous_active_revision": record.previous_active_revision,
+        "manifest_digest": record.manifest_digest if hasattr(record, 'manifest_digest') else None,
+        "previous_active_revision": record.previous_active_revision if hasattr(record, 'previous_active_revision') else None,
+        # New structured fields from trust_summary
+        "normal_entrypoints": trust_summary.get("normal_entrypoints", []),
+        "do_not_use_for": trust_summary.get("do_not_use_for"),
+        "required_context": trust_summary.get("required_context", []),
+        "keywords": trust_summary.get("keywords", []),
+        "capabilities": trust_summary.get("capabilities", []),
+        # Component details (scanned from disk)
+        "components": components,
     }
+    return result
 
 
 def _print_full_inspect(data: dict) -> None:
@@ -578,15 +865,72 @@ def _print_full_inspect(data: dict) -> None:
     if entrypoints:
         print(f"  Entrypoints:   {', '.join(entrypoints)}")
 
-    # Secrets
-    secrets = data.get("declared_secrets", [])
+    # Secrets (structured)
+    secrets = data.get("secrets", [])
     if secrets:
-        print(f"  Secrets:       {', '.join(secrets)}")
+        if isinstance(secrets, list) and secrets and isinstance(secrets[0], dict):
+            for s_obj in secrets:
+                req = " (required)" if s_obj.get("required") else ""
+                desc = s_obj.get("description", "")
+                print(f"  Secret:        {s_obj['name']}{req}{': ' + desc if desc else ''}")
+        else:
+            print(f"  Secrets:       {', '.join(str(s) for s in secrets)}")
 
     # Dependencies
     deps = data.get("dependencies", [])
     if deps:
-        print(f"  Dependencies:  {', '.join(deps)}")
+        if isinstance(deps, list):
+            print(f"  Dependencies:  {', '.join(deps)}")
+        elif isinstance(deps, dict):
+            dep_parts = []
+            for eco, pkg_list in deps.items():
+                if pkg_list:
+                    dep_parts.append(f"{eco}:{','.join(pkg_list)}")
+            if dep_parts:
+                print(f"  Dependencies:  {'; '.join(dep_parts)}")
+
+    # Structured dependencies
+    deps_struct = data.get("dependencies_struct", {})
+    if deps_struct:
+        dep_parts = []
+        for eco, pkg_list in deps_struct.items():
+            if pkg_list:
+                dep_parts.append(f"{eco}:{','.join(pkg_list)}")
+        if dep_parts:
+            print(f"  Deps Struct:   {'; '.join(dep_parts)}")
+
+    # New structured fields
+    normal_entrypoints = data.get("normal_entrypoints", [])
+    if normal_entrypoints:
+        print(f"  Normal EPts:   {', '.join(normal_entrypoints)}")
+
+    do_not_use_for = data.get("do_not_use_for")
+    if do_not_use_for:
+        print(f"  DoNotUseFor:   {do_not_use_for}")
+
+    required_context = data.get("required_context", [])
+    if required_context:
+        print(f"  Req. Context:  {', '.join(required_context)}")
+
+    keywords = data.get("keywords", [])
+    if keywords:
+        print(f"  Keywords:      {', '.join(keywords)}")
+
+    capabilities = data.get("capabilities", [])
+    if capabilities:
+        print(f"  Capabilities:  {', '.join(capabilities)}")
+
+    # Components list
+    components = data.get("components", [])
+    if components:
+        print(f"  Components:    ({len(components)} total)")
+        for comp in components:
+            ep_mark = " [ENTRYPOINT]" if comp.get("is_entrypoint") else ""
+            print(f"    • {comp['id']} ({comp.get('kind', '?')}){ep_mark}: {comp.get('description', '')[:80]}")
+            se = comp.get("stage_excerpt")
+            if se:
+                first_line = se.split("\n")[0][:120]
+                print(f"      stage: {first_line}")
 
     # Docs
     docs = data.get("docs", {})
@@ -727,6 +1071,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rollback_parser.set_defaults(handler=_handle_rollback)
 
+    # ── agent-index ──
+    agent_index_parser = subparsers.add_parser(
+        "agent-index",
+        help="Emit a machine-readable pack index for agents.",
+    )
+    agent_index_parser.add_argument(
+        "--pack-id",
+        help="Limit output to a single pack (returns the pack dict or null).",
+    )
+    agent_index_parser.add_argument(
+        "--json", dest="json_output", action="store_true",
+        help="Output as JSON (default).",
+    )
+    agent_index_parser.add_argument(
+        "--text", dest="text_output", action="store_true",
+        help="Output as a human-readable text table.",
+    )
+    agent_index_parser.set_defaults(handler=_handle_agent_index)
+
     return parser
 
 
@@ -803,6 +1166,107 @@ def _handle_rollback(args: argparse.Namespace) -> int:
     if args.yes:
         argv.append("--yes")
     return cmd_rollback(argv)
+
+
+def _handle_agent_index(args: argparse.Namespace) -> int:
+    """Handler for ``packs agent-index``."""
+    import json as _json
+
+    from astrid.core.pack import PackResolver, packs_root
+    from astrid.core.pack_store import InstalledPackStore
+
+    resolver = PackResolver(packs_root())
+    store = InstalledPackStore()
+
+    pack_id = getattr(args, "pack_id", None)
+    result = build_agent_index(resolver, store, pack_id=pack_id)
+
+    if args.text_output:
+        # Text table output
+        if isinstance(result, dict) and "packs" in result:
+            packs = result["packs"]
+        elif isinstance(result, dict):
+            packs = [result]  # single pack from --pack-id filter
+        elif result is None:
+            packs = []
+        else:
+            packs = [result]
+        if not packs:
+            print("(no packs found)")
+            return 0
+        for pack_entry in packs:
+            pid = pack_entry.get("pack_id", "?")
+            name = pack_entry.get("name", pid)
+            version = pack_entry.get("version", "")
+            purpose = pack_entry.get("purpose", "")
+            source_type = pack_entry.get("source_type", "")
+            normal_eps = pack_entry.get("normal_entrypoints", [])
+            comp_counts = pack_entry.get("component_counts", {})
+            secrets_cnt = len(pack_entry.get("secrets", []))
+
+            print(f"━━━ {pid} ━━━")
+            print(f"  Name:          {name}")
+            if version:
+                print(f"  Version:       {version}")
+            print(f"  Source:        {source_type}")
+            if purpose:
+                print(f"  Purpose:       {purpose}")
+            if normal_eps:
+                print(f"  Entrypoints:   {', '.join(normal_eps)}")
+            if comp_counts:
+                parts = []
+                for k in ("executors", "orchestrators", "elements"):
+                    if comp_counts.get(k, 0):
+                        parts.append(f"{comp_counts[k]} {k}")
+                print(f"  Components:    {', '.join(parts)}")
+            if secrets_cnt:
+                print(f"  Secrets:       {secrets_cnt} declared")
+
+            do_not = pack_entry.get("do_not_use_for")
+            if do_not:
+                print(f"  DoNotUseFor:   {do_not}")
+
+            req_ctx = pack_entry.get("required_context", [])
+            if req_ctx:
+                print(f"  Req. Context:  {', '.join(req_ctx)}")
+
+            keywords = pack_entry.get("keywords", [])
+            if keywords:
+                print(f"  Keywords:      {', '.join(keywords)}")
+
+            capabilities = pack_entry.get("capabilities", [])
+            if capabilities:
+                print(f"  Capabilities:  {', '.join(capabilities)}")
+
+            deps = pack_entry.get("dependencies", {})
+            if deps:
+                dep_parts = []
+                for eco, pkg_list in deps.items():
+                    if pkg_list:
+                        dep_parts.append(f"{eco}:{','.join(pkg_list)}")
+                if dep_parts:
+                    print(f"  Dependencies:  {'; '.join(dep_parts)}")
+
+            components = pack_entry.get("components", [])
+            if components:
+                print(f"  Components:    ({len(components)} total)")
+                for comp in components:
+                    ep_mark = " [ENTRYPOINT]" if comp.get("is_entrypoint") else ""
+                    desc = comp.get("description", "")[:80]
+                    print(f"    • {comp['id']} ({comp.get('kind', '?')}){ep_mark}: {desc}")
+
+            warnings = pack_entry.get("warnings", [])
+            if warnings:
+                print("  ⚠ Warnings:")
+                for w in warnings:
+                    print(f"    • {w}")
+            print()  # blank line between packs
+    else:
+        # JSON output (default)
+        _json.dump(result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+
+    return 0
 
 
 def main(argv: Optional[list[str]] = None) -> int:

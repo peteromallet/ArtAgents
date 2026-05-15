@@ -26,12 +26,63 @@
     "agent": {
       "type": "object",
       "properties": {
-        "purpose": {"type": "string"}
+        "purpose": {"type": "string"},
+        "entrypoints": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "normal_entrypoints": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "do_not_use_for": {"type": "string"},
+        "required_context": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
       }
     },
     "metadata": {
       "type": "object"
-    }
+    },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "required": {"type": "boolean"},
+          "description": {"type": "string"}
+        },
+        "required": ["name"]
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "python": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "npm": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "system": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "astrid_version": {"type": "string"}
   },
   "additionalProperties": false
 }

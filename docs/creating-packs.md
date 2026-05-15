@@ -256,17 +256,110 @@ The `docs/templates/` directory contains legacy templates from the
 pre-Sprint-1 internal format and is retained for historical reference
 only.
 
-## Next Steps
+## Writing an Effective AGENTS.md
 
-After creating and validating your pack:
+Every pack should include an `AGENTS.md` at its root. This file helps
+AI agents (and human users) understand **when and how** to use your
+pack. The structured `agent:` section in `pack.yaml` is the
+**authoritative source** for machine-readable metadata; `AGENTS.md` is
+supplemental prose that adds context and examples.
 
-1. Implement the `run.py` entrypoints for your executors and
-   orchestrators.
-2. Add tests in a `tests/` directory beside each component.
-3. Document your pack's capabilities in `AGENTS.md`.
-4. Share your pack as a Git repository for others to install (Git
-   install is planned for Sprint 2).
+### What to Cover
+
+**When to Use This Pack** — Describe the problems this pack solves.
+What signals should make an agent reach for this pack instead of
+another? Keep it brief and concrete.
+
+**Normal Entrypoints** — List the orchestrator (or executor) IDs that
+agents should use as entrypoints for typical work. These map to the
+`agent.normal_entrypoints` field in `pack.yaml`. Explain what each
+entrypoint does at a high level.
+
+**Low-Level Executors** — Identify executors that are building blocks
+rather than standalone entrypoints. Agents should not invoke these
+directly unless they have a specific, informed reason. This
+corresponds to `agent.do_not_use_for` guidance.
+
+**Required Context and Inputs** — What information does the agent need
+before calling this pack? List required secrets, API keys,
+configuration values, file paths, or other context. Reference the
+`agent.required_context` field and the structured `secrets:` list in
+`pack.yaml`.
+
+**Constraints and Limitations** — Document when an agent should
+**not** use this pack (the `agent.do_not_use_for` guidance). Note any
+performance limits, rate limits, concurrency restrictions, or
+environment requirements.
+
+**Secrets and Dependencies** — Describe the secrets and dependencies
+declared in `pack.yaml`. Explain how to obtain API keys, what
+environment variables to set, and any system packages that must be
+installed before using the pack.
+
+**Component Documentation** — Link to `STAGE.md` files inside each
+component directory (e.g., `executors/my_exec/STAGE.md`). These files
+contain bounded, deterministic stage summaries that agents can read
+for detailed usage instructions.
+
+### Machine-Readable Index
+
+Agents can use the `packs agent-index` command to get a structured,
+deterministic JSON index of all installed packs:
+
+```bash
+# Full index
+python3 -m astrid packs agent-index --json
+
+# Filter by pack
+python3 -m astrid packs agent-index --pack-id my-pack --json
+```
+
+The index includes normal entrypoints, do-not-use-for guidance,
+required context, structured secrets and dependencies, component
+counts, and bounded stage excerpts — everything an agent needs to
+choose the right tool without reading every manifest manually.
+
+### Example AGENTS.md Skeleton
+
+```markdown
+# My Pack — AGENTS.md
+
+## When to Use This Pack
+
+Use this pack when you need to [short description of capability].
+
+## Entrypoints
+
+- `my-pack.orchestrator.main` — Primary workflow for [purpose].
+- `my-pack.executor.helper` — Utility for [specific task].
+
+## Low-Level Executors
+
+- `my-pack.executor.internal` — Internal building block; do not call
+  directly unless you understand [specific reason].
+
+## Required Context
+
+- API key for [service] (set as `MY_API_KEY` environment variable).
+- Access to [resource/file path].
+
+## Do Not Use For
+
+Do not use this pack for [scenario where it's inappropriate]. Use
+[alternative pack] instead.
+
+## Secrets and Dependencies
+
+- `MY_API_KEY` (required) — Obtain from [service console URL].
+- Python packages: `requests`, `pyyaml` (see `dependencies.python` in
+  `pack.yaml`).
+
+## Component Docs
+
+- Orchestrator: `orchestrators/main/STAGE.md`
+- Executor: `executors/helper/STAGE.md`
+```
 
 ---
 
-*Last updated: Sprint 5*
+*Last updated: Sprint 6*

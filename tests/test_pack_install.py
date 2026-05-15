@@ -10,6 +10,7 @@ import io
 import json as _json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -437,6 +438,71 @@ class TestInspectInstalled(InstallTestBase):
         self.assertIn("Purpose:", output)
         # Should not show full inspect fields like "Source:"
         self.assertNotIn("Source:", output)
+
+    def _temp_pack_with_components(self, pack_id: str) -> Path:
+        """Create a temp pack with executor + orchestrator for inspect tests."""
+        src = Path(self._tmpdir) / "sources" / pack_id
+        src.mkdir(parents=True, exist_ok=True)
+        _make_minimal_pack(src, pack_id=pack_id)
+
+        # Add an executor
+        _make_runnable_executor(src, f"{pack_id}.echo_exec", "echo_exec")
+        # Add an orchestrator
+        _make_runnable_orchestrator(src, f"{pack_id}.echo_orch", "echo_orch")
+
+        return src
+
+    def test_inspect_json_components_have_stage_excerpts(self) -> None:
+        """``packs inspect --json`` includes components with stage_excerpt fields."""
+        src = self._temp_pack_with_components("stage_test")
+        store = self._store()
+        self._install(src, store=store)
+
+        # Use subprocess to test --json output path
+        result = subprocess.run(
+            [sys.executable, "-m", "astrid", "packs", "inspect", "stage_test", "--json"],
+            capture_output=True, text=True,
+            cwd=str(_REPO_ROOT),
+            env={**os.environ, "ASTRID_HOME": str(self._astrid_home)},
+        )
+        self.assertEqual(
+            result.returncode, 0,
+            f"inspect --json failed with exit {result.returncode}: {result.stderr}",
+        )
+
+        try:
+            data = _json.loads(result.stdout)
+        except Exception as e:
+            self.fail(f"inspect --json output is not valid JSON: {e}")
+
+        # Verify components list exists and is non-empty
+        self.assertIn("components", data, "inspect --json should include 'components'")
+        components = data["components"]
+        self.assertIsInstance(components, list)
+        self.assertGreater(len(components), 0, "Should have at least one component")
+
+        # Check component IDs
+        comp_ids = [c["id"] for c in components]
+        self.assertIn("stage_test.echo_exec", comp_ids)
+        self.assertIn("stage_test.echo_orch", comp_ids)
+
+        # Verify each component has required fields including stage_excerpt
+        for comp in components:
+            self.assertIn("id", comp)
+            self.assertIn("name", comp)
+            self.assertIn("kind", comp)
+            self.assertIn("description", comp)
+            self.assertIn("runtime", comp)
+            self.assertIn("is_entrypoint", comp)
+            self.assertIn("docs_paths", comp)
+            self.assertIn("stage_excerpt", comp)
+            # stage_excerpt should be a non-empty string
+            excerpt = comp.get("stage_excerpt", "")
+            self.assertIsInstance(excerpt, str)
+            self.assertGreater(
+                len(excerpt), 0,
+                f"Component {comp['id']} should have non-empty stage_excerpt",
+            )
 
 
 # ---------------------------------------------------------------------------

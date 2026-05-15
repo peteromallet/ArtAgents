@@ -53,7 +53,14 @@ class OrchestratorDefinition:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return _drop_none(asdict(self))
+        data = _drop_none(asdict(self))
+        # Derive pack_id from qualified id
+        try:
+            from astrid.core.pack import qualified_id_pack_id
+            data["pack_id"] = qualified_id_pack_id(self.id)
+        except Exception:
+            pass
+        return data
 
     def to_json(self, *, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, sort_keys=True)
