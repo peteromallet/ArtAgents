@@ -107,13 +107,42 @@ def _cmd_new(args: argparse.Namespace, registry: Any) -> int:
 
     Short-circuits before ``load_default_registry()`` — never imports pack code.
     """
-    from astrid.core.executor.cli import _scaffold_component
+    from astrid.core.executor.cli import (
+        _QID_RE,
+        _TEST_RUN_PY_TEMPLATE,
+        _scaffold_component,
+    )
+
+    qualified_id: str = args.qualified_id
+
+    # Validate early so we can safely split for the plan-template format.
+    if not _QID_RE.fullmatch(qualified_id):
+        print(
+            f"orchestrators new: qualified id {qualified_id!r} must be "
+            f"'<pack>.<slug>' with letters/digits/underscore",
+            file=sys.stderr,
+        )
+        return 2
+
+    pack, slug = qualified_id.split(".", 1)
 
     return _scaffold_component(
-        qualified_id=args.qualified_id,
+        qualified_id=qualified_id,
         component_type="orchestrator",
         yaml_template=_ORCHESTRATOR_YAML_TEMPLATE,
         run_py_template=_RUN_PY_TEMPLATE,
+        extra_files={
+            "plan_template.py": _ORCHESTRATOR_PLAN_TEMPLATE.format(
+                qualified_id=qualified_id,
+                pack=pack,
+                slug=slug,
+            ),
+            "tests/__init__.py": "",
+            "tests/test_run.py": _TEST_RUN_PY_TEMPLATE.format(
+                qualified_id=qualified_id,
+                component_type="orchestrator",
+            ),
+        },
     )
 
 
@@ -136,26 +165,133 @@ runtime:
 """
 
 _RUN_PY_TEMPLATE = """\
-\"\"\"{qualified_id} — orchestrator runtime entrypoint.
+\"""\{qualified_id} — orchestrator runtime entrypoint.
 
 Implement your orchestrator logic here. The function named ``main`` (or
 whatever you set for ``runtime.callable`` in the manifest) is the entrypoint.
-\"\"\"
+
+Example invocation::
+
+    python3 -m astrid orchestrators run {qualified_id} -- --my-flag
+\"""
+
+import argparse
+import sys
 
 
-def main(*, inputs: dict, outputs: dict, **kwargs) -> int:
-    \"\"\"Entrypoint for {qualified_id}.
+def main(argv: list[str] | None = None) -> int:
+    \"""Entrypoint for {qualified_id}.
 
-    Args:
-        inputs: Dict of resolved input values (name → path/value).
-        outputs: Dict to populate with output values (name → path/value).
-        **kwargs: Runtime context (project, brief, etc.).
+    Parses CLI arguments and runs the orchestrator logic.  In dry-run mode
+    the command is printed but not executed.
 
-    Returns:
-        Exit code (0 on success, non-zero on failure).
-    \"\"\"
+    Use ``--`` to pass orchestrator-specific args through the runner, e.g.::
+
+        python3 -m astrid orchestrators run {qualified_id} -- --my-flag
+    \"""
+    parser = argparse.ArgumentParser(
+        prog="{qualified_id}",
+        description="TODO: describe what this orchestrator does.",
+    )
+    parser.add_argument("--input", nargs="*", default=[],
+                        help="Input values as NAME=VALUE pairs.")
+    parser.add_argument("--out", default=None,
+                        help="Output directory for artifacts.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Print the command without executing it.")
+    # --- Add your own orchestrator-specific flags here ---
+    parser.add_argument("--my-flag", action="store_true",
+                        help="Example orchestrator-specific flag.")
+
+    args = parser.parse_args(argv)
+
+    if args.dry_run:
+        print(f"[dry-run] {qualified_id} would run with out={{args.out}}")
+        return 0
+
     # TODO: implement your orchestration logic here
+    print(f"{qualified_id}: running with out={{args.out}}")
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+"""
+
+
+_ORCHESTRATOR_PLAN_TEMPLATE = """\
+# {qualified_id} — plan v2 template
+#
+# This file defines ``build_plan_v2``, the function that produces the plan
+# dict emitted by the orchestrator runner.  Import helpers from
+# ``astrid.core.orchestrator.plan_v2`` so you don't need to copy-paste the
+# emit / step-command / produces boilerplate into your pack.
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Any
+
+from astrid.core.orchestrator.plan_v2 import (
+    emit_plan_json,
+    build_step_command,
+    make_produces,
+)
+
+
+def build_plan_v2(
+    *,
+    python_exec: str,
+    run_root: str | Path,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    \"\"\"Return a minimal valid plan-v2 dict.
+
+    This stub produces a single ``adapter: local`` step.  Replace the
+    placeholder command and expand the step list to match your pipeline.
+    \"\"\"
+    run_root = Path(run_root)
+
+    # TODO: replace this placeholder with your real step command.
+    # Use ``build_step_command`` or construct the command string directly.
+    step_id = \"hello\"
+    command = f\"{{python_exec}} -c 'print(\\\"hello from {{qualified_id}}\\\")' --out {{run_root}}/steps/{{step_id}}/v1/produces\"
+
+    plan: dict[str, Any] = {{
+        \"plan_id\": \"{qualified_id}\",
+        \"version\": 2,
+        \"steps\": [
+            {{
+                \"id\": step_id,
+                \"adapter\": \"local\",
+                \"command\": command,
+                \"produces\": {{
+                    # TODO: replace with your real produces path(s).
+                    \"hello_output\": {{
+                        \"path\": \"hello.txt\",
+                        \"check\": {{
+                            \"check_id\": \"file_nonempty\",
+                            \"params\": {{}},
+                            \"sentinel\": False,
+                        }},
+                    }}
+                }},
+            }}
+        ],
+    }}
+    return plan
+
+
+if __name__ == \"__main__\":
+    # Quick smoke-test: build a plan and emit it to a temp path.
+    import tempfile
+
+    run_root = Path(tempfile.mkdtemp(prefix=\"plan-test-\"))
+    plan = build_plan_v2(python_exec=sys.executable, run_root=run_root)
+    plan_path = run_root / \"plan.json\"
+    emit_plan_json(plan, plan_path)
+    print(f\"plan emitted to {{plan_path}}\")
 """
 
 

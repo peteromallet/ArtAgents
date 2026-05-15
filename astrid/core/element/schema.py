@@ -179,10 +179,20 @@ def _element_manifest_path(root: Path) -> Path | None:
 
 def _read_manifest(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ElementValidationError(f"{path}: invalid manifest JSON: {exc.msg}") from exc
+    suffix = path.suffix.lower()
+    if suffix in (".yaml", ".yml"):
+        try:
+            import yaml as _yaml
+            data = _yaml.safe_load(text)
+        except ImportError:
+            raise ElementValidationError(f"{path}: YAML support requires PyYAML") from None
+        except Exception as exc:
+            raise ElementValidationError(f"{path}: invalid manifest YAML: {exc}") from exc
+    else:
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ElementValidationError(f"{path}: invalid manifest JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
         raise ElementValidationError(f"{path} must contain an object")
     return data

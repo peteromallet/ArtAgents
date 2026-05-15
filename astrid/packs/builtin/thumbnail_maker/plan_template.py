@@ -121,12 +121,7 @@ def build_plan_v2(
     return plan
 
 
-def emit_plan_json(plan: dict[str, Any], path: str | Path) -> None:
-    """Write a plan dict as canonical JSON to *path*."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(plan, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    path.write_text(payload, encoding="utf-8")
+from astrid.core.orchestrator.plan_v2 import emit_plan_json  # noqa: F811 — shared helper
 
 
 def _build_resolve_cmd(

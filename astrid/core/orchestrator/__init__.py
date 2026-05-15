@@ -23,6 +23,13 @@ from .runtime import (
     resolve_orchestrator_runtime,
     resolve_python_module_from_file,
 )
+from .plan_v2 import (
+    PlanStep,
+    PlanV2,
+    build_step_command,
+    emit_plan_json,
+    make_produces,
+)
 from .schema import (
     CachePolicy,
     CommandSpec,
@@ -52,6 +59,11 @@ __all__ = [
     "OrchestratorRuntimeResolutionError",
     "OrchestratorSpec",
     "OrchestratorValidationError",
+    "PlanStep",
+    "PlanV2",
+    "build_step_command",
+    "emit_plan_json",
+    "make_produces",
     "Output",
     "Port",
     "RuntimeSpec",

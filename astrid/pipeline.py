@@ -183,9 +183,9 @@ def _verb_is_unbound_allowlisted(raw: list[str]) -> bool:
     # 'packs' is builder-facing and sessionless (T5).
     if top in {"attach", "init", "status", "packs"}:
         return True
-    # FLAG-S1-002: executors new / orchestrators new are builder-facing
+    # FLAG-S1-002: executors new / orchestrators new / elements new are builder-facing
     # scaffold commands that short-circuit before registry loading (T6).
-    if top in ("executors", "orchestrators") and len(raw) >= 2 and raw[1] == "new":
+    if top in ("executors", "orchestrators", "elements") and len(raw) >= 2 and raw[1] == "new":
         return True
     # Sprint 2 (T5): executors/orchestrators/elements list|search|inspect|validate
     # are unbound-allowed ONLY with --pack-root and WITHOUT --project.

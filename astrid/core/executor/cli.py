@@ -138,11 +138,19 @@ def _cmd_new(args: argparse.Namespace, registry: Any) -> int:
 
     Short-circuits before ``load_default_registry()`` — never imports pack code.
     """
+    qualified_id: str = args.qualified_id
     return _scaffold_component(
-        qualified_id=args.qualified_id,
+        qualified_id=qualified_id,
         component_type="executor",
         yaml_template=_EXECUTOR_YAML_TEMPLATE,
         run_py_template=_RUN_PY_TEMPLATE,
+        extra_files={
+            "tests/__init__.py": "",
+            "tests/test_run.py": _TEST_RUN_PY_TEMPLATE.format(
+                qualified_id=qualified_id,
+                component_type="executor",
+            ),
+        },
     )
 
 
@@ -151,6 +159,8 @@ def _scaffold_component(
     component_type: str,
     yaml_template: str,
     run_py_template: str,
+    *,
+    extra_files: dict[str, str] | None = None,
 ) -> int:
     """Shared scaffolding logic for executors new / orchestrators new.
 
@@ -159,6 +169,8 @@ def _scaffold_component(
         component_type: ``'executor'`` or ``'orchestrator'``.
         yaml_template: str.format template for the component manifest.
         run_py_template: str.format template for run.py stub.
+        extra_files: Optional mapping of filename → already-formatted content
+            to write into the component directory (e.g., ``plan_template.py``).
 
     Returns:
         Exit code (0 on success, non-zero on failure).
@@ -245,6 +257,13 @@ def _scaffold_component(
     stage_md_path.write_text(stage_md_text, encoding="utf-8")
     created.append(str(stage_md_path.relative_to(pack_root)))
 
+    # Extra files (e.g., plan_template.py for orchestrators, tests/)
+    for filename, content in (extra_files or {}).items():
+        extra_path = component_dir / filename
+        extra_path.parent.mkdir(parents=True, exist_ok=True)
+        extra_path.write_text(content, encoding="utf-8")
+        created.append(str(extra_path.relative_to(pack_root)))
+
     # --- 6. Validate the pack after scaffolding --------------------------------
     errors, warnings = validate_pack(pack_root)
     if errors:
@@ -294,34 +313,82 @@ runtime:
 """
 
 _RUN_PY_TEMPLATE = """\
-\"\"\"{qualified_id} — {component_type} runtime entrypoint.
+\"""\{qualified_id} — {component_type} runtime entrypoint.
 
 Implement your {component_type} logic here. The function named ``main`` (or
 whatever you set for ``runtime.callable`` in the manifest) is the entrypoint.
-\"\"\"
+
+Example invocation::
+
+    python3 -m astrid {component_type}s run {qualified_id} --out /tmp/out
+\"""
+
+import argparse
+import sys
 
 
-def main(*, inputs: dict, outputs: dict, **kwargs) -> int:
-    \"\"\"Entrypoint for {qualified_id}.
+def main(argv: list[str] | None = None) -> int:
+    \"""Entrypoint for {qualified_id}.
 
-    Args:
-        inputs: Dict of resolved input values (name → path/value).
-        outputs: Dict to populate with output values (name → path/value).
-        **kwargs: Runtime context (project, brief, etc.).
+    Parses CLI arguments and runs the {component_type} logic.  In dry-run mode
+    the command is printed but not executed.
+    \"""
+    parser = argparse.ArgumentParser(
+        prog="{qualified_id}",
+        description="TODO: describe what this {component_type} does.",
+    )
+    parser.add_argument("--input", nargs="*", default=[],
+                        help="Input values as NAME=VALUE pairs.")
+    parser.add_argument("--out", default=None,
+                        help="Output directory for artifacts.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Print the command without executing it.")
+    # --- Add your own {component_type}-specific flags here ---
+    parser.add_argument("--my-flag", action="store_true",
+                        help="Example {component_type}-specific flag.")
 
-    Returns:
-        Exit code (0 on success, non-zero on failure).
-    \"\"\"
-    # TODO: implement your logic here
+    args = parser.parse_args(argv)
+
+    if args.dry_run:
+        print(f"[dry-run] {qualified_id} would run with out={{args.out}}")
+        return 0
+
+    # TODO: implement your {component_type} logic here
+    print(f"{qualified_id}: running with out={{args.out}}")
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 """
 
 _STAGE_MD_TEMPLATE = """\
 # {qualified_id}
 
+## Quick Start
+
+```bash
+python3 -m astrid {component_type}s run {qualified_id} --dry-run
+```
+
 ## Purpose
 
 TODO: describe what this {component_type} does and when to use it.
+
+## Example Invocation
+
+```bash
+python3 -m astrid {component_type}s run {qualified_id} --out /tmp/out
+```
+
+## Option Reference
+
+| Flag          | Description                                 |
+|---------------|---------------------------------------------|
+| `--input`     | Input values as NAME=VALUE pairs.           |
+| `--out`       | Output directory for artifacts.             |
+| `--dry-run`   | Print the command without executing it.     |
+| `--my-flag`   | Example {component_type}-specific flag.     |
 
 ## Inputs
 
@@ -335,6 +402,24 @@ TODO: list the outputs this {component_type} produces.
 
 TODO: any Python, npm, or system dependencies.
 """
+
+_TEST_RUN_PY_TEMPLATE = '''\
+"""Basic smoke test for {qualified_id}."""
+import subprocess
+import sys
+
+
+def test_dry_run() -> None:
+    """Verify the {component_type} runs in dry-run mode without errors."""
+    result = subprocess.run(
+        [sys.executable, "-m", "astrid", "{component_type}s", "run",
+         "{qualified_id}", "--dry-run"],
+        capture_output=True,
+        text=True,
+    )
+    # TODO: assert on expected behavior
+    assert result.returncode == 0, f"dry-run failed: {{result.stderr}}"
+'''
 
 
 def _banodoco_config_from_args(args: argparse.Namespace) -> BanodocoCatalogConfig:

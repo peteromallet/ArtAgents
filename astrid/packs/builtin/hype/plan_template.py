@@ -184,16 +184,7 @@ def build_plan_v2(
     return plan
 
 
-def emit_plan_json(plan: dict[str, Any], path: str | Path) -> None:
-    """Write a plan dict as canonical JSON to *path*.
-
-    Round-trips through :func:`astrid.core.task.plan.compute_plan_hash`
-    (stable v2 hash). Uses ``canonical_event_json``-style sorted keys.
-    """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(plan, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    path.write_text(payload, encoding="utf-8")
+from astrid.core.orchestrator.plan_v2 import emit_plan_json  # noqa: F811 — shared helper
 
 
 def _build_transcribe_cmd(

@@ -19,7 +19,10 @@ python3 -m astrid executors new my_video_tools.transcribe
 # 4. Add an orchestrator
 python3 -m astrid orchestrators new my_video_tools.make_highlight_reel
 
-# 5. Validate everything
+# 5. Add an element
+python3 -m astrid elements new effects my_video_tools.my_effect
+
+# 6. Validate everything
 python3 -m astrid packs validate .
 # valid: /path/to/my_video_tools
 ```
@@ -110,6 +113,35 @@ additional fields for:
 
 Refer to `orchestrator.json` for the full field list.
 
+### Element Manifest (`element.yaml`)
+
+An element is a visual building block — an effect, animation, or
+transition. Each element manifest declares:
+
+- **Identity**: `id` (slug only, e.g., `my_effect`), `kind` (singular:
+  `effect`, `animation`, or `transition`), `pack_id` (the owning pack).
+- **Inputs and outputs**: a JSON Schema `schema` and `defaults` for
+  parameter values.
+- **Dependencies**: JS packages and Python requirements.
+
+The CLI uses plural kind names (`effects`, `animations`, `transitions`)
+while the manifest `kind` field uses the singular form. Scaffold with:
+
+```bash
+python3 -m astrid elements new effects my_pack.my_effect
+```
+
+The scaffolded directory contains:
+
+```text
+elements/effects/my_effect/
+  element.yaml     # Element manifest (required)
+  component.tsx    # React component stub
+  STAGE.md         # Component staging notes
+```
+
+Refer to `element.json` for the full field list.
+
 ## Scaffold Flow
 
 The recommended workflow for creating a pack:
@@ -128,14 +160,20 @@ The recommended workflow for creating a pack:
 3. **`orchestrators new <pack>.<slug>`** — Same as above for
    orchestrator components.
 
-4. **`packs validate <path>`** — Validates the entire pack statically:
+4. **`elements new <kind> <pack>.<slug>`** — Scaffolds a new element
+   component: `element.yaml`, `component.tsx`, and `STAGE.md` inside
+   the element content root. The `<kind>` argument is plural
+   (`effects`, `animations`, or `transitions`). Must be run from
+   inside the pack directory.
+
+5. **`packs validate <path>`** — Validates the entire pack statically:
    checks that all manifests parse, conform to their JSON Schemas,
    have known `schema_version` values, and that declared content
    roots, docs, and runtime entrypoint files exist on disk.
 
 All scaffold commands validate their output. A round-trip of
 `packs new` → `executors new` → `orchestrators new` →
-`packs validate` should succeed with zero errors.
+`elements new` → `packs validate` should succeed with zero errors.
 
 ## Validation
 
@@ -193,16 +231,30 @@ The ``--pack-root`` flag must appear **before** the subcommand (e.g.,
 This example lives at the repo root and is *not* a built-in
 discovered pack — it demonstrates the external pack contract.
 
-## Legacy Templates
+## Plan-v2 Builder
 
-The `docs/templates/` directory contains JSON-shaped templates for the
-*internal* built-in pack format. These templates describe the legacy
-manifest shape used by built-in executors, orchestrators, and elements
-inside `astrid/packs/`. They are **not** modified during Sprint 1 and
-remain the reference for the built-in format.
+Orchestrator scaffolds include a `plan_template.py` that imports from
+`astrid.core.orchestrator.plan_v2`. This shared module provides:
 
-The new v1 external pack contract described in this document is a
-separate path. The canonical external example is `examples/packs/minimal/`.
+- `emit_plan_json(plan, path)` — serialize a plan dict as canonical JSON.
+- `build_step_command(python_exec, run_root, step_id, module_path)` —
+  construct a step command following the canonical runtime path pattern.
+- `make_produces(path)` — create a minimal `produces` block with a
+  `file_nonempty` check.
+- `PlanStep` and `PlanV2` TypedDicts for type-safe plan construction.
+
+See the module docstring in `astrid/core/orchestrator/plan_v2.py` for
+the full API.
+
+## Canonical Reference
+
+The scaffolded output from `packs new` / `executors new` /
+`orchestrators new` / `elements new` is the canonical reference for
+pack structure. See the Quick Start section above.
+
+The `docs/templates/` directory contains legacy templates from the
+pre-Sprint-1 internal format and is retained for historical reference
+only.
 
 ## Next Steps
 
@@ -217,4 +269,4 @@ After creating and validating your pack:
 
 ---
 
-*Last updated: Sprint 1 (Pack Contract and Validation)*
+*Last updated: Sprint 5*

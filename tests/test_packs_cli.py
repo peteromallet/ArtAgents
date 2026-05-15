@@ -121,6 +121,18 @@ def _run_orchestrators(*args: str, cwd: str, check: bool = False) -> subprocess.
     )
 
 
+def _run_elements(*args: str, cwd: str, check: bool = False) -> subprocess.CompletedProcess:
+    """Run an elements subcommand in the given CWD with astrid importable."""
+    return subprocess.run(
+        [sys.executable, "-m", "astrid", "elements", *args],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        env=_astrid_env(),
+        check=check,
+    )
+
+
 class TestPacksValidateCLI(unittest.TestCase):
     """Prove: packs validate examples/packs/minimal exits 0."""
 
@@ -388,6 +400,65 @@ class TestScaffoldAndValidateRoundTrip(unittest.TestCase):
             errors, warnings = validate_pack(pack_dir)
             self.assertEqual(errors, [], f"Scaffolded pack should validate cleanly: {errors}")
 
+    def test_full_scaffold_round_trip_with_elements(self) -> None:
+        """Prove: packs new → elements new effects → packs validate exits 0."""
+        with ScratchPackFixture(self) as tmp:
+            cwd = str(tmp)
+
+            # 1. packs new
+            result = _run_packs("new", "my_pack", cwd=cwd)
+            self.assertEqual(result.returncode, 0, f"packs new failed: {result.stderr!r}")
+            pack_root = tmp / "my_pack"
+            self.assertTrue(pack_root.is_dir())
+
+            # 2. elements new effects
+            result = _run_elements(
+                "new", "effects", "my_pack.my_effect",
+                cwd=str(pack_root),
+            )
+            self.assertEqual(
+                result.returncode, 0,
+                f"elements new failed: stderr={result.stderr!r}",
+            )
+            elem_dir = pack_root / "elements" / "effects" / "my_effect"
+            self.assertTrue(elem_dir.is_dir())
+            self.assertTrue((elem_dir / "element.yaml").is_file())
+            self.assertTrue((elem_dir / "component.tsx").is_file())
+            self.assertTrue((elem_dir / "STAGE.md").is_file())
+
+            # 3. Validate
+            result = _run_packs("validate", str(pack_root), cwd=str(pack_root))
+            self.assertEqual(result.returncode, 0,
+                           f"CLI validate should exit 0; stderr: {result.stderr!r}")
+            self.assertIn("valid:", result.stdout)
+
+    def test_zero_touch_round_trip_with_elements(self) -> None:
+        """Prove: packs new → executors new → orchestrators new → elements new → validate all passes."""
+        with ScratchPackFixture(self) as tmp:
+            cwd = str(tmp)
+
+            # 1. packs new
+            result = _run_packs("new", "my_pack", cwd=cwd)
+            self.assertEqual(result.returncode, 0, f"packs new failed: {result.stderr!r}")
+            pack_root = tmp / "my_pack"
+
+            # 2. executors new
+            result = _run_executors("new", "my_pack.my_exec", cwd=str(pack_root))
+            self.assertEqual(result.returncode, 0, f"executors new failed: {result.stderr!r}")
+
+            # 3. orchestrators new
+            result = _run_orchestrators("new", "my_pack.my_orch", cwd=str(pack_root))
+            self.assertEqual(result.returncode, 0, f"orchestrators new failed: {result.stderr!r}")
+
+            # 4. elements new effects
+            result = _run_elements("new", "effects", "my_pack.my_effect", cwd=str(pack_root))
+            self.assertEqual(result.returncode, 0, f"elements new failed: {result.stderr!r}")
+
+            # 5. Validate all
+            errors, warnings = validate_pack(pack_root)
+            self.assertEqual(errors, [],
+                           f"Zero-touch scaffolded pack should validate cleanly: {errors}")
+
 
 class TestScaffoldRejections(unittest.TestCase):
     """Prove: scaffolds reject invalid ids, missing targets, and overwrites."""
@@ -480,6 +551,57 @@ class TestScaffoldRejections(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("already exists", result.stderr.lower())
 
+    # ------------------------------------------------------------------
+    # Elements rejection tests
+    # ------------------------------------------------------------------
+
+    def test_elements_new_rejects_invalid_qualified_id_bad_id(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack(tmp, "my_pack")
+            result = _run_elements("new", "effects", "bad-id", cwd=str(pack_dir))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must be", result.stderr.lower())
+
+    def test_elements_new_rejects_invalid_qualified_id_dot_name(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack(tmp, "my_pack")
+            # dot.name matches _QID_RE so it reaches the pack-id-mismatch check
+            result = _run_elements("new", "effects", "dot.name", cwd=str(pack_dir))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("pack id mismatch", result.stderr.lower())
+
+    def test_elements_new_rejects_missing_pack(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            result = _run_elements("new", "effects", "nonexistent.my_effect", cwd=str(tmp))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("pack.yaml not found", result.stderr)
+
+    def test_elements_new_rejects_pack_id_mismatch(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack(tmp, "my_pack")
+            result = _run_elements("new", "effects", "other_pack.my_effect", cwd=str(pack_dir))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("pack id mismatch", result.stderr.lower())
+
+    def test_elements_new_rejects_overwrite(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack(tmp, "my_pack")
+
+            # First scaffold succeeds
+            result = _run_elements("new", "effects", "my_pack.my_effect", cwd=str(pack_dir))
+            self.assertEqual(result.returncode, 0)
+
+            # Second scaffold fails
+            result = _run_elements("new", "effects", "my_pack.my_effect", cwd=str(pack_dir))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("already exists", result.stderr.lower())
+
+    def test_elements_new_rejects_invalid_kind(self) -> None:
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack(tmp, "my_pack")
+            result = _run_elements("new", "nonexistent_kind", "my_pack.my_slug", cwd=str(pack_dir))
+            self.assertNotEqual(result.returncode, 0)
+
 
 class TestScaffoldFixture(unittest.TestCase):
     """Fixture that builds a temp pack via scaffolds, validates it, and checks created file list."""
@@ -503,6 +625,11 @@ class TestScaffoldFixture(unittest.TestCase):
     EXPECTED_ORCHESTRATOR_FILES = {
         "orchestrator.yaml",
         "run.py",
+        "STAGE.md",
+    }
+    EXPECTED_ELEMENT_FILES = {
+        "element.yaml",
+        "component.tsx",
         "STAGE.md",
     }
 
@@ -584,6 +711,54 @@ class TestScaffoldFixture(unittest.TestCase):
             self.assertEqual(
                 errors, [],
                 f"Zero-touch scaffolded pack should validate cleanly: {errors}",
+            )
+
+    def test_element_manifest_field_correctness(self) -> None:
+        """Verify scaffolded element.yaml has id=slug, kind=singular, pack_id=pack name."""
+        import yaml as _yaml
+
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack_in(tmp, "test_pack")
+
+            _run_elements("new", "effects", "test_pack.my_effect", cwd=str(pack_dir), check=True)
+
+            elem_yaml = pack_dir / "elements" / "effects" / "my_effect" / "element.yaml"
+            self.assertTrue(elem_yaml.is_file(), "element.yaml should exist")
+
+            doc = _yaml.safe_load(elem_yaml.read_text(encoding="utf-8"))
+            self.assertIsInstance(doc, dict)
+            self.assertEqual(doc.get("id"), "my_effect",
+                           "id must be slug-only, not qualified")
+            self.assertEqual(doc.get("kind"), "effect",
+                           "kind must be singular 'effect'")
+            self.assertEqual(doc.get("pack_id"), "test_pack",
+                           "pack_id must be the pack name")
+
+    def test_all_three_element_kinds_work(self) -> None:
+        """Test effects, animations, and transitions all produce valid output."""
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = self._scaffold_pack_in(tmp, "test_pack")
+
+            for kind in ("effects", "animations", "transitions"):
+                slug = f"my_{kind[:-1]}"  # my_effect, my_animation, my_transition
+                result = _run_elements("new", kind, f"test_pack.{slug}", cwd=str(pack_dir))
+                self.assertEqual(
+                    result.returncode, 0,
+                    f"elements new {kind} should succeed: {result.stderr!r}",
+                )
+                elem_dir = pack_dir / "elements" / kind / slug
+                for fname in self.EXPECTED_ELEMENT_FILES:
+                    path = elem_dir / fname
+                    self.assertTrue(
+                        path.is_file(),
+                        f"Expected {fname} in elements/{kind}/{slug}/",
+                    )
+
+            # Validate the pack with all three element kinds
+            errors, warnings = validate_pack(pack_dir)
+            self.assertEqual(
+                errors, [],
+                f"Pack with all three element kinds should validate cleanly: {errors}",
             )
 
 
@@ -685,6 +860,37 @@ class TestScaffoldResolverIntegration(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0)
             self.assertIn("test_pack.my_orch", result.stdout)
+
+    def test_scaffolded_element_listable_via_pack_root(self) -> None:
+        """Scaffolded elements appear in list via --pack-root."""
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_elements("new", "effects", "test_pack.my_effect", cwd=str(pack_dir), check=True)
+
+            result = _run_elements(
+                "--pack-root", str(pack_dir),
+                "list",
+                cwd=str(tmp),
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("my_effect", result.stdout)
+
+    def test_scaffolded_element_inspectable_via_pack_root(self) -> None:
+        """Scaffolded elements are inspectable via --pack-root."""
+        with ScratchPackFixture(self) as tmp:
+            pack_dir = _scaffold_pack_in_static(tmp, "test_pack")
+            _run_elements("new", "effects", "test_pack.my_effect", cwd=str(pack_dir), check=True)
+
+            result = _run_elements(
+                "--pack-root", str(pack_dir),
+                "inspect", "effects", "my_effect",
+                cwd=str(tmp),
+            )
+            self.assertEqual(
+                result.returncode, 0,
+                f"elements inspect with --pack-root should exit 0; stderr: {result.stderr!r}",
+            )
+            self.assertIn("my_effect", result.stdout)
 
 
 class TestCLIBackwardCompat(unittest.TestCase):
