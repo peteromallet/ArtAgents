@@ -500,6 +500,15 @@ def _build_full_inspect(
         "docs": trust_summary.get("docs", {}),
         "warnings": trust_summary.get("warnings", []),
         "agent": manifest.get("agent") if isinstance(manifest.get("agent"), dict) else None,
+        # Git-enriched and trust fields
+        "git_url": record.git_url,
+        "commit_sha": record.commit_sha,
+        "source_type": record.source_type,
+        "requested_ref": record.requested_ref,
+        "astrid_version": record.astrid_version,
+        "trust_tier": record.trust_tier,
+        "manifest_digest": record.manifest_digest,
+        "previous_active_revision": record.previous_active_revision,
     }
 
 
@@ -516,6 +525,39 @@ def _print_full_inspect(data: dict) -> None:
     desc = data.get("description")
     if desc:
         print(f"  Description:   {desc}")
+
+    # Git-enriched fields
+    git_url = data.get("git_url", "")
+    if git_url:
+        print(f"  Git URL:       {git_url}")
+
+    commit_sha = data.get("commit_sha", "")
+    if commit_sha:
+        print(f"  Commit SHA:    {commit_sha[:8]}")
+
+    source_type = data.get("source_type", "")
+    if source_type:
+        print(f"  Source Type:   {source_type}")
+
+    requested_ref = data.get("requested_ref", "")
+    if requested_ref:
+        print(f"  Requested Ref: {requested_ref}")
+
+    astrid_version = data.get("astrid_version", "")
+    if astrid_version:
+        print(f"  Astrid Ver:    {astrid_version}")
+
+    trust_tier = data.get("trust_tier", "")
+    if trust_tier:
+        print(f"  Trust Tier:    {trust_tier}")
+
+    manifest_digest = data.get("manifest_digest", "")
+    if manifest_digest:
+        print(f"  Manifest Hash: {manifest_digest}")
+
+    previous = data.get("previous_active_revision", "")
+    if previous:
+        print(f"  Prev Revision: {previous}")
 
     # Components
     counts = data.get("component_counts", {})
@@ -614,10 +656,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── install ──
     install_parser = subparsers.add_parser(
-        "install", help="Install a local external pack."
+        "install", help="Install a pack from a local directory or Git URL."
     )
     install_parser.add_argument(
-        "source", help="Path to the pack source directory."
+        "source", help="Path to the pack source directory or a Git URL."
     )
     install_parser.add_argument(
         "--dry-run", action="store_true",
@@ -666,6 +708,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip confirmation prompt."
     )
     uninstall_parser.set_defaults(handler=_handle_uninstall)
+
+    # ── rollback ──
+    rollback_parser = subparsers.add_parser(
+        "rollback", help="Rollback an installed pack to a previous revision."
+    )
+    rollback_parser.add_argument(
+        "pack_id", help="Pack identifier to rollback."
+    )
+    rollback_parser.add_argument(
+        "--revision",
+        help="Specific revision directory name to activate. "
+        "If omitted, shows an interactive numbered list.",
+    )
+    rollback_parser.add_argument(
+        "--yes", "-y", action="store_true",
+        help="Skip confirmation prompt."
+    )
+    rollback_parser.set_defaults(handler=_handle_rollback)
 
     return parser
 
@@ -731,6 +791,18 @@ def _handle_uninstall(args: argparse.Namespace) -> int:
     if args.yes:
         argv.append("--yes")
     return cmd_uninstall(argv)
+
+
+def _handle_rollback(args: argparse.Namespace) -> int:
+    """Handler for ``packs rollback``."""
+    from astrid.packs.install import cmd_rollback
+
+    argv = [args.pack_id]
+    if args.revision:
+        argv.extend(["--revision", args.revision])
+    if args.yes:
+        argv.append("--yes")
+    return cmd_rollback(argv)
 
 
 def main(argv: Optional[list[str]] = None) -> int:

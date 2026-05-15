@@ -64,6 +64,16 @@ class InstallRecord:
     dependencies: list[str] = field(default_factory=list)
     trust_summary: dict = field(default_factory=dict)
 
+    # Git-backed and trust fields (all defaulted for backward compat)
+    source_type: str = "local"  # "local" or "git"
+    git_url: str = ""  # durable Git URL (not temp checkout path)
+    commit_sha: str = ""  # pinned commit SHA (40 hex chars)
+    requested_ref: str = ""  # branch/tag requested at install time
+    astrid_version: str = ""  # from pack manifest data.get('astrid_version', '')
+    trust_tier: str = ""  # "local" or "git"
+    last_validation_time: str = ""  # ISO-8601 UTC of last validation
+    previous_active_revision: str = ""  # revision dir name replaced during force-install
+
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -255,6 +265,144 @@ class InstalledPackStore:
                 shutil.rmtree(astrid_meta, ignore_errors=True)
         else:
             shutil.rmtree(root, ignore_errors=True)
+
+    # -- revision management --------------------------------------------------
+
+    def list_revisions(self, pack_id: str) -> list[Path]:
+        """Return all revision directories for *pack_id*, newest-first.
+
+        Lists every directory under ``<pack_id>/revisions/``.  Directories
+        are sorted by modification time (descending) so the most recently
+        touched revision appears first.
+
+        Returns an empty list when no revisions exist (e.g. the pack has
+        never been installed or the revisions directory was removed).
+        """
+        rev_dir = self.revisions_dir(pack_id)
+        if not rev_dir.is_dir():
+            return []
+        entries = [p for p in rev_dir.iterdir() if p.is_dir()]
+        # Sort newest-first by modification time
+        entries.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return entries
+
+    def _read_revision_record(
+        self, pack_id: str, revision_dir_name: str
+    ) -> InstallRecord | None:
+        """Read the install.json from a specific revision directory.
+
+        Unlike :meth:`_read_active_record`, this reads the record for
+        *any* revision — active, inactive, or rotated-out — as long as
+        its directory still exists under ``revisions/``.
+
+        Returns ``None`` when the revision directory (or its
+        ``.astrid/install.json``) is missing or unparseable.
+        """
+        rev_path = self.revisions_dir(pack_id) / revision_dir_name
+        record_path = rev_path / ".astrid" / "install.json"
+        if not record_path.is_file():
+            return None
+        try:
+            data = _json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError):
+            return None
+        try:
+            return InstallRecord.from_dict(data)
+        except (TypeError, Exception):
+            return None
+
+    def _mark_revision_inactive(self, pack_id: str, revision_dir_name: str) -> None:
+        """Write ``active=False`` into the revision's install.json.
+
+        If the revision record cannot be read (missing directory, corrupt
+        JSON, etc.) the call is silently ignored — it is always safe to
+        call this on a revision that may no longer exist.
+
+        Writes directly to the revision's install.json (not via
+        :meth:`record_install`) because renamed revisions have a
+        ``record.revision`` field that no longer matches the on-disk
+        directory name.
+        """
+        record = self._read_revision_record(pack_id, revision_dir_name)
+        if record is None:
+            return
+        record.active = False
+        self._write_revision_record(pack_id, revision_dir_name, record)
+
+    def _mark_revision_active(self, pack_id: str, revision_dir_name: str) -> None:
+        """Write ``active=True`` into the revision's install.json.
+
+        Symmetric counterpart to :meth:`_mark_revision_inactive`.  Called
+        during rollback to ensure the newly-activated revision's on-disk
+        metadata reflects its active status.
+
+        Writes directly to the revision's install.json (not via
+        :meth:`record_install`) for the same reason as
+        :meth:`_mark_revision_inactive`.
+        """
+        record = self._read_revision_record(pack_id, revision_dir_name)
+        if record is None:
+            return
+        record.active = True
+        self._write_revision_record(pack_id, revision_dir_name, record)
+
+    def _write_revision_record(
+        self, pack_id: str, revision_dir_name: str, record: InstallRecord,
+    ) -> None:
+        """Persist *record* to ``<revision_dir_name>/.astrid/install.json``.
+
+        Unlike :meth:`record_install` (which writes to
+        ``<record.revision>/.astrid/install.json``), this method writes to
+        the directory whose name is *revision_dir_name*, which is correct
+        for renamed (timestamped) revision directories.
+        """
+        rev_dir = self.revisions_dir(pack_id) / revision_dir_name
+        astrid_dir = rev_dir / ".astrid"
+        astrid_dir.mkdir(parents=True, exist_ok=True)
+        record_path = astrid_dir / "install.json"
+        record_path.write_text(
+            _json.dumps(record.to_dict(), indent=2, default=str),
+            encoding="utf-8",
+        )
+
+    def rollback_to_revision(self, pack_id: str, revision_dir_name: str) -> None:
+        """Activate an existing revision and deactivate the currently-active one.
+
+        Validates that the target revision directory exists, marks the old
+        active revision inactive (if any), marks the target revision
+        active, and repoints the ``active`` symlink at the target.
+
+        Raises:
+            FileNotFoundError: If *revision_dir_name* does not exist under
+                ``<pack_id>/revisions/``.
+        """
+        target_path = self.revisions_dir(pack_id) / revision_dir_name
+        if not target_path.is_dir():
+            raise FileNotFoundError(
+                f"Revision {revision_dir_name!r} does not exist for pack {pack_id!r}"
+            )
+
+        old_active = self.active_revision_path(pack_id)
+
+        # If already pointing at the target there is nothing to do.
+        if old_active is not None and old_active.resolve(strict=False) == target_path.resolve(strict=False):
+            return
+
+        # 1. Deactivate the old revision (if any).
+        if old_active is not None:
+            self._mark_revision_inactive(pack_id, old_active.name)
+
+        # 2. Activate the target revision.
+        self._mark_revision_active(pack_id, revision_dir_name)
+
+        # 3. Repoint the active symlink.
+        link = self.active_symlink_path(pack_id)
+        target_relative = Path("revisions") / revision_dir_name
+        try:
+            link.unlink(missing_ok=True)
+        except OSError:
+            pass
+        link.symlink_to(target_relative)
 
     # -- internal helpers ----------------------------------------------------
 
