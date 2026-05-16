@@ -1,13 +1,14 @@
 {
+  "schema_version": 1,
   "id": "builtin.example",
   "name": "Example",
-  "kind": "built_in",
+  "kind": "external",
   "version": "1.0",
   "short_description": "One-sentence verb-first workflow summary (≤120 chars).",
   "description": "Longer description of the workflow this orchestrator coordinates (≤500 chars).",
   "keywords": ["example", "workflow"],
   "runtime": {
-    "kind": "command",
+    "type": "command",
     "command": {
       "argv": [
         "{python_exec}",

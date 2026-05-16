@@ -6,6 +6,59 @@ v1 manifests, structured component layout). This document records the
 compatibility gaps surfaced during migration and the temporary fields that
 remain pending Sprint 9 follow-up.
 
+## Status — closed in Sprint 9 (HEAD `c40c14f`)
+
+Sprint 9 lands the remaining Sprint 8 gaps. Closure summary:
+
+| Gap | Status | Sprint 9 landing                                                                                                                                                  |
+| --- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3   | closed | Legacy top-level `command:` removed from every seinfeld manifest (and every builtin/external manifest). Runner reads from `runtime.command.argv` exclusively.    |
+| 4   | closed | Orchestrator `runtime.kind` removed in favour of `runtime.type`. `lora_train` orchestrator manifest no longer carries the collision.                              |
+| 5   | closed | `additionalProperties: false` re-enabled on both `executor.json` and `orchestrator.json` v1 schemas. Every shipped manifest validates under the strict schema.   |
+| 7   | closed | `kind: built_in` replaced with `kind: external` on every seinfeld component. Runtime dispatch already routed through `_run_external_executor`; rename is now semantic-honest. |
+| 8   | closed | `pack.yaml` parser surgery — nested-YAML `content:` block is now read by the same code path that the resolver uses; the legacy `_parse_flat_yaml` rejection is gone. |
+
+Sprint 9 also lands the following structural changes that affect this pack
+(and every other pack) — not gaps per se, but worth recording here for the
+migration audit trail:
+
+- **In-process → subprocess dispatch.** `astrid run executor <id>` now
+  shells out via the manifest's `runtime.command.argv` for every executor.
+  The hype orchestrator's *internal* pipeline composition (the
+  `build_pool_steps` graph that runs transcribe → … → validate) stays
+  in-process; only direct executor invocation changed.
+- **`build_pipeline_context` re-export removed** from
+  `astrid/core/executor/__init__.py`. The symbol now lives only on its
+  defining module; nothing outside the hype orchestrator package should
+  import it.
+- **Hype orchestrator helpers internalised.** `_optional_asset_path` and
+  `_parse_asset_pairs` moved out of `astrid/core/orchestrator/runner.py`
+  and into `astrid/packs/builtin/orchestrators/hype/_pipeline.py`, where
+  the only callers live.
+- **`qualified_id` regex relaxed** in the v1 schema (`_defs.json`) to
+  permit multi-segment dotted ids. Existing 3-segment ids such as
+  `external.runpod.exec`, `external.runpod.provision`,
+  `external.vibecomfy.run` keep working without aliases.
+- **Per-executor argv inventory** captured at
+  `docs/git-backed-packs/sprint-09/builtin-argv-inventory.md`. That artifact
+  is the source of truth for the strict-schema rewrite of every builtin
+  manifest's `runtime.command.argv` and the eventual cleanup of stale
+  flags.
+- **Phase 8 parity anchor**: `asset_cache` was chosen as the named builtin
+  whose end-to-end subprocess invocation is exercised by the new portfolio
+  parity test. Rationale: stdlib-only, no OpenAI/ffmpeg dependencies, and
+  an `HYPE_CACHE_DIR` env knob the test points at `tmp_path` so the prune
+  scan exits cleanly. `transcribe` was **rejected** as an anchor because
+  it imports the `openai` SDK and requires `OPENAI_API_KEY` + ffmpeg on
+  PATH before any short-circuit can run. `validate` was **rejected**
+  because it consumes rendered hype output (`--video --metadata
+  --timeline`) and cannot be exercised standalone without first running
+  the full pipeline.
+
+The remainder of this document is the original Sprint 8 gap log, kept as
+historical record. Gaps 1, 2, and 6 are structural (not landings) and
+remain accurate as written.
+
 ## Gap 1 — Flat → structured content layout
 
 `pack.yaml` originally declared:
@@ -112,3 +165,10 @@ sprint. Callers that need to read pack.yaml for the seinfeld pack should
 use the resolver-internal path (`_load_pack_manifest_resolver`) or call
 `yaml.safe_load` directly, consistent with how `extract_trust_summary()`
 already handles nested manifests.
+
+## Sprint 9 Phase 6 Step 12 — no aliases needed
+
+Sprint 9 renamed zero seinfeld public ids; every `seinfeld.<slug>` id from
+Sprint 8 is preserved unchanged. See
+`docs/git-backed-packs/sprint-09/migration-aliases.md` for the cross-pack
+audit.

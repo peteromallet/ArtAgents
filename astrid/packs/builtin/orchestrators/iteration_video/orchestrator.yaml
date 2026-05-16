@@ -33,7 +33,7 @@
     "pipeline",
     "hype"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "inspect_entrypoint": "main inspect",
     "runtime_entrypoint": "run_orchestrator",

@@ -1,7 +1,8 @@
 {
+  "schema_version": 1,
   "id": "builtin.example",
   "name": "Example",
-  "kind": "built_in",
+  "kind": "external",
   "version": "1.0",
   "short_description": "One-sentence verb-first capability summary (≤120 chars).",
   "description": "Longer description of the concrete unit of work this executor performs (≤500 chars).",
@@ -20,16 +21,19 @@
       "path_template": "{out}/result.json"
     }
   ],
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.example.run",
-      "--input",
-      "{input}",
-      "--out",
-      "{out}/result.json"
-    ]
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.example.run",
+        "--input",
+        "{input}",
+        "--out",
+        "{out}/result.json"
+      ]
+    }
   },
   "cache": {
     "mode": "none"

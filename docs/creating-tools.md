@@ -119,25 +119,31 @@ must equal the owning pack's id (e.g. `builtin.cut` lives in `packs/builtin/`,
 `external.vibecomfy.run` lives in `packs/external/`). Element ids stay bare and
 are scoped by `kind` (`effects`, `animations`, `transitions`).
 
-Executor folders use:
+Executor folders use the structured layout under a declared
+`content.executors` root:
 
 ```text
-astrid/packs/<pack>/<name>/
+astrid/packs/<pack>/executors/<name>/
   executor.yaml      # id: "<pack>.<name>"
   run.py
   STAGE.md
   src/               optional private helper package
 ```
 
-Orchestrator folders use:
+Orchestrator folders use the matching structured layout under a
+declared `content.orchestrators` root:
 
 ```text
-astrid/packs/<pack>/<name>/
+astrid/packs/<pack>/orchestrators/<name>/
   orchestrator.yaml  # id: "<pack>.<name>"
   run.py
   STAGE.md
   src/               optional private helper package
 ```
+
+Working references for both shapes:
+`astrid/packs/iteration/executors/prepare/` (executor) and
+`astrid/packs/seinfeld/orchestrators/dataset_build/` (orchestrator).
 
 Element folders use:
 

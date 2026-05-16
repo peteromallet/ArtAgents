@@ -93,25 +93,36 @@ Refer to `pack.json` for the full field list and constraints.
 An executor is a concrete unit of work an agent can run. Each
 executor manifest declares:
 
-- **Identity**: `id` (qualified as `<pack>.<slug>`), `name`, `version`.
-- **Runtime**: `type` (currently `python-cli`), `entrypoint` (path to
-  `run.py`), `callable` (function name, defaults to `main`).
-- **Inputs and outputs**: typed ports with required/optional flags.
+- **Identity**: `schema_version: 1`, `id` (qualified as `<pack>.<slug>`),
+  `name`, `version`, `kind: external`.
+- **Runtime**: a `runtime` object with `type: command` and a nested
+  `command.argv` — the full subprocess argument vector with
+  `{python_exec}` and `{input_name}` placeholders. There is **no**
+  top-level `command:` field; the runtime block is the single source of
+  truth.
+- **Inputs and outputs**: typed ports with required/optional flags;
+  placeholders in `runtime.command.argv` must reference declared
+  `inputs[].name` values.
 - **Dependencies**: Python, npm, and system requirements.
 - **Secrets**: environment variables the executor needs at runtime.
 
-Refer to `executor.json` for the full field list.
+Refer to `executor.json` for the full field list. A working example
+ships with the `iteration` pack at
+`astrid/packs/iteration/executors/prepare/executor.yaml`.
 
 ### Orchestrator Manifest (`orchestrator.yaml`)
 
 An orchestrator is a workflow that coordinates executors and other
-orchestrators. The manifest shape mirrors the executor with
-additional fields for:
+orchestrators. The manifest shape mirrors the executor (same
+`runtime.type: command` + nested `runtime.command.argv`, no legacy
+`runtime.kind` field) with additional fields for:
 
 - **child_executors**: qualified ids this orchestrator coordinates.
 - **child_orchestrators**: sub-orchestrator ids.
 
-Refer to `orchestrator.json` for the full field list.
+Refer to `orchestrator.json` for the full field list. A working
+example ships with the `seinfeld` pack at
+`astrid/packs/seinfeld/orchestrators/dataset_build/orchestrator.yaml`.
 
 ### Element Manifest (`element.yaml`)
 
