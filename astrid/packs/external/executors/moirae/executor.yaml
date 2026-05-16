@@ -1,17 +1,6 @@
 {
-  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.external.executors.moirae.run",
-      "{screenplay}",
-      "-o",
-      "{output}"
-    ]
   },
   "conditions": [
     {
@@ -74,6 +63,20 @@
       "type": "file"
     }
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.external.executors.moirae.run",
+        "{screenplay}",
+        "-o",
+        "{output}"
+      ]
+    },
+    "type": "command"
+  },
+  "schema_version": 1,
   "short_description": "Run a Moirae screenplay through the terminal-as-cinema renderer to produce a video.",
   "version": "0.1.0"
 }

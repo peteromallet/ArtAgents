@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -55,7 +56,7 @@
     "audio",
     "extract"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "quote_scout",
@@ -78,6 +79,20 @@
     "transcript",
     "scenes"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.quote_scout.run",
+        "--transcript",
+        "{out}/transcript.json",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Scan a transcript for quotable lines suitable for hype clips.",
   "version": "1.0"
 }

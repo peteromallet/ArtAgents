@@ -2,14 +2,13 @@
   "schema_version": 1,
   "id": "seinfeld.dataset_build",
   "name": "Seinfeld Dataset Build",
-  "kind": "built_in",
+  "kind": "external",
   "version": "0.1.0",
   "short_description": "Bucket-fill loop that builds the Seinfeld LoRA training set from YouTube.",
   "description": "Reads the locked-vocabulary criteria element, searches YouTube, downloads video, segments scenes, VLM-judges each clip into a vocabulary bucket, VLM-captions it against the locked template, human-reviews a sample, exports the training manifest. Runs until per-bucket targets are met.",
   "keywords": ["seinfeld", "dataset", "lora", "training", "youtube", "vlm", "captioning"],
   "runtime": {
     "type": "command",
-    "kind": "command",
     "command": {
       "argv": [
         "{python_exec}",

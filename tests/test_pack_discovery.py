@@ -14,12 +14,17 @@ from astrid.core.pack import PackResolver, PackValidationError, discover_packs, 
 def write_pack(root: Path, pack_id: str, *, folder: str | None = None) -> Path:
     pack_root = root / (folder or pack_id)
     pack_root.mkdir(parents=True)
+    # Sprint 9: every pack must declare content roots — emit them by default
+    # so existing test fixtures keep working under strict resolver mode.
     (pack_root / "pack.yaml").write_text(
         "\n".join(
             [
                 f"id: {pack_id}",
                 f"name: {pack_id.title()} Pack",
                 "version: '1.0'",
+                "content:",
+                "  executors: .",
+                "  orchestrators: .",
             ]
         )
         + "\n",

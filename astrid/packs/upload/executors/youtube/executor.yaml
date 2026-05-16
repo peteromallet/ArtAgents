@@ -1,6 +1,23 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
+  },
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.upload.executors.youtube.run",
+        "--video-url",
+        "{video_url}",
+        "--title",
+        "{title}",
+        "--description",
+        "{description}"
+      ]
+    }
   },
   "description": "Upload a finished video to YouTube via the shared banodoco-social Zapier integration.",
   "id": "upload.youtube",
@@ -62,7 +79,7 @@
     "social",
     "zapier"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "backend": "banodoco-social",
     "command": "python3 -m astrid upload-youtube",

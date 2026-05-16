@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -56,7 +57,7 @@
     "pipeline",
     "clips"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "shots",
@@ -79,6 +80,22 @@
     "source_video",
     "scenes"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.shots.run",
+        "--video",
+        "{video}",
+        "--scenes",
+        "{out}/scenes.json",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Slice scenes into shot windows for downstream pool building.",
   "version": "1.0"
 }

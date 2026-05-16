@@ -1,62 +1,69 @@
 {
-  "id": "builtin.html_canvas_effect",
-  "name": "HTML Canvas Effect",
-  "kind": "built_in",
-  "version": "1.0",
-  "short_description": "Scaffold a local Remotion HTML-in-canvas effect element.",
-  "description": "Create a user-editable local effect element that wraps DOM content in Remotion HtmlInCanvas for optional canvas/WebGL-style post-processing.",
-  "keywords": ["html", "canvas", "remotion", "effect", "element", "shader"],
-  "inputs": [
-    {
-      "name": "effect_id",
-      "type": "string",
-      "description": "Bare effect id to create under the local pack, e.g. glass-product-card."
-    }
-  ],
-  "outputs": [
-    {
-      "name": "report",
-      "type": "file",
-      "path_template": "{out}/html_canvas_effect.report.json"
-    },
-    {
-      "name": "timeline",
-      "type": "file",
-      "path_template": "{out}/timeline.json"
-    },
-    {
-      "name": "assets",
-      "type": "file",
-      "path_template": "{out}/assets.json"
-    }
-  ],
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.html_canvas_effect.run",
-      "--effect-id",
-      "{effect_id}",
-      "--out",
-      "{report}",
-      "--timeline",
-      "{timeline}",
-      "--assets",
-      "{assets}"
-    ]
-  },
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
+  "description": "Create a user-editable local effect element that wraps DOM content in Remotion HtmlInCanvas for optional canvas/WebGL-style post-processing.",
+  "id": "builtin.html_canvas_effect",
+  "inputs": [
+    {
+      "description": "Bare effect id to create under the local pack, e.g. glass-product-card.",
+      "name": "effect_id",
+      "type": "string"
+    }
+  ],
   "isolation": {
     "mode": "subprocess",
     "network": false
   },
+  "keywords": [
+    "html",
+    "canvas",
+    "remotion",
+    "effect",
+    "element",
+    "shader"
+  ],
+  "kind": "external",
   "metadata": {
-    "runtime_module": "astrid.packs.builtin.executors.html_canvas_effect.run",
-    "runtime_file": "run.py",
     "creates": "astrid/packs/local/elements/effects/<effect_id>",
+    "remotion_min_version": "4.0.455",
     "render_path": "builtin.render remains the final Remotion compositor.",
-    "remotion_min_version": "4.0.455"
-  }
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.html_canvas_effect.run"
+  },
+  "name": "HTML Canvas Effect",
+  "outputs": [
+    {
+      "name": "report",
+      "path_template": "{out}/html_canvas_effect.report.json",
+      "type": "file"
+    },
+    {
+      "name": "timeline",
+      "path_template": "{out}/timeline.json",
+      "type": "file"
+    },
+    {
+      "name": "assets",
+      "path_template": "{out}/assets.json",
+      "type": "file"
+    }
+  ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.html_canvas_effect.run",
+        "--effect-id",
+        "{effect_id}",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
+  "short_description": "Scaffold a local Remotion HTML-in-canvas effect element.",
+  "version": "1.0"
 }

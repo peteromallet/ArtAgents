@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "seinfeld.lora_eval_grid",
   "name": "Seinfeld LoRA Eval Grid",
-  "kind": "built_in",
+  "kind": "external",
   "version": "0.1.0",
   "short_description": "Run baseline LTX + per-checkpoint inference samples, download MP4s, write static index.html viewer.",
   "description": "Builds 3-6 prompts from the vocabulary, runs baseline LTX (no LoRA) plus inference for each checkpoint listed in checkpoint_manifest.json on the live pod via external.runpod.exec, downloads MP4s into eval_grid/{baseline,<step>}/, emits eval_grid/index.html. --smoke produces 3 baseline-only samples.",
@@ -28,17 +28,6 @@
         "--produces-dir", "{out}/produces"
       ]
     }
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.seinfeld.executors.lora_eval_grid.run",
-      "--pod-handle", "{pod_handle}",
-      "--checkpoint-manifest", "{checkpoint_manifest}",
-      "--vocabulary", "{vocabulary}",
-      "--produces-dir", "{out}/produces"
-    ]
   },
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": true},

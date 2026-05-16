@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
@@ -50,7 +51,7 @@
   ],
   "runtime": {
     "function": "run_orchestrator",
-    "kind": "python",
+    "type": "python-cli",
     "module": "astrid.packs.builtin.orchestrators.iteration_video.run"
   },
   "short_description": "Prepare an iteration graph, assemble render inputs, render through builtin.render, and finalize iteration video outputs.",

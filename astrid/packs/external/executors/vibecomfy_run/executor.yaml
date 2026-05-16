@@ -1,0 +1,93 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "conditions": [
+    {
+      "input": "workflow",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Run a VibeComfy workflow through the VibeComfy CLI.",
+  "graph": {
+    "consumes": [
+      "workflow"
+    ],
+    "provides": [
+      "vibecomfy_run"
+    ]
+  },
+  "id": "external.vibecomfy.run",
+  "inputs": [
+    {
+      "description": "VibeComfy workflow JSON file.",
+      "name": "workflow",
+      "required": true,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess",
+    "network": true,
+    "requirements": [
+      "vibecomfy"
+    ]
+  },
+  "keywords": [
+    "comfyui",
+    "vibecomfy",
+    "workflow",
+    "image",
+    "video",
+    "generate",
+    "run"
+  ],
+  "kind": "external",
+  "metadata": {
+    "catalog_source": "none_declared",
+    "cli_module": "vibecomfy.cli",
+    "command_names": [
+      "run",
+      "validate"
+    ],
+    "homepage": "https://github.com/peteromallet/VibeComfy",
+    "network_behavior": {
+      "run": true,
+      "validate": false
+    },
+    "nodes": [],
+    "pack_id": "vibecomfy",
+    "prompts": [],
+    "requirements": [
+      "vibecomfy"
+    ],
+    "requirements_source": "requirements.txt",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.external.executors.vibecomfy.run",
+    "vibecomfy_command": "run",
+    "workflow_input_contract": {
+      "description": "VibeComfy workflow JSON file.",
+      "format": "ComfyUI/VibeComfy workflow JSON",
+      "name": "workflow",
+      "required": true,
+      "type": "file"
+    },
+    "workflows": []
+  },
+  "name": "VibeComfy Run",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.external.executors.vibecomfy.run",
+        "run",
+        "{workflow}"
+      ]
+    },
+    "type": "command"
+  },
+  "schema_version": 1,
+  "short_description": "Run a VibeComfy / ComfyUI workflow JSON through the VibeComfy CLI.",
+  "version": "0.1.0"
+}

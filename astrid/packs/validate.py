@@ -487,16 +487,14 @@ class PackValidator:
         if self._pack_data is None:
             return
 
-        # Sprint 8 deprecation: flat layout (content.<key> == '.') falls back
-        # to the resolver's legacy rglob scan.  Surface a warning so builders
-        # see the migration path alongside other validation feedback.  After
-        # Sprint 9 portfolio rationalization, flat layout becomes a hard
-        # error.  The warning is expected to fire on `builtin`, `iteration`,
-        # `external`, and `upload` packs until they migrate in Sprint 9.
+        # Sprint 9 portfolio rationalization: flat layout (content.<key> ==
+        # '.') is now a hard validation error.  Every shipped pack must
+        # declare a subdirectory for its components (e.g.
+        # ``executors: executors``).
         for content_key in ("executors", "orchestrators"):
             value = content.get(content_key)
             if isinstance(value, str) and value.strip() == ".":
-                self.warnings.append(
+                self.errors.append(
                     f"{self._rel(self.pack_root / 'pack.yaml')}: "
                     f"content.{content_key} is '.' (flat layout) — migrate "
                     f"to a subdirectory like '{content_key}'"
@@ -540,6 +538,11 @@ class PackValidator:
             if not comp_dir.is_dir() or comp_dir.name.startswith("."):
                 continue
             if comp_dir.name == "__pycache__":
+                continue
+            # Explicit opt-out marker for shared-code directories that live
+            # alongside executor manifests (e.g. external/executors/runpod
+            # holds a shared run.py imported by multiple sibling manifests).
+            if (comp_dir / ".no-executor").exists():
                 continue
 
             # Try each allowed extension; use the first found

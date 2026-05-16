@@ -1,14 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.inspect_cut.run",
-      "{run_dir}"
-    ]
   },
   "description": "Inspect a generated cut run directory.",
   "id": "builtin.inspect_cut",
@@ -30,12 +23,23 @@
     "debug",
     "report"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.inspect_cut.run"
   },
   "name": "Inspect Cut",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.inspect_cut.run",
+        "{run_dir}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Inspect a generated cut run directory and report timeline/asset health.",
   "version": "1.0"
 }

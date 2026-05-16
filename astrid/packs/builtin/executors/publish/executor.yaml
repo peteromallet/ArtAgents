@@ -1,19 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.publish.run",
-      "--project-id",
-      "{project_id}",
-      "--timeline-id",
-      "{timeline_id}",
-      "--timeline-file",
-      "{timeline_file}"
-    ]
   },
   "description": "Publish a timeline/assets pair into a Reigh project.",
   "id": "builtin.publish",
@@ -46,7 +34,7 @@
     "api",
     "upload"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "env": [
       "REIGH_USER_TOKEN",
@@ -56,6 +44,20 @@
     "runtime_module": "astrid.packs.builtin.executors.publish.run"
   },
   "name": "Publish To Reigh",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.publish.run",
+        "--project-id",
+        "{project_id}",
+        "--timeline-id",
+        "{timeline_id}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Publish a finished timeline + assets pair into a Reigh project via API.",
   "version": "1.0"
 }

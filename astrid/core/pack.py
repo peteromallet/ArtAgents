@@ -192,20 +192,21 @@ class PackResolver:
         self._packs_by_id = {p.id: p for p in all_packs}
 
     def _warn_undeclared_content(self, pack: PackDefinition) -> None:
-        """Emit deprecation findings for packs without declared content roots.
+        """Raise on packs missing declared content roots.
 
-        Sprint 8: shipped packs that have not migrated to the structured
-        layout fall back to the legacy ``rglob`` scan.  Surface a finding so
-        builders see the deprecation alongside other resolver warnings.
+        Sprint 9 portfolio rationalization: every shipped pack must declare
+        ``content.executors`` and ``content.orchestrators`` in ``pack.yaml``.
+        The legacy ``rglob`` fallback was removed; undeclared roots are now a
+        hard ``PackValidationError``.
         After Sprint 9 portfolio rationalization, undeclared packs become a
         hard error.
         """
         for content_key in ("executors", "orchestrators"):
             if content_key not in pack.declared_content:
-                self._findings.append(
+                raise PackValidationError(
                     f"pack {pack.id!r}: content.{content_key} not declared "
-                    f"in pack.yaml — using legacy rglob scan; declare "
-                    f"content.{content_key} in pack.yaml"
+                    f"in pack.yaml — every pack must declare its component "
+                    f"roots under content:{{}} (e.g. {content_key}: {content_key})"
                 )
 
     def _resolve_content_roots(
@@ -221,24 +222,22 @@ class PackResolver:
         back to the legacy ``rglob`` scan.
         """
         declared = pack.declared_content.get(content_key)
-        if declared:
-            declared_root = pack.root / declared
-            if not declared_root.is_dir():
-                return ()
-            roots = {
-                path.parent.resolve()
-                for manifest_name in manifest_names
-                for path in declared_root.rglob(manifest_name)
-                if "__pycache__" not in path.parts
-            }
-            return tuple(sorted(roots))
-
-        # Legacy fallback: rglob the whole pack root (existing behaviour).
-        return _content_roots(
-            pack.root,
-            manifest_names,
-            excluded_parts={"elements", "ai_toolkit"},
-        )
+        if not declared:
+            raise PackValidationError(
+                f"pack {pack.id!r}: content.{content_key} not declared in "
+                f"pack.yaml — declare content.{content_key} (e.g. "
+                f"{content_key}: {content_key}) to enable component discovery"
+            )
+        declared_root = pack.root / declared
+        if not declared_root.is_dir():
+            return ()
+        roots = {
+            path.parent.resolve()
+            for manifest_name in manifest_names
+            for path in declared_root.rglob(manifest_name)
+            if "__pycache__" not in path.parts
+        }
+        return tuple(sorted(roots))
 
 
 # ---------------------------------------------------------------------------
@@ -330,29 +329,43 @@ def validate_element_pack_id(
 
 
 def iter_executor_roots(pack: PackDefinition) -> tuple[Path, ...]:
-    if "executors" not in pack.declared_content:
-        print(
-            f"WARNING: pack {pack.id!r}: content.executors not declared in "
-            f"pack.yaml — using legacy rglob scan; declare content.executors "
-            f"in pack.yaml",
-            file=sys.stderr,
+    declared = pack.declared_content.get("executors")
+    if not declared:
+        raise PackValidationError(
+            f"pack {pack.id!r}: content.executors not declared in pack.yaml "
+            f"— every pack must declare its executor root (e.g. "
+            f"executors: executors)"
         )
-    return _content_roots(
-        pack.root, EXECUTOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"}
-    )
+    declared_root = pack.root / declared
+    if not declared_root.is_dir():
+        return ()
+    roots = {
+        path.parent.resolve()
+        for manifest_name in EXECUTOR_MANIFEST_NAMES
+        for path in declared_root.rglob(manifest_name)
+        if "__pycache__" not in path.parts
+    }
+    return tuple(sorted(roots))
 
 
 def iter_orchestrator_roots(pack: PackDefinition) -> tuple[Path, ...]:
-    if "orchestrators" not in pack.declared_content:
-        print(
-            f"WARNING: pack {pack.id!r}: content.orchestrators not declared in "
-            f"pack.yaml — using legacy rglob scan; declare content.orchestrators "
-            f"in pack.yaml",
-            file=sys.stderr,
+    declared = pack.declared_content.get("orchestrators")
+    if not declared:
+        raise PackValidationError(
+            f"pack {pack.id!r}: content.orchestrators not declared in "
+            f"pack.yaml — every pack must declare its orchestrator root "
+            f"(e.g. orchestrators: orchestrators)"
         )
-    return _content_roots(
-        pack.root, ORCHESTRATOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"}
-    )
+    declared_root = pack.root / declared
+    if not declared_root.is_dir():
+        return ()
+    roots = {
+        path.parent.resolve()
+        for manifest_name in ORCHESTRATOR_MANIFEST_NAMES
+        for path in declared_root.rglob(manifest_name)
+        if "__pycache__" not in path.parts
+    }
+    return tuple(sorted(roots))
 
 
 def iter_element_roots(

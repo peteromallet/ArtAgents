@@ -14,14 +14,16 @@ keywords:
   - cleanup
 cache:
   mode: none
-command:
-  argv:
-    - '{python_exec}'
-    - -m
-    - astrid.packs.external.executors.runpod.run
-    - teardown
-    - --produces-dir
-    - '{out}/produces'
+runtime:
+  type: command
+  command:
+    argv:
+      - '{python_exec}'
+      - -m
+      - astrid.packs.external.executors.runpod.run
+      - teardown
+      - --produces-dir
+      - '{out}/produces'
 conditions:
   - input: pod_handle
     kind: requires_input

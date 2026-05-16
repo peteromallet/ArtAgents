@@ -1,17 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.reigh_data.run",
-      "--project-id",
-      "{project_id}",
-      "--out",
-      "{out}/reigh-data.json"
-    ]
   },
   "description": "Fetch canonical Reigh project data through the reigh-data Edge Function.",
   "id": "builtin.reigh_data",
@@ -34,7 +24,7 @@
     "api",
     "edge-function"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "env": [
       "REIGH_PAT",
@@ -51,6 +41,18 @@
       "type": "file"
     }
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.reigh_data.run",
+        "--project-id",
+        "{project_id}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Fetch canonical Reigh project data through the reigh-data Edge Function.",
   "version": "1.0"
 }

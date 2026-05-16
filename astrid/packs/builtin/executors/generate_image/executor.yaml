@@ -1,19 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.generate_image.run",
-      "--prompts-file",
-      "{prompts_file}",
-      "--out-dir",
-      "{out}/images",
-      "--manifest",
-      "{out}/manifest.json"
-    ]
   },
   "conditions": [
     {
@@ -52,7 +40,7 @@
     "prompt",
     "render"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "api_provider": "openai",
     "env": [
@@ -72,6 +60,16 @@
       "type": "file"
     }
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.generate_image.run"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Generate image files with OpenAI GPT Image models from a prompt file.",
   "version": "1.0"
 }

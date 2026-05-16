@@ -1,13 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.tile_video.run"
-    ]
   },
   "description": "Crop a video into an MxN grid of overlapping spatial tiles. Emits one tile clip and one first-frame PNG per tile, plus a tiles.json manifest with each tile's rect in original-video coords.",
   "id": "builtin.tile_video",
@@ -31,7 +25,7 @@
     "grid",
     "frames"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
@@ -45,6 +39,20 @@
       "type": "file"
     }
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.tile_video.run",
+        "--video",
+        "{video}",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Crop a video into an MxN grid of overlapping spatial tiles plus first-frame PNGs.",
   "version": "1.0"
 }

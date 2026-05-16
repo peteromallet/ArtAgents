@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "seinfeld.repo_setup",
   "name": "Seinfeld Repo Setup",
-  "kind": "built_in",
+  "kind": "external",
   "version": "0.1.0",
   "short_description": "Idempotent git submodule add + checkout of ostris/ai-toolkit for config-schema reference.",
   "description": "Ensures astrid/packs/seinfeld/ai_toolkit/upstream/ is checked out at a pinned SHA. If the submodule already exists, emits status=already_initialized. Otherwise runs git submodule add and git checkout.",
@@ -26,15 +26,6 @@
         "{out}/produces"
       ]
     }
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.seinfeld.executors.repo_setup.run",
-      "--produces-dir",
-      "{out}/produces"
-    ]
   },
   "cache": {
     "mode": "none"

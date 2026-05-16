@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
@@ -20,7 +21,7 @@
     "grid",
     "generate"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "env": [
       "FIREWORKS_API_KEY",
@@ -40,7 +41,7 @@
         "{orchestrator_args}"
       ]
     },
-    "kind": "command"
+    "type": "command"
   },
   "short_description": "Generate a grid of distinct logo concepts via Kimi K2 prompts + GPT Image 2 (or z-image) renders.",
   "version": "1.0"

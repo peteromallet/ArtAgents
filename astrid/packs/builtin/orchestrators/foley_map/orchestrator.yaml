@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
@@ -25,7 +26,7 @@
     "vlm",
     "viewer"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "env": [
       "FAL_KEY",
@@ -45,7 +46,7 @@
         "{orchestrator_args}"
       ]
     },
-    "kind": "command"
+    "type": "command"
   },
   "short_description": "Spatial Foley pipeline: tile a video, prompt a VLM, score Foley per tile, and emit a viewer.",
   "version": "0.1"

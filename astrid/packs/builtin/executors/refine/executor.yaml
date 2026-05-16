@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -96,7 +97,7 @@
     "review",
     "pipeline"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "refine",
@@ -142,6 +143,30 @@
     "metadata",
     "source_audio"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.refine.run",
+        "--arrangement",
+        "{brief_out}/arrangement.json",
+        "--pool",
+        "{out}/pool.json",
+        "--timeline",
+        "{brief_out}/hype.timeline.json",
+        "--assets",
+        "{brief_out}/hype.assets.json",
+        "--metadata",
+        "{brief_out}/hype.metadata.json",
+        "--transcript",
+        "{out}/transcript.json",
+        "--out",
+        "{brief_out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Apply targeted reviewer-driven refinements to an existing arrangement.",
   "version": "1.0"
 }

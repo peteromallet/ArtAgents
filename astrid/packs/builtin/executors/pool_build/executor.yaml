@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -58,6 +59,12 @@
       "name": "scenes",
       "required": false,
       "type": "file"
+    },
+    {
+      "description": "Stable slug identifying the source clip set.",
+      "name": "source_slug",
+      "required": true,
+      "type": "string"
     }
   ],
   "isolation": {
@@ -74,7 +81,7 @@
     "clips",
     "pipeline"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "pool_build",
@@ -98,6 +105,30 @@
     "scene_descriptions",
     "quote_candidates"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.pool_build.run",
+        "--triage",
+        "{out}/scene_triage.json",
+        "--scene-descriptions",
+        "{out}/scene_descriptions.json",
+        "--quote-candidates",
+        "{out}/quote_candidates.json",
+        "--transcript",
+        "{out}/transcript.json",
+        "--scenes",
+        "{out}/scenes.json",
+        "--source-slug",
+        "{source_slug}",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Build the candidate clip pool from triaged source-video scenes.",
   "version": "1.0"
 }

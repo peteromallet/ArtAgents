@@ -1,13 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.audio_understand.run"
-    ]
   },
   "description": "Inspect audio clips or sampled windows with an audio-understanding model.",
   "id": "builtin.audio_understand",
@@ -17,6 +11,12 @@
       "name": "audio",
       "required": false,
       "type": "file"
+    },
+    {
+      "description": "Question or rubric to ask the audio model.",
+      "name": "query",
+      "required": false,
+      "type": "string"
     }
   ],
   "isolation": {
@@ -30,13 +30,25 @@
     "transcript",
     "describe"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.audio_understand.run"
   },
   "name": "Audio Understand",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.audio_understand.run",
+        "--query",
+        "{query}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Inspect audio clips or sampled windows with an audio-understanding LLM.",
   "version": "1.0"
 }

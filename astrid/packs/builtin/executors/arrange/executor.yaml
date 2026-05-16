@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -69,6 +70,12 @@
       "name": "env_file",
       "required": false,
       "type": "file"
+    },
+    {
+      "description": "Stable slug identifying the source clip set.",
+      "name": "source_slug",
+      "required": true,
+      "type": "string"
     }
   ],
   "isolation": {
@@ -85,7 +92,7 @@
     "pool",
     "brief"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "arrange",
@@ -108,6 +115,26 @@
     "brief",
     "pool"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.arrange.run",
+        "--pool",
+        "{out}/pool.json",
+        "--brief",
+        "{brief_copy}",
+        "--out",
+        "{brief_out}",
+        "--source-slug",
+        "{source_slug}",
+        "--brief-slug",
+        "{brief_slug}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Compose a brief-specific shot arrangement from the source clip pool.",
   "version": "1.0"
 }

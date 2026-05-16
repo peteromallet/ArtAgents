@@ -9,6 +9,7 @@
     "name": {"type": "string"},
     "version": {"$ref": "_defs.json#/definitions/version_string"},
     "description": {"type": "string"},
+    "short_description": {"type": "string"},
     "kind": {"type": "string", "enum": ["built_in", "external"]},
     "runtime": {
       "oneOf": [
@@ -24,7 +25,40 @@
     },
     "metadata": {
       "type": "object"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "inputs": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "outputs": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "cache": {
+      "type": "object"
+    },
+    "conditions": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "graph": {
+      "type": "object"
+    },
+    "isolation": {
+      "type": "object"
+    },
+    "pipeline_requirements": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "clip_kinds_supported": {
+      "type": "array",
+      "items": {"type": "string"}
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

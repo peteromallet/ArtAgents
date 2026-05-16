@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
+
+import pytest
 
 from astrid.core.pack import (
     PackDefinition,
     PackResolver,
+    PackValidationError,
     iter_executor_roots,
     iter_orchestrator_roots,
 )
 
 
-def _make_pack(root: Path) -> PackDefinition:
+def _make_pack(root: Path, declared: dict[str, str] | None = None) -> PackDefinition:
     return PackDefinition(
         id="testpack",
         name="testpack",
@@ -21,35 +23,36 @@ def _make_pack(root: Path) -> PackDefinition:
         root=root,
         manifest_path=root / "pack.yaml",
         metadata={},
+        declared_content=declared or {},
     )
 
 
 def test_iter_executor_roots_skips_ai_toolkit_upstream(tmp_path: Path) -> None:
+    """When executors are declared at a sub-root, ai_toolkit is naturally excluded."""
     pack_root = tmp_path / "testpack"
-    # Real executor under the pack
-    real_dir = pack_root / "real_exec"
+    exec_root = pack_root / "executors"
+    real_dir = exec_root / "real_exec"
     real_dir.mkdir(parents=True)
     (real_dir / "executor.yaml").write_text("id: testpack.real\n")
 
-    # Synthetic ai-toolkit submodule with its own executor.yaml that must
-    # NOT be discovered.
+    # ai_toolkit submodule outside the declared executors root.
     submodule_exec = pack_root / "ai_toolkit" / "upstream" / "examples" / "fake"
     submodule_exec.mkdir(parents=True)
     (submodule_exec / "executor.yaml").write_text("id: should.not.be.discovered\n")
 
-    pack = _make_pack(pack_root)
+    pack = _make_pack(pack_root, declared={"executors": "executors"})
     roots = iter_executor_roots(pack)
     paths = {p.resolve() for p in roots}
     assert real_dir.resolve() in paths
     assert submodule_exec.resolve() not in paths
-    # Defensive: no path under ai_toolkit at all
     for p in paths:
         assert "ai_toolkit" not in p.parts
 
 
 def test_iter_orchestrator_roots_skips_ai_toolkit_upstream(tmp_path: Path) -> None:
     pack_root = tmp_path / "testpack"
-    real_orch = pack_root / "real_orch"
+    orch_root = pack_root / "orchestrators"
+    real_orch = orch_root / "real_orch"
     real_orch.mkdir(parents=True)
     (real_orch / "orchestrator.yaml").write_text("id: testpack.real\n")
 
@@ -57,16 +60,32 @@ def test_iter_orchestrator_roots_skips_ai_toolkit_upstream(tmp_path: Path) -> No
     submodule_orch.mkdir(parents=True)
     (submodule_orch / "orchestrator.yaml").write_text("id: should.not.be.discovered\n")
 
-    pack = _make_pack(pack_root)
+    pack = _make_pack(pack_root, declared={"orchestrators": "orchestrators"})
     roots = iter_orchestrator_roots(pack)
     paths = {p.resolve() for p in roots}
     assert real_orch.resolve() in paths
     assert submodule_orch.resolve() not in paths
 
 
-def test_pack_resolver_skips_ai_toolkit_in_legacy_fallback(tmp_path: Path) -> None:
-    """When a pack has no declared content roots, the legacy rglob fallback
-    must still skip ai_toolkit subtrees."""
+def test_iter_executor_roots_raises_when_content_not_declared(tmp_path: Path) -> None:
+    """Sprint 9: packs without declared content roots are a hard error."""
+    pack_root = tmp_path / "testpack"
+    pack_root.mkdir(parents=True)
+    pack = _make_pack(pack_root, declared={})
+    with pytest.raises(PackValidationError, match="content.executors not declared"):
+        iter_executor_roots(pack)
+
+
+def test_iter_orchestrator_roots_raises_when_content_not_declared(tmp_path: Path) -> None:
+    pack_root = tmp_path / "testpack"
+    pack_root.mkdir(parents=True)
+    pack = _make_pack(pack_root, declared={})
+    with pytest.raises(PackValidationError, match="content.orchestrators not declared"):
+        iter_orchestrator_roots(pack)
+
+
+def test_pack_resolver_raises_on_undeclared_content(tmp_path: Path) -> None:
+    """Sprint 9: PackResolver raises when a discovered pack omits content roots."""
     packs_root = tmp_path / "packs"
     pack_root = packs_root / "testpack"
     pack_root.mkdir(parents=True)
@@ -74,30 +93,8 @@ def test_pack_resolver_skips_ai_toolkit_in_legacy_fallback(tmp_path: Path) -> No
         "id: testpack\nname: Test\nversion: '1.0'\n", encoding="utf-8"
     )
 
-    # Real executor under the pack
-    real_dir = pack_root / "real_exec"
-    real_dir.mkdir(parents=True)
-    (real_dir / "executor.yaml").write_text(
-        '{"id":"testpack.real","name":"r","kind":"built_in","version":"1.0",'
-        '"command":{"argv":["echo"]},"cache":{"mode":"none"}}',
-        encoding="utf-8",
-    )
-
-    # ai_toolkit submodule that must NOT be discovered
-    submodule_exec = pack_root / "ai_toolkit" / "upstream" / "examples" / "fake"
-    submodule_exec.mkdir(parents=True)
-    (submodule_exec / "executor.yaml").write_text(
-        '{"id":"should.not.be.discovered","name":"x","kind":"built_in",'
-        '"version":"1.0","command":{"argv":["echo"]},"cache":{"mode":"none"}}',
-        encoding="utf-8",
-    )
-
-    resolver = PackResolver(packs_root)
-    roots = resolver.iter_executor_roots(resolver.get_pack("testpack"))
-    paths = {p.resolve() for p in roots}
-    assert real_dir.resolve() in paths
-    for p in paths:
-        assert "ai_toolkit" not in p.parts
+    with pytest.raises(PackValidationError, match="content.executors not declared"):
+        PackResolver(packs_root)
 
 
 def test_pack_resolver_skips_ai_toolkit_with_declared_roots(tmp_path: Path) -> None:

@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -71,7 +72,7 @@
     "hype",
     "mp4"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "render",
@@ -95,6 +96,22 @@
     "assets",
     "theme"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.render.run",
+        "--timeline",
+        "{brief_out}/hype.timeline.json",
+        "--assets",
+        "{brief_out}/hype.assets.json",
+        "--out",
+        "{brief_out}/hype.mp4"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Render a hype timeline to hype.mp4 through the Remotion compositor.",
   "version": "1.0"
 }

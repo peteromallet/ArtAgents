@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -49,7 +50,7 @@
     "boundary",
     "analyze"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "scenes",
@@ -71,6 +72,20 @@
   "pipeline_requirements": [
     "source_video"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.scenes.run",
+        "--video",
+        "{video}",
+        "--out",
+        "{out}/scenes.json"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Detect source-video scene boundaries with ffmpeg-driven analysis.",
   "version": "1.0"
 }

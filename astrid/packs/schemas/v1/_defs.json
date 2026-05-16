@@ -4,7 +4,7 @@
   "definitions": {
     "qualified_id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
     },
     "pack_id": {
       "type": "string",
@@ -15,11 +15,14 @@
     },
     "runtime_python_cli": {
       "type": "object",
-      "required": ["type", "entrypoint"],
+      "required": ["type"],
       "properties": {
         "type": {"type": "string", "const": "python-cli"},
-        "entrypoint": {"type": "string"}
-      }
+        "entrypoint": {"type": "string"},
+        "module": {"type": "string"},
+        "function": {"type": "string"}
+      },
+      "additionalProperties": false
     },
     "runtime_command": {
       "type": "object",
@@ -34,9 +37,11 @@
               "type": "array",
               "items": {"type": "string"}
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }

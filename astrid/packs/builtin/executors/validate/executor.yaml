@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -79,7 +80,7 @@
     "check",
     "metadata"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "validate",
@@ -103,6 +104,24 @@
     "timeline",
     "transcript"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.validate.run",
+        "--video",
+        "{brief_out}/hype.mp4",
+        "--timeline",
+        "{brief_out}/hype.timeline.json",
+        "--metadata",
+        "{brief_out}/hype.metadata.json",
+        "--out",
+        "{brief_out}/validation.json"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Validate the rendered video against its declared timeline and metadata.",
   "version": "1.0"
 }

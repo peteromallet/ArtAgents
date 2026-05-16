@@ -13,14 +13,16 @@ keywords:
   - script
 cache:
   mode: none
-command:
-  argv:
-    - '{python_exec}'
-    - -m
-    - astrid.packs.external.executors.runpod.run
-    - exec
-    - --produces-dir
-    - '{out}/produces'
+runtime:
+  type: command
+  command:
+    argv:
+      - '{python_exec}'
+      - -m
+      - astrid.packs.external.executors.runpod.run
+      - exec
+      - --produces-dir
+      - '{out}/produces'
 conditions:
   - input: pod_handle
     kind: requires_input

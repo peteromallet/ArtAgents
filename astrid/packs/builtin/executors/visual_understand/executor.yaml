@@ -1,13 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.visual_understand.run"
-    ]
   },
   "description": "Inspect images or sampled video frames with an OpenAI vision model. Free-text queries or JSON-schema-constrained structured output for vocabulary-locked enums.",
   "id": "builtin.visual_understand",
@@ -17,6 +11,12 @@
       "name": "image",
       "required": false,
       "type": "file"
+    },
+    {
+      "description": "Query or rubric to ask the visual model.",
+      "name": "query",
+      "required": true,
+      "type": "string"
     }
   ],
   "isolation": {
@@ -33,13 +33,25 @@
     "structured_output",
     "vocabulary"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.visual_understand.run"
   },
   "name": "Visual Understand",
-  "short_description": "Inspect images or sampled video frames with a vision LLM — free-text or JSON-schema-constrained.",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.visual_understand.run",
+        "--query",
+        "{query}"
+      ]
+    },
+    "type": "command"
+  },
+  "short_description": "Inspect images or sampled video frames with a vision LLM \u2014 free-text or JSON-schema-constrained.",
   "version": "1.0"
 }

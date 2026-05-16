@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
@@ -19,7 +20,7 @@
     "iterate",
     "gpt-image"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "env": [
       "FIREWORKS_API_KEY",
@@ -39,7 +40,7 @@
         "{orchestrator_args}"
       ]
     },
-    "kind": "command"
+    "type": "command"
   },
   "short_description": "Iterative grid editor: take an existing grid image and emit a new grid of variations via fal.",
   "version": "1.0"

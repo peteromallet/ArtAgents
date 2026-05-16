@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -49,7 +50,7 @@
     "tag",
     "pipeline"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "quality_zones",
@@ -71,6 +72,19 @@
   "pipeline_requirements": [
     "source_video"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.quality_zones.run",
+        "{video}",
+        "--out",
+        "{out}/quality_zones.json"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Tag arrangement clips with per-zone quality grades for downstream picks.",
   "version": "1.0"
 }

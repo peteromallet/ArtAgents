@@ -1,17 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.human_notes.run",
-      "--notes",
-      "{notes}",
-      "--out",
-      "{out}"
-    ]
   },
   "description": "Convert human editorial notes into structured inputs for the pipeline.",
   "id": "builtin.human_notes",
@@ -19,6 +9,24 @@
     {
       "description": "Human notes file.",
       "name": "notes",
+      "type": "file"
+    },
+    {
+      "description": "Editor or reviewer instructions to consult.",
+      "name": "instructions",
+      "required": true,
+      "type": "file"
+    },
+    {
+      "description": "Arrangement.json the notes refer to.",
+      "name": "arrangement",
+      "required": true,
+      "type": "file"
+    },
+    {
+      "description": "Source clip pool the arrangement was built from.",
+      "name": "pool",
+      "required": true,
       "type": "file"
     }
   ],
@@ -33,12 +41,30 @@
     "pipeline",
     "text"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.human_notes.run"
   },
   "name": "Human Notes",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.human_notes.run",
+        "--instructions",
+        "{instructions}",
+        "--arrangement",
+        "{arrangement}",
+        "--pool",
+        "{pool}",
+        "--out",
+        "{out}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Convert human editorial notes into structured pipeline inputs.",
   "version": "1.0"
 }

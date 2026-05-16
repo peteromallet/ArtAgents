@@ -1,17 +1,21 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.iteration.executors.assemble.run",
-      "--prepare-dir",
-      "{prepare_dir}",
-      "--out",
-      "{out}"
-    ]
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.iteration.executors.assemble.run",
+        "--prepare-dir",
+        "{prepare_dir}",
+        "--out",
+        "{out}"
+      ]
+    }
   },
   "conditions": [
     {
@@ -52,7 +56,7 @@
     "hype",
     "adapt"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",

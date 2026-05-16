@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "always_run": false,
     "mode": "sentinel",
@@ -55,6 +56,13 @@
       "name": "env_file",
       "required": false,
       "type": "file"
+    },
+    {
+      "default": 1,
+      "description": "Editor-review iteration counter.",
+      "name": "editor_iteration",
+      "required": false,
+      "type": "integer"
     }
   ],
   "isolation": {
@@ -71,7 +79,7 @@
     "notes",
     "pipeline"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
     "pipeline_step": "editor_review",
@@ -95,6 +103,24 @@
     "timeline",
     "source_audio"
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.editor_review.run",
+        "--brief-dir",
+        "{brief_out}",
+        "--run-dir",
+        "{out}",
+        "--out",
+        "{brief_out}",
+        "--iteration",
+        "{editor_iteration}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Run heuristic editorial reviewers over an arrangement and emit notes.",
   "version": "1.0"
 }

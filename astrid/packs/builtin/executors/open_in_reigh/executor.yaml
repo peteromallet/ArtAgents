@@ -1,15 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.open_in_reigh.run",
-      "--timeline",
-      "{timeline}"
-    ]
   },
   "description": "Copy or prepare generated timeline/assets for Reigh handoff.",
   "id": "builtin.open_in_reigh",
@@ -24,6 +16,12 @@
       "name": "assets",
       "required": false,
       "type": "file"
+    },
+    {
+      "description": "Timeline id to open in Reigh.",
+      "name": "timeline_id",
+      "required": true,
+      "type": "string"
     }
   ],
   "isolation": {
@@ -37,12 +35,26 @@
     "copy",
     "stage"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.open_in_reigh.run"
   },
   "name": "Open In Reigh",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.open_in_reigh.run",
+        "--out",
+        "{out}",
+        "--timeline-id",
+        "{timeline_id}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Copy or stage generated timeline+assets for handoff into a Reigh project.",
   "version": "1.0"
 }

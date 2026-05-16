@@ -8,12 +8,14 @@
     "id": {"type": "string"},
     "kind": {"type": "string", "enum": ["effect", "animation", "transition"]},
     "pack_id": {"$ref": "_defs.json#/definitions/pack_id"},
+    "description": {"type": "string"},
+    "short_description": {"type": "string"},
+    "keywords": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
     "metadata": {
-      "type": "object",
-      "required": ["label"],
-      "properties": {
-        "label": {"type": "string"}
-      }
+      "type": "object"
     },
     "schema": {
       "type": "object"

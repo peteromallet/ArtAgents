@@ -1,19 +1,7 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.builtin.executors.sprite_sheet.run",
-      "--animation",
-      "{animation}",
-      "--subject",
-      "{subject}",
-      "--out-dir",
-      "{out}"
-    ]
   },
   "description": "Generate, slice, and preview GPT Image sprite sheets.",
   "id": "builtin.sprite_sheet",
@@ -44,7 +32,7 @@
     "slice",
     "batch"
   ],
-  "kind": "built_in",
+  "kind": "external",
   "metadata": {
     "runtime_file": "run.py",
     "runtime_module": "astrid.packs.builtin.executors.sprite_sheet.run"
@@ -76,6 +64,20 @@
       "type": "file"
     }
   ],
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.executors.sprite_sheet.run",
+        "--animation",
+        "{animation}",
+        "--subject",
+        "{subject}"
+      ]
+    },
+    "type": "command"
+  },
   "short_description": "Generate, slice, and preview GPT Image sprite sheets for batch image work.",
   "version": "1.0"
 }

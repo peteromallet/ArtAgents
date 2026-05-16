@@ -13,14 +13,16 @@ keywords:
   - launch
 cache:
   mode: none
-command:
-  argv:
-    - '{python_exec}'
-    - -m
-    - astrid.packs.external.executors.runpod.run
-    - provision
-    - --produces-dir
-    - '{out}/produces'
+runtime:
+  type: command
+  command:
+    argv:
+      - '{python_exec}'
+      - -m
+      - astrid.packs.external.executors.runpod.run
+      - provision
+      - --produces-dir
+      - '{out}/produces'
 conditions: []
 graph:
   consumes: []

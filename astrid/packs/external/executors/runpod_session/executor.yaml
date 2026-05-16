@@ -15,14 +15,16 @@ keywords:
   - composite
 cache:
   mode: none
-command:
-  argv:
-    - '{python_exec}'
-    - -m
-    - astrid.packs.external.executors.runpod.run
-    - session
-    - --produces-dir
-    - '{out}/produces'
+runtime:
+  type: command
+  command:
+    argv:
+      - '{python_exec}'
+      - -m
+      - astrid.packs.external.executors.runpod.run
+      - session
+      - --produces-dir
+      - '{out}/produces'
 conditions: []
 graph:
   consumes: []

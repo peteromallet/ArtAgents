@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "seinfeld.lora_register",
   "name": "Seinfeld LoRA Register",
-  "kind": "built_in",
+  "kind": "external",
   "version": "0.1.0",
   "short_description": "Pure-local: copy chosen .safetensors into registered/ and write registered_lora.json.",
   "description": "Reads chosen_checkpoint.json (from human gate / resume), copies the chosen LoRA file from the downloaded eval/training artifact dir into <out>/registered/<lora_id>.safetensors, and writes registered_lora.json with the 8 required fields (lora_id, checkpoint_step, lora_file, config_used, base_model, vocabulary_hash, trained_at, human_pick_notes).",
@@ -30,18 +30,6 @@
         "--produces-dir", "{out}/produces"
       ]
     }
-  },
-  "command": {
-    "argv": [
-      "{python_exec}",
-      "-m",
-      "astrid.packs.seinfeld.executors.lora_register.run",
-      "--chosen-checkpoint", "{chosen_checkpoint}",
-      "--lora-source", "{lora_source}",
-      "--staged-config", "{staged_config}",
-      "--vocabulary", "{vocabulary}",
-      "--produces-dir", "{out}/produces"
-    ]
   },
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": false},

@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "defaults": {
     "durationFraction": 0.55,
     "durationFrames": 120,
