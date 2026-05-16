@@ -1,0 +1,77 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.executors.generate_image.run",
+      "--prompts-file",
+      "{prompts_file}",
+      "--out-dir",
+      "{out}/images",
+      "--manifest",
+      "{out}/manifest.json"
+    ]
+  },
+  "conditions": [
+    {
+      "input": "prompts_file",
+      "kind": "requires_input"
+    }
+  ],
+  "description": "Generate image files with OpenAI GPT Image models from a prompt file.",
+  "graph": {
+    "consumes": [
+      "image_prompts"
+    ],
+    "provides": [
+      "generated_images",
+      "image_manifest"
+    ]
+  },
+  "id": "builtin.generate_image",
+  "inputs": [
+    {
+      "description": "Text, JSON, or JSONL prompt list consumed by astrid.packs.builtin.executors.generate_image.run.",
+      "name": "prompts_file",
+      "required": true,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "keywords": [
+    "image",
+    "generate",
+    "openai",
+    "gpt-image",
+    "prompt",
+    "render"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "api_provider": "openai",
+    "env": [
+      "OPENAI_API_KEY"
+    ],
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.generate_image.run"
+  },
+  "name": "Generate Image",
+  "outputs": [
+    {
+      "description": "Manifest of generated images and API usage.",
+      "mode": "create_or_replace",
+      "name": "image_manifest",
+      "path_template": "{out}/manifest.json",
+      "type": "file"
+    }
+  ],
+  "short_description": "Generate image files with OpenAI GPT Image models from a prompt file.",
+  "version": "1.0"
+}

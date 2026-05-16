@@ -76,7 +76,7 @@ class CanonicalCliTest(unittest.TestCase):
             ["run", "builtin.render", "--out", "runs/example", "--brief", "brief.txt", "--dry-run"],
         )
         self.assertEqual(result, 0, stderr)
-        self.assertIn("astrid.packs.builtin.render.run", stdout)
+        self.assertIn("astrid.packs.builtin.executors.render.run", stdout)
 
     def test_pipeline_dispatches_canonical_cli_modules(self) -> None:
         with mock.patch.object(orchestrators_cli, "main", return_value=61) as main:
@@ -300,7 +300,7 @@ class OrchestratorResolutionConsistencyTests(unittest.TestCase):
     def test_builtin_hype_resolves_via_runtime_module(self) -> None:
         from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
         module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
-        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(module_path, "astrid.packs.builtin.orchestrators.hype.run")
         self.assertEqual(entrypoint, "main")
 
     def test_builtin_hype_resolves_via_runtime(self) -> None:
@@ -309,7 +309,7 @@ class OrchestratorResolutionConsistencyTests(unittest.TestCase):
             OrchestratorRuntimeResolutionError,
         )
         module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
-        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(module_path, "astrid.packs.builtin.orchestrators.hype.run")
         self.assertEqual(entrypoint, "main")
 
     def test_builtin_foley_map_resolves_via_runtime_module(self) -> None:

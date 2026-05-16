@@ -50,7 +50,7 @@ class PipelineDispatchAliasTest(unittest.TestCase):
             setup_main.assert_called_once_with(["--help"])
 
     def test_publish_dispatch_uses_package_relative_imports(self) -> None:
-        from astrid.packs.builtin.publish import run as publish
+        from astrid.packs.builtin.executors.publish import run as publish
         from astrid.packs.upload.executors.youtube import run as publish_youtube
 
         with mock.patch.object(publish, "main", return_value=51) as publish_main:

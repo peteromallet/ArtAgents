@@ -4,7 +4,7 @@ import tempfile
 from argparse import Namespace
 from pathlib import Path
 
-from astrid.packs.builtin.cut import run as cut
+from astrid.packs.builtin.executors.cut import run as cut
 from astrid import timeline
 
 

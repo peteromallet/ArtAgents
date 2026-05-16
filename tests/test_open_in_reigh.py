@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from astrid.packs.builtin.open_in_reigh import run as open_in_reigh
+from astrid.packs.builtin.executors.open_in_reigh import run as open_in_reigh
 
 
 ROOT = Path(__file__).resolve().parents[1]

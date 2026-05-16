@@ -5,7 +5,7 @@ This is a `lora_train` orchestrator step: it runs after training finishes,
 between `aitoolkit_train` and `lora_eval_grid` / `human_gate`. Goals:
 
 - scp /workspace/output/<run-name>/samples/ from the pod into the local run dir.
-- (optional, --understand) call `astrid.packs.builtin.video_understand.run` on each mp4
+- (optional, --understand) call `astrid.packs.builtin.executors.video_understand.run` on each mp4
   with a custom prompt-alignment query against the training prompt for that column.
 - Generate index.html: rows = checkpoint step, cols = training prompts, cells = video +
   prompt text + auto-summary + scores.
@@ -148,10 +148,10 @@ def _load_prompts(staged_config: Path | None) -> list[str]:
 
 
 def _understand_one(mp4: Path, prompt: str, mode: str, out_json: Path) -> dict | None:
-    """Call astrid.packs.builtin.video_understand.run on a single mp4."""
+    """Call astrid.packs.builtin.executors.video_understand.run on a single mp4."""
     query = UNDERSTAND_QUERY_TEMPLATE.format(prompt=prompt)
     cmd = [
-        sys.executable, "-m", "astrid.packs.builtin.video_understand.run",
+        sys.executable, "-m", "astrid.packs.builtin.executors.video_understand.run",
         "--video", str(mp4),
         "--query", query,
         "--mode", mode,

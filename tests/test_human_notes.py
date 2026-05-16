@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.arrange import run as arrange
-from astrid.packs.builtin.editor_review import run as editor_review
-from astrid.packs.builtin.human_notes import run as human_notes
+from astrid.packs.builtin.executors.arrange import run as arrange
+from astrid.packs.builtin.executors.editor_review import run as editor_review
+from astrid.packs.builtin.executors.human_notes import run as human_notes
 from astrid import timeline
 
 
@@ -396,10 +396,10 @@ class HumanNotesTest(unittest.TestCase):
         self.assertEqual(
             [call[0][2] for call in calls],
             [
-                "astrid.packs.builtin.arrange.run",
-                "astrid.packs.builtin.cut.run",
-                "astrid.packs.builtin.refine.run",
-                "astrid.packs.builtin.render.run",
+                "astrid.packs.builtin.executors.arrange.run",
+                "astrid.packs.builtin.executors.cut.run",
+                "astrid.packs.builtin.executors.refine.run",
+                "astrid.packs.builtin.executors.render.run",
             ],
         )
         for _, kwargs in calls:

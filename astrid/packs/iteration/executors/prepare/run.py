@@ -281,7 +281,7 @@ def call_builtin_understand(node: RunNode, *, summarizer_model_version: str, sum
     command = [
         sys.executable,
         "-m",
-        "astrid.packs.builtin.understand.run",
+        "astrid.packs.builtin.executors.understand.run",
         "--mode",
         mode,
         flag,

@@ -14,4 +14,4 @@ def executor_argv(script_name: str, python_exec: str) -> list[str]:
     ``bin/`` filename (``"transcribe.py"``).
     """
     stem = script_name[:-3] if script_name.endswith(".py") else script_name
-    return [python_exec, "-m", f"astrid.packs.builtin.{stem}.run"]
+    return [python_exec, "-m", f"astrid.packs.builtin.executors.{stem}.run"]

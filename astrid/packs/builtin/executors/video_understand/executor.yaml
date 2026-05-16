@@ -1,0 +1,42 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.executors.video_understand.run"
+    ]
+  },
+  "description": "Inspect synchronized audio/video windows with a video-understanding model.",
+  "id": "builtin.video_understand",
+  "inputs": [
+    {
+      "description": "Video to inspect.",
+      "name": "video",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess"
+  },
+  "keywords": [
+    "video",
+    "understand",
+    "llm",
+    "audio",
+    "describe",
+    "analyze"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.video_understand.run"
+  },
+  "name": "Video Understand",
+  "short_description": "Inspect synchronized audio+video windows with a video-understanding model.",
+  "version": "1.0"
+}

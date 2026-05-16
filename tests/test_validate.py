@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.validate import run as validate
+from astrid.packs.builtin.executors.validate import run as validate
 
 
 class ValidateNoAudioTest(unittest.TestCase):

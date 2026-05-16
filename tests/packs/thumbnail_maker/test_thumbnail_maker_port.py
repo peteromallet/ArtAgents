@@ -13,7 +13,7 @@ from pathlib import Path
 
 def test_plan_template_emits_v2() -> None:
     """``build_plan_v2`` returns a plan dict with version 2."""
-    from astrid.packs.builtin.thumbnail_maker.plan_template import build_plan_v2
+    from astrid.packs.builtin.orchestrators.thumbnail_maker.plan_template import build_plan_v2
 
     plan = build_plan_v2(
         python_exec="python3",
@@ -38,7 +38,7 @@ def test_plan_template_emits_v2() -> None:
 
 def test_plan_template_steps_use_local_adapter() -> None:
     """All thumbnail_maker steps use ``adapter: local``."""
-    from astrid.packs.builtin.thumbnail_maker.plan_template import build_plan_v2
+    from astrid.packs.builtin.orchestrators.thumbnail_maker.plan_template import build_plan_v2
 
     plan = build_plan_v2(
         python_exec="python3",
@@ -58,7 +58,7 @@ def test_plan_template_steps_use_local_adapter() -> None:
 
 def test_plan_has_expected_step_ids() -> None:
     """The plan contains the five known thumbnail_maker steps."""
-    from astrid.packs.builtin.thumbnail_maker.plan_template import build_plan_v2
+    from astrid.packs.builtin.orchestrators.thumbnail_maker.plan_template import build_plan_v2
 
     plan = build_plan_v2(
         python_exec="python3",
@@ -80,7 +80,7 @@ def test_plan_has_expected_step_ids() -> None:
 
 def test_emit_plan_json_writes_valid_json(tmp_path: Path) -> None:
     """``emit_plan_json`` writes a parsable plan.json."""
-    from astrid.packs.builtin.thumbnail_maker.plan_template import (
+    from astrid.packs.builtin.orchestrators.thumbnail_maker.plan_template import (
         build_plan_v2,
         emit_plan_json,
     )
@@ -103,7 +103,7 @@ def test_emit_plan_json_writes_valid_json(tmp_path: Path) -> None:
 
 def test_plan_is_round_trip_stable(tmp_path: Path) -> None:
     """The emitted plan loads cleanly through ``load_plan``."""
-    from astrid.packs.builtin.thumbnail_maker.plan_template import (
+    from astrid.packs.builtin.orchestrators.thumbnail_maker.plan_template import (
         build_plan_v2,
         emit_plan_json,
     )
@@ -128,7 +128,7 @@ def test_plan_is_round_trip_stable(tmp_path: Path) -> None:
 def test_old_build_plan_not_accessible() -> None:
     """The old ``build_plan(args, layout, video_resolution)`` is removed
     from the thumbnail_maker run module."""
-    from astrid.packs.builtin.thumbnail_maker import run as tm_run
+    from astrid.packs.builtin.orchestrators.thumbnail_maker import run as tm_run
 
     # The old build_plan should not exist as a callable attribute
     # (plan_template.build_plan_v2 is the replacement)

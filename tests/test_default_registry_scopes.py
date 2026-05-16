@@ -34,8 +34,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
                 self.assertEqual(action.metadata["source"], "pack")
                 self.assertEqual(action.metadata["source_pack"], "builtin")
                 self.assertNotIn("pack_id", action.metadata)
-                self.assertTrue(action.metadata["executor_root"].endswith(f"astrid/packs/builtin/{folder}"))
-                self.assertTrue(action.metadata["manifest_file"].endswith(f"astrid/packs/builtin/{folder}/executor.yaml"))
+                self.assertTrue(action.metadata["executor_root"].endswith(f"astrid/packs/builtin/executors/{folder}"))
+                self.assertTrue(action.metadata["manifest_file"].endswith(f"astrid/packs/builtin/executors/{folder}/executor.yaml"))
 
         vibecomfy = canonical.get("external.vibecomfy.run")
         self.assertEqual(vibecomfy.kind, "external")
@@ -59,7 +59,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
     def test_canonical_builtin_executor_runtime_module(self) -> None:
         canonical = load_executor_registry()
         render = canonical.get("builtin.render")
-        self.assertEqual(render.metadata["runtime_module"], "astrid.packs.builtin.render.run")
+        self.assertEqual(render.metadata["runtime_module"], "astrid.packs.builtin.executors.render.run")
 
     def test_external_executor_roots_are_pack_native(self) -> None:
         registry = load_executor_registry()

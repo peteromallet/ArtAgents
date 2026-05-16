@@ -4,7 +4,7 @@ import json
 
 from PIL import Image
 
-from astrid.packs.builtin.visual_understand.run import main
+from astrid.packs.builtin.executors.visual_understand.run import main
 
 
 def test_visual_understand_builds_numbered_contact_sheet(capsys, tmp_path):

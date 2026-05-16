@@ -56,7 +56,7 @@ def _build_synthetic_hype_run(
 
     Returns ``(project_root, run_dir, source_path, plan_path)``.
     """
-    from astrid.packs.builtin.hype.plan_template import build_plan_v2, emit_plan_json
+    from astrid.packs.builtin.orchestrators.hype.plan_template import build_plan_v2, emit_plan_json
 
     proj_root = tmp_path / "projects" / slug
     run_dir = proj_root / "runs" / run_id
@@ -117,7 +117,7 @@ def _write_step_event(events_path: Path, event: dict) -> None:
 
 def test_initial_plan_v2_emission(tmp_path: Path) -> None:
     """Build plan v2, emit it as JSON, and verify plan hash is stable."""
-    from astrid.packs.builtin.hype.plan_template import build_plan_v2
+    from astrid.packs.builtin.orchestrators.hype.plan_template import build_plan_v2
 
     proj_root, run_dir, _, plan_path = _build_synthetic_hype_run(tmp_path)
 
@@ -153,7 +153,7 @@ def test_initial_plan_v2_emission(tmp_path: Path) -> None:
 
 def test_plan_hash_different_for_different_plans(tmp_path: Path) -> None:
     """Two plans with different run_ids produce different hashes."""
-    from astrid.packs.builtin.hype.plan_template import build_plan_v2, emit_plan_json
+    from astrid.packs.builtin.orchestrators.hype.plan_template import build_plan_v2, emit_plan_json
 
     slug = "demo"
     proj_root = tmp_path / "projects" / slug

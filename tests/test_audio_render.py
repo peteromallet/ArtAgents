@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from astrid.packs.builtin.render import run as render_remotion
+from astrid.packs.builtin.executors.render import run as render_remotion
 from astrid import timeline
 
 

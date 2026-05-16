@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.hype import run as pipeline
+from astrid.packs.builtin.orchestrators.hype import run as pipeline
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -228,7 +228,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.transcribe.run",
+                f"astrid.packs.builtin.executors.transcribe.run",
                 "--audio",
                 str((root / "audio.wav").resolve()),
                 "--out",
@@ -240,7 +240,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.scenes.run",
+                f"astrid.packs.builtin.executors.scenes.run",
                 "--video",
                 str((root / "main.mp4").resolve()),
                 "--out",
@@ -252,7 +252,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.quality_zones.run",
+                f"astrid.packs.builtin.executors.quality_zones.run",
                 str((root / "main.mp4").resolve()),
                 "--out",
                 str((out_dir / "quality_zones.json").resolve()),
@@ -264,7 +264,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.render.run",
+                f"astrid.packs.builtin.executors.render.run",
                 "--timeline",
                 str((out_dir / "briefs" / "out" / "hype.timeline.json").resolve()),
                 "--assets",
@@ -444,7 +444,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.arrange.run",
+                f"astrid.packs.builtin.executors.arrange.run",
                 "--pool",
                 str((out_dir / "pool.json").resolve()),
                 "--brief",
@@ -463,7 +463,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.refine.run",
+                f"astrid.packs.builtin.executors.refine.run",
                 "--arrangement",
                 str((second_dir / "arrangement.json").resolve()),
                 "--pool",
@@ -487,7 +487,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.render.run",
+                f"astrid.packs.builtin.executors.render.run",
                 "--timeline",
                 str((second_dir / "hype.timeline.json").resolve()),
                 "--assets",
@@ -503,7 +503,7 @@ class PipelineCachingTest(unittest.TestCase):
             [
                 pipeline.sys.executable,
                 "-m",
-                f"astrid.packs.builtin.validate.run",
+                f"astrid.packs.builtin.executors.validate.run",
                 "--video",
                 str((second_dir / "hype.mp4").resolve()),
                 "--timeline",

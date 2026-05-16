@@ -1,0 +1,84 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": false,
+    "sentinels": [
+      "shots.json"
+    ]
+  },
+  "clip_kinds_supported": [
+    "video"
+  ],
+  "conditions": [
+    {
+      "input": "video",
+      "kind": "requires_input"
+    }
+  ],
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes",
+      "builtin.quality_zones"
+    ],
+    "provides": [
+      "shots"
+    ]
+  },
+  "id": "builtin.shots",
+  "inputs": [
+    {
+      "description": "Source video to split into shots.",
+      "name": "video",
+      "required": true,
+      "type": "file"
+    },
+    {
+      "description": "Existing scenes.json input.",
+      "name": "scenes",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "keywords": [
+    "shots",
+    "scenes",
+    "video",
+    "slice",
+    "pipeline",
+    "clips"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
+    "pipeline_step": "shots",
+    "pipeline_step_order": 3,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.shots.run"
+  },
+  "name": "Shots",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "shots",
+      "path_template": "{out}/shots.json",
+      "type": "file"
+    }
+  ],
+  "pipeline_requirements": [
+    "source_video",
+    "scenes"
+  ],
+  "short_description": "Slice scenes into shot windows for downstream pool building.",
+  "version": "1.0"
+}

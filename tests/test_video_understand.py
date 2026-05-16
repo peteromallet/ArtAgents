@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from astrid.packs.builtin.understand import run as understand
-from astrid.packs.builtin.video_understand.run import main
+from astrid.packs.builtin.executors.understand import run as understand
+from astrid.packs.builtin.executors.video_understand.run import main
 
 
 def _write_test_video(path: Path, *, duration: float = 1.2) -> None:

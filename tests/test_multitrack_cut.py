@@ -6,9 +6,9 @@ from argparse import Namespace
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.cut import run as cut
+from astrid.packs.builtin.executors.cut import run as cut
 from astrid import timeline
-from astrid.packs.builtin.validate import run as validate
+from astrid.packs.builtin.executors.validate import run as validate
 from astrid.domains.hype.arrangement_rules import ROLE_DURATION_BOUNDS
 
 

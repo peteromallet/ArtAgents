@@ -14,7 +14,7 @@ def test_orchestrator_definition_legacy_python_runtime_validates() -> None:
         "name": "Hype",
         "kind": "built_in",
         "version": "1.0",
-        "runtime": {"kind": "python", "module": "astrid.packs.builtin.hype", "function": "run"},
+        "runtime": {"kind": "python", "module": "astrid.packs.builtin.orchestrators.hype", "function": "run"},
     }
     orchestrator = validate_orchestrator_definition(raw)
     assert orchestrator.runtime.kind == "python"

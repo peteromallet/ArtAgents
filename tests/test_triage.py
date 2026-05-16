@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from astrid.packs.builtin.triage import run as triage
+from astrid.packs.builtin.executors.triage import run as triage
 
 
 def has_forbidden_time_keys(value, forbidden) -> bool:

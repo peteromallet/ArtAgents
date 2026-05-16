@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.arrange import run as arrange
+from astrid.packs.builtin.executors.arrange import run as arrange
 from astrid import timeline
 
 

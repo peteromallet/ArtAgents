@@ -1,0 +1,58 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "child_executors": [
+    "iteration.prepare",
+    "iteration.assemble",
+    "builtin.render"
+  ],
+  "child_orchestrators": [],
+  "description": "Prepare an iteration graph, assemble render adapter files, render through builtin.render, and finalize iteration video outputs.",
+  "id": "builtin.iteration_video",
+  "inputs": [
+    {
+      "description": "Thread id or @active. Defaults to the active thread.",
+      "name": "thread",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "description": "Optional target run id. Defaults to the newest run in the thread.",
+      "name": "target_run_id",
+      "required": false,
+      "type": "string"
+    }
+  ],
+  "keywords": [
+    "iteration",
+    "video",
+    "render",
+    "thread",
+    "pipeline",
+    "hype"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "inspect_entrypoint": "main inspect",
+    "runtime_entrypoint": "run_orchestrator",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.orchestrators.iteration_video.run"
+  },
+  "name": "Iteration Video",
+  "outputs": [
+    {
+      "mode": "create_or_replace",
+      "name": "iteration.mp4",
+      "path_template": "{out}/iteration.mp4",
+      "type": "video"
+    }
+  ],
+  "runtime": {
+    "function": "run_orchestrator",
+    "kind": "python",
+    "module": "astrid.packs.builtin.orchestrators.iteration_video.run"
+  },
+  "short_description": "Prepare an iteration graph, assemble render inputs, render through builtin.render, and finalize iteration video outputs.",
+  "version": "1.0"
+}

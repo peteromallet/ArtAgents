@@ -28,12 +28,12 @@ Five top-level packs plus two non-pack directories live under `astrid/packs/`:
 
 ### Cross-pack dependency edges (verified by `git grep`)
 
-- `astrid/packs/builtin/iteration_video/run.py:15-17` imports `astrid.packs.iteration.assemble` and `astrid.packs.iteration.prepare` (cross-pack) **and** `astrid.packs.builtin.render` (intra-builtin).
-- `astrid/packs/iteration/executors/prepare/run.py` invokes `astrid.packs.builtin.understand.run` via subprocess (`UNDERSTAND_EXECUTOR_ID = "builtin.understand"`).
-- `astrid/packs/seinfeld/orchestrators/dataset_build/run.py` invokes `astrid.packs.builtin.youtube_audio.run`, `astrid.packs.builtin.scenes.run`, `astrid.packs.builtin.visual_understand.run`, `astrid.packs.builtin.video_understand.run` via subprocess.
-- `astrid/packs/seinfeld/samples_collage/run.py` invokes `astrid.packs.builtin.video_understand.run`.
-- `astrid/packs/external/fal_foley/run.py` imports from `astrid.packs.builtin.logo_ideas.run` and `astrid.packs.builtin.vary_grid.run`.
-- `astrid/core/executor/runner.py:39-42` hardcodes `from astrid.packs.builtin.hype import run as pipeline` (keystone; Step 6.8 target).
+- `astrid/packs/builtin/iteration_video/run.py:15-17` imports `astrid.packs.iteration.assemble` and `astrid.packs.iteration.prepare` (cross-pack) **and** `astrid.packs.builtin.executors.render` (intra-builtin).
+- `astrid/packs/iteration/executors/prepare/run.py` invokes `astrid.packs.builtin.executors.understand.run` via subprocess (`UNDERSTAND_EXECUTOR_ID = "builtin.understand"`).
+- `astrid/packs/seinfeld/orchestrators/dataset_build/run.py` invokes `astrid.packs.builtin.executors.youtube_audio.run`, `astrid.packs.builtin.executors.scenes.run`, `astrid.packs.builtin.executors.visual_understand.run`, `astrid.packs.builtin.executors.video_understand.run` via subprocess.
+- `astrid/packs/seinfeld/samples_collage/run.py` invokes `astrid.packs.builtin.executors.video_understand.run`.
+- `astrid/packs/external/fal_foley/run.py` imports from `astrid.packs.builtin.orchestrators.logo_ideas.run` and `astrid.packs.builtin.orchestrators.vary_grid.run`.
+- `astrid/core/executor/runner.py:39-42` hardcodes `from astrid.packs.builtin.orchestrators.hype import run as pipeline` (keystone; Step 6.8 target).
 - `astrid/core/executor/runner.py:171` (inside `_run_upload_youtube`, dispatched at `runner.py:131-132` when `executor.id == "upload.youtube"`) imports `from astrid.packs.upload.youtube.src.social_publish import publish_youtube_video` (Step 4.4 target — note the source path is **stale** vs the already-structured upload pack; the current upload layout is `upload/executors/youtube/`, so this import is already drift and will fail at module load time once exercised).
 
 ## 2. Pack classification
@@ -96,16 +96,16 @@ Columns: `id` (qualified id) / `kind` (executor or orchestrator) / `classificati
 | `builtin.quote_scout`               | executor     | canonical-demo-internal | `pipeline_step: quote_scout`; only invoked from canonical hype.                                                                                                                                                                          |
 | `builtin.pool_build`                | executor     | canonical-demo-internal | `pipeline_step: pool_build`; only invoked from canonical hype.                                                                                                                                                                            |
 | `builtin.pool_merge`                | executor     | canonical-demo-internal | `pipeline_step: pool_merge`; only invoked from canonical hype.                                                                                                                                                                            |
-| `builtin.arrange`                   | executor     | primitive               | `pipeline_step: arrange`. Used by hype AND imported by `builtin/human_notes/run.py` (`from astrid.packs.builtin.arrange.run import pool_digest`), making it a reusable building block.                                                  |
+| `builtin.arrange`                   | executor     | primitive               | `pipeline_step: arrange`. Used by hype AND imported by `builtin/human_notes/run.py` (`from astrid.packs.builtin.executors.arrange.run import pool_digest`), making it a reusable building block.                                                  |
 | `builtin.cut`                       | executor     | canonical-demo-internal | `pipeline_step: cut`; only invoked from canonical hype.                                                                                                                                                                                   |
 | `builtin.refine`                    | executor     | canonical-demo-internal | `pipeline_step: refine`; only invoked from canonical hype. Has internal reviewer subtree (`refine/src/reviewers/`) that imports `asset_cache` — that import is intra-builtin and does not promote refine to primitive.                  |
-| `builtin.render`                    | executor     | primitive               | `pipeline_step: render`. Referenced by hype AND by `builtin.iteration_video` orchestrator (which imports `from astrid.packs.builtin.render import run as render_executor`); also referenced from `SKILL.md`/docs as the canonical render entrypoint. Anchor judgment from the plan. |
-| `builtin.editor_review`             | executor     | primitive               | `pipeline_step: editor_review`. Used by canonical hype AND imported by `builtin/human_notes/run.py` (`from astrid.packs.builtin.editor_review.run import …`). Reusable across orchestrators.                                              |
+| `builtin.render`                    | executor     | primitive               | `pipeline_step: render`. Referenced by hype AND by `builtin.iteration_video` orchestrator (which imports `from astrid.packs.builtin.executors.render import run as render_executor`); also referenced from `SKILL.md`/docs as the canonical render entrypoint. Anchor judgment from the plan. |
+| `builtin.editor_review`             | executor     | primitive               | `pipeline_step: editor_review`. Used by canonical hype AND imported by `builtin/human_notes/run.py` (`from astrid.packs.builtin.executors.editor_review.run import …`). Reusable across orchestrators.                                              |
 | `builtin.validate`                  | executor     | canonical-demo-internal | `pipeline_step: validate`; consumes rendered hype output (video + timeline + metadata). Only invoked from canonical hype — the plan's Step 16.4 explicitly rejects it as the Phase 8 anchor because of these inputs. Kept in Core because hype's validation step depends on it. |
 | `builtin.asset_cache`               | executor     | primitive               | Standalone `--prune-older-than DAYS` CLI; imported by `human_notes`, `thumbnail_maker`, and `refine/src/reviewers/audio_boundary.py`. Anchor judgment from the plan; chosen as the Phase 8 parity anchor.                                |
 | `builtin.generate_image`            | executor     | primitive               | Freestanding image-gen executor; imported by `vary_grid`, `transcribe`, `visual_understand`, `audio_understand`, `logo_ideas`, `event_talks`, `animate_image`, `sprite_sheet` (8 sibling builtin call sites verified by grep). Highest-fan-in primitive in the pack. |
 | `builtin.logo_ideas`                | orchestrator | primitive               | Imports `generate_image` and is itself imported by `animate_image`, `vary_grid`, and `external/fal_foley/run.py`. The cross-pack import from `external/` makes it a primitive (used outside its own pack).                              |
-| `builtin.vary_grid`                 | orchestrator | primitive               | Imports `generate_image` and is itself imported by `external/fal_foley/run.py` (`from astrid.packs.builtin.vary_grid.run import _load_env_var`). Reusable across packs.                                                                  |
+| `builtin.vary_grid`                 | orchestrator | primitive               | Imports `generate_image` and is itself imported by `external/fal_foley/run.py` (`from astrid.packs.builtin.orchestrators.vary_grid.run import _load_env_var`). Reusable across packs.                                                                  |
 | `builtin.animate_image`             | orchestrator | candidate-to-extract    | Two-stage Fal pipeline (gpt-image-2 + wan-animate). Has no consumers outside its own runtime; not part of canonical hype; would ship cleanly as a standalone bundled-installable pack alongside the other Fal-tied components. **Do not move this sprint.** |
 | `builtin.sprite_sheet`              | executor     | candidate-to-extract    | Generates contact sheets / sprite layouts via `generate_image`. No external consumers found; not part of canonical hype. Belongs with the Fal-tied image-gen extensions in a future extraction. **Do not move this sprint.**            |
 | `builtin.thumbnail_maker`           | orchestrator | candidate-to-extract    | Thumbnail-planning orchestrator. Imports `asset_cache` and its own `plan_template`; no consumers outside its own pack-internal call path; not part of canonical hype.                                                                  |
@@ -161,3 +161,21 @@ demonstration.
   this dispatch shift is **`asset_cache`** (rationale in plan §Step 16.4).
 - The `qualified_id` regex relaxation (Step 9.0) preserves every existing 3-segment id in `external/`; no
   aliases are needed (covered explicitly in `migration-aliases.md` in Phase 6).
+
+## 6. Stray directory disposition (Sprint 9 Phase 2 Step 6.11)
+
+Three non-component directories were inventoried at the top level of `astrid/packs/builtin/`:
+
+- **`astrid/packs/builtin/build/`** — does not exist in the current tree; no action required.
+- **`astrid/packs/builtin/fixtures/`** (contains `smoke/`) — **left at the pack root.** The author-test
+  CLI (`astrid/orchestrate/cli.py:279,308`) resolves fixtures by convention at `<pack_root>/fixtures/`; moving
+  them under `tests/` or a nested orchestrator folder would break the pack-level convention used by
+  `astrid author test <pack>.<orchestrator> --fixture <name>`. They are pack-internal example fixtures, owned
+  by the pack rather than by the test suite.
+- **`astrid/packs/builtin/golden/`** (contains `smoke.events.jsonl`) — **left at the pack root** for the
+  same reason: `astrid/orchestrate/cli.py:280` resolves goldens at `<pack_root>/golden/<fixture>.events.jsonl`.
+  The test sites at `tests/test_author_test_drift.py:27` and `tests/test_author_test_regenerate.py:28,29`
+  already point at this location and require no update.
+
+Both directories remain at the builtin pack root rather than moving under `tests/` or
+`builtin/orchestrators/hype/`. The pack contract for author-test is the deciding factor.

@@ -1,0 +1,100 @@
+{
+  "cache": {
+    "always_run": false,
+    "mode": "sentinel",
+    "per_brief": true,
+    "sentinels": [
+      "editor_review.json"
+    ]
+  },
+  "clip_kinds_supported": [
+    "video",
+    "image",
+    "audio",
+    "text",
+    "effect"
+  ],
+  "conditions": [],
+  "graph": {
+    "consumes": [],
+    "depends_on": [
+      "builtin.transcribe",
+      "builtin.scenes",
+      "builtin.quality_zones",
+      "builtin.shots",
+      "builtin.triage",
+      "builtin.scene_describe",
+      "builtin.quote_scout",
+      "builtin.pool_build",
+      "builtin.pool_merge",
+      "builtin.arrange",
+      "builtin.cut",
+      "builtin.refine",
+      "builtin.render"
+    ],
+    "provides": [
+      "editor_review"
+    ]
+  },
+  "id": "builtin.editor_review",
+  "inputs": [
+    {
+      "description": "",
+      "name": "brief_dir",
+      "required": false,
+      "type": "directory"
+    },
+    {
+      "description": "",
+      "name": "run_dir",
+      "required": false,
+      "type": "directory"
+    },
+    {
+      "description": "",
+      "name": "env_file",
+      "required": false,
+      "type": "file"
+    }
+  ],
+  "isolation": {
+    "binaries": [],
+    "mode": "subprocess",
+    "network": false,
+    "requirements": []
+  },
+  "keywords": [
+    "edit",
+    "review",
+    "video",
+    "arrangement",
+    "notes",
+    "pipeline"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "command_builder": "astrid.packs.builtin.orchestrators.hype.run.build_pool_steps",
+    "pipeline_step": "editor_review",
+    "pipeline_step_order": 13,
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.editor_review.run"
+  },
+  "name": "Editor Review",
+  "outputs": [
+    {
+      "description": "",
+      "mode": "create_or_replace",
+      "name": "editor_review",
+      "path_template": "{brief_out}/editor_review.json",
+      "type": "file"
+    }
+  ],
+  "pipeline_requirements": [
+    "rendered_video",
+    "timeline",
+    "source_audio"
+  ],
+  "short_description": "Run heuristic editorial reviewers over an arrangement and emit notes.",
+  "version": "1.0"
+}

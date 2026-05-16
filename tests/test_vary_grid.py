@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.vary_grid import run as vary_grid
+from astrid.packs.builtin.orchestrators.vary_grid import run as vary_grid
 
 
 def _make_grid_png(path: Path, size: int = 192) -> None:

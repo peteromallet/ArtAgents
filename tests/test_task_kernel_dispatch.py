@@ -17,7 +17,7 @@ from astrid.core.task import gate as task_gate
 from astrid.core.task.active_run import write_active_run
 from astrid.core.task.env import TASK_PROJECT_ENV, TASK_RUN_ID_ENV, TASK_STEP_ID_ENV
 from astrid.core.task.plan import compute_plan_hash
-from astrid.packs.builtin.hype import run as hype_run
+from astrid.packs.builtin.orchestrators.hype import run as hype_run
 
 
 def test_pipeline_dispatch_calls_top_gate_and_executor_reentry(

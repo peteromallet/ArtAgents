@@ -8,8 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from astrid.packs.builtin.editor_review import run as editor_review
-from astrid.packs.builtin.hype import run as pipeline
+from astrid.packs.builtin.executors.editor_review import run as editor_review
+from astrid.packs.builtin.orchestrators.hype import run as pipeline
 from astrid import timeline
 
 

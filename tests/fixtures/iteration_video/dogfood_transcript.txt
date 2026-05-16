@@ -2,5 +2,5 @@
 [variants] 1 unresolved variant group; run `python3 -m astrid thread keep <run-id>:<n>[,<n>]` or `<run-id>:none`.
 
 python3 -m astrid thread show @active --no-content
-python3 -m astrid.packs.builtin.iteration_video.run inspect 01ARZ3NDEKTSV4RRFFQ69G5FX0 --no-content
+python3 -m astrid.packs.builtin.orchestrators.iteration_video.run inspect 01ARZ3NDEKTSV4RRFFQ69G5FX0 --no-content
 

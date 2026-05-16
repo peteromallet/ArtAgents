@@ -15,7 +15,7 @@ from astrid.core.orchestrator.runner import OrchestratorRunRequest, run_orchestr
 from astrid.core.orchestrator.schema import OrchestratorDefinition, RuntimeSpec
 from astrid.core.project import paths
 from astrid.core.project.project import create_project
-from astrid.packs.builtin.hype import run as hype
+from astrid.packs.builtin.orchestrators.hype import run as hype
 
 
 def test_executor_project_runs_finalize_success_error_skip_and_avoid_thread_collision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -237,7 +237,7 @@ def _hype_command_orchestrator() -> OrchestratorDefinition:
         version="1.0",
         runtime=RuntimeSpec(
             kind="command",
-            command=CommandSpec(argv=(sys.executable, "-m", "astrid.packs.builtin.hype.run", "{orchestrator_args}")),
+            command=CommandSpec(argv=(sys.executable, "-m", "astrid.packs.builtin.orchestrators.hype.run", "{orchestrator_args}")),
         ),
         metadata={"requires_output_path": True},
     )

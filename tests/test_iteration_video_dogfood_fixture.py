@@ -4,7 +4,7 @@ import json
 import shutil
 from pathlib import Path
 
-from astrid.packs.builtin.iteration_video import run as iteration_video
+from astrid.packs.builtin.orchestrators.iteration_video import run as iteration_video
 from astrid.threads.attribute import AttributionDecision, infer_lineage_thread_id
 from astrid.threads.cli import main as thread_cli
 from astrid.threads.index import ThreadIndexStore

@@ -12,7 +12,7 @@ from astrid.core.orchestrator.runner import OrchestratorRunRequest
 from astrid.core.project.project import create_project
 from astrid.core.project.run import ProjectRunContext, ProjectRunError, finalize_project_run, prepare_project_run
 from astrid.core.task.env import TASK_PROJECT_ENV, TASK_RUN_ID_ENV, TASK_STEP_ID_ENV
-from astrid.packs.builtin.hype import run as hype_run
+from astrid.packs.builtin.orchestrators.hype import run as hype_run
 
 
 def test_task_env_prepare_project_run_attaches_to_step_dir_without_run_json(

@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 from astrid.domains.hype import enriched_arrangement
-from astrid.packs.builtin.quality_zones import run as quality_zones
+from astrid.packs.builtin.executors.quality_zones import run as quality_zones
 
 
 class QualityZonesTest(unittest.TestCase):

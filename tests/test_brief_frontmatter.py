@@ -14,8 +14,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from astrid.packs.builtin.hype import run as pipeline
-from astrid.packs.builtin.hype import run as hype_run
+from astrid.packs.builtin.orchestrators.hype import run as pipeline
+from astrid.packs.builtin.orchestrators.hype import run as hype_run
 
 
 ROOT = Path(__file__).resolve().parents[1]

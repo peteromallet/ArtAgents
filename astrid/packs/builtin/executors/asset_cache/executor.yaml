@@ -1,0 +1,42 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "command": {
+    "argv": [
+      "{python_exec}",
+      "-m",
+      "astrid.packs.builtin.executors.asset_cache.run",
+      "--prune-older-than",
+      "{prune_older_than}"
+    ]
+  },
+  "description": "Manage the repo-local hype asset cache.",
+  "id": "builtin.asset_cache",
+  "inputs": [
+    {
+      "description": "Remove cache entries older than this many days.",
+      "name": "prune_older_than",
+      "type": "number"
+    }
+  ],
+  "isolation": {
+    "mode": "subprocess"
+  },
+  "keywords": [
+    "cache",
+    "assets",
+    "video",
+    "audio",
+    "hype",
+    "manage"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.executors.asset_cache.run"
+  },
+  "name": "Asset Cache",
+  "short_description": "Manage the repo-local hype asset cache (download, prune, list).",
+  "version": "1.0"
+}

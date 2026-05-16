@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from astrid.packs.builtin.scene_describe import run as scene_describe
+from astrid.packs.builtin.executors.scene_describe import run as scene_describe
 
 
 def has_forbidden_time_keys(value, forbidden) -> bool:

@@ -80,7 +80,7 @@ def yt_search(query: str, n: int, log) -> list[dict]:
 def yt_download(url: str, out_no_ext: Path, log) -> Path | None:
     env = _pyenv_env()
     proc = _run([
-        "python3", "-m", "astrid.packs.builtin.youtube_audio.run",
+        "python3", "-m", "astrid.packs.builtin.executors.youtube_audio.run",
         "--url", url, "--mode", "video",
         "--out", str(out_no_ext),
     ], env=env, timeout=900)
@@ -94,7 +94,7 @@ def yt_download(url: str, out_no_ext: Path, log) -> Path | None:
 def detect_scenes(video: Path, out_json: Path, log) -> list[dict]:
     env = _pyenv_env()
     proc = _run([
-        "python3", "-m", "astrid.packs.builtin.scenes.run",
+        "python3", "-m", "astrid.packs.builtin.executors.scenes.run",
         "--video", str(video), "--out", str(out_json),
     ], env=env, timeout=600)
     if proc.returncode != 0 or not out_json.exists():
@@ -107,7 +107,7 @@ def detect_scenes(video: Path, out_json: Path, log) -> list[dict]:
 def vlm_call(video: Path, at_s: float, query: str, schema_path: Path, mode: str, out_json: Path, log) -> dict | None:
     env = _pyenv_env()
     proc = _run([
-        "python3", "-m", "astrid.packs.builtin.visual_understand.run",
+        "python3", "-m", "astrid.packs.builtin.executors.visual_understand.run",
         "--video", str(video), "--at", f"{at_s:.2f}",
         "--query", query,
         "--response-schema", str(schema_path),

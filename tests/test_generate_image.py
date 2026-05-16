@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from astrid.packs.builtin.generate_image.run import load_api_key, main
+from astrid.packs.builtin.executors.generate_image.run import load_api_key, main
 from astrid.utilities.llm_clients import _load_api_key
 
 

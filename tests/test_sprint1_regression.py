@@ -498,7 +498,7 @@ class TestOrchestratorResolutionRegression(unittest.TestCase):
     def test_builtin_hype_resolves_through_canonical_path(self) -> None:
         from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
         module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
-        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(module_path, "astrid.packs.builtin.orchestrators.hype.run")
         self.assertEqual(entrypoint, "main")
 
     def test_minimal_make_trailer_resolves_through_pack_root(self) -> None:
@@ -516,7 +516,7 @@ class TestOrchestratorResolutionRegression(unittest.TestCase):
         """resolve_orchestrator_runtime must resolve builtin.hype."""
         from astrid.core.orchestrator.runtime import resolve_orchestrator_runtime
         module_path, entrypoint = resolve_orchestrator_runtime("builtin.hype")
-        self.assertEqual(module_path, "astrid.packs.builtin.hype.run")
+        self.assertEqual(module_path, "astrid.packs.builtin.orchestrators.hype.run")
         self.assertEqual(entrypoint, "main")
 
     def test_orchestrators_list_contains_resolvable_ids(self) -> None:

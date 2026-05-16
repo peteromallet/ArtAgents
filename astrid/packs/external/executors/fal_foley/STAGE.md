@@ -22,7 +22,7 @@ python3 -m astrid executors run external.fal_foley \
 Direct invocation:
 
 ```bash
-python3 -m astrid.packs.external.fal_foley.run \
+python3 -m astrid.packs.external.executors.fal_foley.run \
   --clip runs/tile_video/example/tiles/0_0.mp4 \
   --prompt "underwater turbulence, dense bubbles, organic motion" \
   --out runs/foley/0_0.wav \

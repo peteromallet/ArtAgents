@@ -1,0 +1,45 @@
+{
+  "cache": {
+    "mode": "none"
+  },
+  "child_executors": [],
+  "child_orchestrators": [],
+  "description": "Two-stage Fal pipeline: (1) generate a still image with openai/gpt-image-2/edit using a reference image + prompt, then (2) animate that image with fal-ai/wan/v2.2-14b/animate/move driven by a reference video.",
+  "id": "builtin.animate_image",
+  "isolation": {
+    "mode": "subprocess",
+    "network": true
+  },
+  "keywords": [
+    "fal",
+    "wan",
+    "image",
+    "video",
+    "animate",
+    "gpt-image",
+    "generate"
+  ],
+  "kind": "built_in",
+  "metadata": {
+    "env": [
+      "FAL_KEY"
+    ],
+    "runtime_entrypoint": "main",
+    "runtime_file": "run.py",
+    "runtime_module": "astrid.packs.builtin.orchestrators.animate_image.run"
+  },
+  "name": "Animate Image",
+  "runtime": {
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.builtin.orchestrators.animate_image.run",
+        "{orchestrator_args}"
+      ]
+    },
+    "kind": "command"
+  },
+  "short_description": "Two-stage Fal pipeline: edit a reference image with GPT Image 2, then animate it with WAN 2.2.",
+  "version": "1.0"
+}

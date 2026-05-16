@@ -15,8 +15,8 @@ import unittest
 from pathlib import Path
 
 from astrid import timeline as timeline_mod
-from astrid.packs.builtin.cut import run as cut
-from astrid.packs.builtin.pool_merge import run as pool_merge
+from astrid.packs.builtin.executors.cut import run as cut
+from astrid.packs.builtin.executors.pool_merge import run as pool_merge
 from astrid.timeline import ClipClassifiedKind, Timeline
 
 

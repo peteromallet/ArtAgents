@@ -10,13 +10,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from astrid.packs.builtin.logo_ideas.run import (
+from astrid.packs.builtin.orchestrators.logo_ideas.run import (
     FAL_QUEUE_URL,
     _http_get_bytes,
     _http_post_json,
     poll_fal_result,
 )
-from astrid.packs.builtin.vary_grid.run import _load_env_var
+from astrid.packs.builtin.orchestrators.vary_grid.run import _load_env_var
 
 
 FAL_MODEL_ID = "fal-ai/hunyuan-video-foley"
