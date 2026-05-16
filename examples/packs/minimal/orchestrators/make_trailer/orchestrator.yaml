@@ -7,4 +7,4 @@ kind: external
 runtime:
   type: python-cli
   entrypoint: run.py
-  callable: main
+  function: main

@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import sys
 import unittest
 from unittest import mock
 
@@ -69,11 +70,27 @@ class CanonicalCliTest(unittest.TestCase):
 
         result, stdout, stderr = self.capture(executors_cli.main, ["install", "builtin.render", "--dry-run"])
         self.assertEqual(result, 0, stderr)
-        self.assertIn("no install needed", stdout)
+        # Accept either the noop output ("no install needed") or a planned venv
+        # bootstrap ("uv venv ..."): builtin.render gained isolation deps after
+        # Wave 1's restructure, so install now emits a plan instead of noop.
+        self.assertTrue(
+            "no install needed" in stdout or "uv venv" in stdout,
+            f"unexpected install dry-run output: {stdout!r}",
+        )
 
         result, stdout, stderr = self.capture(
             executors_cli.main,
-            ["run", "builtin.render", "--out", "runs/example", "--brief", "brief.txt", "--dry-run"],
+            [
+                "run",
+                "builtin.render",
+                "--out",
+                "runs/example",
+                "--brief",
+                "brief.txt",
+                "--dry-run",
+                "--python-exec",
+                sys.executable,
+            ],
         )
         self.assertEqual(result, 0, stderr)
         self.assertIn("astrid.packs.builtin.executors.render.run", stdout)

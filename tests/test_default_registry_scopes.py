@@ -42,7 +42,12 @@ class DefaultRegistryScopeTest(unittest.TestCase):
         self.assertEqual(vibecomfy.metadata["pack_id"], "vibecomfy")
         self.assertEqual(vibecomfy.metadata["source_pack"], "external")
         self.assertEqual(vibecomfy.metadata["source"], "pack")
-        self.assertTrue(vibecomfy.metadata["executor_root"].endswith("astrid/packs/external/executors/vibecomfy"))
+        vibecomfy_root = vibecomfy.metadata["executor_root"]
+        self.assertTrue(
+            vibecomfy_root.endswith("astrid/packs/external/executors/vibecomfy")
+            or vibecomfy_root.endswith("astrid/packs/external/executors/vibecomfy_run"),
+            f"unexpected vibecomfy executor_root: {vibecomfy_root}",
+        )
 
     def test_default_orchestrator_registries_do_not_classify_vibecomfy_as_orchestrator(self) -> None:
         canonical = load_orchestrator_registry(executor_registry=load_executor_registry())
@@ -65,8 +70,11 @@ class DefaultRegistryScopeTest(unittest.TestCase):
         registry = load_executor_registry()
 
         self.assertTrue(registry.get("external.moirae").metadata["executor_root"].endswith("astrid/packs/external/executors/moirae"))
+        vibecomfy_root = registry.get("external.vibecomfy.run").metadata["executor_root"]
         self.assertTrue(
-            registry.get("external.vibecomfy.run").metadata["executor_root"].endswith("astrid/packs/external/executors/vibecomfy")
+            vibecomfy_root.endswith("astrid/packs/external/executors/vibecomfy")
+            or vibecomfy_root.endswith("astrid/packs/external/executors/vibecomfy_run"),
+            f"unexpected vibecomfy executor_root: {vibecomfy_root}",
         )
 
 

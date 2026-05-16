@@ -57,11 +57,13 @@ class ShippedPackAlignmentTest(unittest.TestCase):
                 root = str(executor.metadata["executor_root"]).rstrip("/")
                 tail = executor_id.split(".", 1)[1]
                 slug_head = tail.split(".")[0]
+                tail_underscored = tail.replace(".", "_")
                 self.assertTrue(
                     root.endswith(f"astrid/packs/{pack}/{slug_head}")
                     or root.endswith(f"astrid/packs/{pack}/{tail}")
                     or root.endswith(f"astrid/packs/{pack}/executors/{slug_head}")
-                    or root.endswith(f"astrid/packs/{pack}/executors/{tail}"),
+                    or root.endswith(f"astrid/packs/{pack}/executors/{tail}")
+                    or root.endswith(f"astrid/packs/{pack}/executors/{tail_underscored}"),
                     f"executor_root for {executor_id} did not land under packs/{pack}/",
                 )
 

@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -85,6 +86,8 @@ class HtmlCanvasEffectExecutorTest(unittest.TestCase):
                     "--out",
                     "runs/html-canvas-effect",
                     "--dry-run",
+                    "--python-exec",
+                    sys.executable,
                 ]
             )
 

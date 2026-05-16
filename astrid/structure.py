@@ -13,6 +13,9 @@ from astrid.core.orchestrator.folder import load_folder_orchestrators
 LEGACY_PUBLIC_DIRS = ("conductors", "performers", "instruments", "primitives", "executors", "orchestrators")
 LEGACY_LOCAL_DIRS = ("performers", "conductors", "nodes", "instruments", "primitives")
 INTERNAL_PACK_DIRS = {"__pycache__"}
+# Directories under astrid/packs/ that are not packs and must be skipped by
+# pack-component scans (e.g. JSON Schema definitions used by manifest validation).
+NON_PACK_TOP_LEVEL_DIRS = {"schemas"}
 TOP_LEVEL_ARTAGENTS_FILES = {
     "__init__.py",
     "__main__.py",
@@ -101,7 +104,7 @@ def _validate_pack_executor_folders(packs_root: Path) -> list[str]:
 
     errors: list[str] = []
     repo_root = packs_root.parents[1]
-    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS | NON_PACK_TOP_LEVEL_DIRS):
         for folder in _public_child_dirs(pack_dir, INTERNAL_PACK_DIRS):
             if not _has_any(folder, ("executor.yaml", "executor.yml", "executor.json", "executor.py")):
                 continue
@@ -131,7 +134,7 @@ def _validate_pack_orchestrator_folders(packs_root: Path) -> list[str]:
 
     errors: list[str] = []
     repo_root = packs_root.parents[1]
-    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS | NON_PACK_TOP_LEVEL_DIRS):
         for folder in _public_child_dirs(pack_dir, INTERNAL_PACK_DIRS):
             if not _has_any(folder, ("orchestrator.yaml", "orchestrator.yml", "orchestrator.json", "orchestrator.py")):
                 continue
@@ -164,7 +167,7 @@ def _validate_pack_element_folders(packs_root: Path) -> list[str]:
 
     errors: list[str] = []
     repo_root = packs_root.parents[1]
-    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS):
+    for pack_dir in _public_child_dirs(packs_root, INTERNAL_PACK_DIRS | NON_PACK_TOP_LEVEL_DIRS):
         elements_root = pack_dir / "elements"
         if not elements_root.is_dir():
             continue
