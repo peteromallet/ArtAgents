@@ -194,7 +194,7 @@ These are all real and worth doing. They're not load-bearing for the Seinfeld pr
 
 The sprint is done when all of these are true:
 
-1. **Reviewer works end-to-end on the existing v0 dataset.** Running `python3 -m astrid.packs.seinfeld.dataset_build.run --review-only --out runs/seinfeld-dataset` opens the browser, lets the user review all 30 clips with hotkeys, persists decisions to disk per keypress, exits cleanly on submit, writes `human_review.final.json`.
+1. **Reviewer works end-to-end on the existing v0 dataset.** Running `python3 -m astrid.packs.seinfeld.orchestrators.dataset_build.run --review-only --out runs/seinfeld-dataset` opens the browser, lets the user review all 30 clips with hotkeys, persists decisions to disk per keypress, exits cleanly on submit, writes `human_review.final.json`.
 2. **`builtin.human_review` is genuinely generic.** A unit test or smoke test invokes it with a one-line stub `review.html` and `data.json` and verifies the round-trip works without any Seinfeld-specific code paths.
 3. **`builtin.human_review` has `executor.yaml` + `STAGE.md` per Astrid conventions.** Visible in `python3 -m astrid executors list`. Inspectable via `python3 -m astrid executors inspect builtin.human_review --json`.
 4. **Vocabulary edit triggers correct re-runs.** Add a third bucket to `vocabulary.yaml`. Re-run. Existing clips' judgements + captions invalidate and regenerate (with cost preview shown); scenes.json + mp4 files do not redownload or re-segment.

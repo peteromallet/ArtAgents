@@ -1301,3 +1301,68 @@ and runnable installed executors/orchestrators before calling the first
 milestone done. Do not start with Git install. Validation and local runnable
 install are the foundation; Git should only install packs whose local contract
 already works.
+
+## Sprint 8 Migration Decision
+
+Sprint 8 used the `seinfeld` pack as the migration proof for the external
+pack contract.  The decision below names which built-in packs migrate
+immediately, which move during Sprint 9, and what end state the legacy
+resolver behavior converges to.
+
+### Immediate migrate (Sprint 8 — done)
+
+- **`seinfeld`** — converted in this sprint.  Five executors and two
+  orchestrators were relocated into `executors/` and `orchestrators/`
+  subdirectories, manifests gained `schema_version: 1` and a `runtime`
+  object alongside the legacy top-level `command` field, and `pack.yaml`
+  now declares structured content roots (`executors: executors`,
+  `orchestrators: orchestrators`, `schemas: schemas`).  This proves the
+  external pack contract is not fixture-only and exercises the same
+  resolver, validation, inspect, and runtime code paths as external packs.
+  Outstanding compatibility gaps are documented in
+  `astrid/packs/seinfeld/MIGRATION_NOTES.md` and tracked for Sprint 9
+  (`additionalProperties: false` re-enable, legacy `command` field
+  removal, `runtime.type` consolidation, `kind: external` semantic
+  rename).
+
+### Alias / compatibility window (Sprint 9)
+
+- **`iteration`** — flat-layout executors (`iteration.prepare`,
+  `iteration.assemble`); small surface area, straightforward restructure
+  using the seinfeld template.  Migrates with public-id aliases so any
+  recorded pipelines keep resolving.
+- **`upload`** — flat-layout executor (`upload.youtube`).  Same shape as
+  iteration; migrates alongside it using the same alias pattern.
+
+### Deferred to Sprint 9
+
+- **`builtin`** — the largest pack and tightly coupled to the hype
+  pipeline.  Restructuring it touches the runtime dispatch path
+  (`_run_external_executor` vs the legacy built-in code path), so it is
+  deferred to Sprint 9 portfolio rationalization where it can be
+  classified as core, bundled installable, or core-with-relocation.
+
+### Already structurally compliant
+
+- **`external`** — uses a structured layout under `external/` (executors
+  live in subdirectories), even though `pack.yaml` still declares
+  `content.executors: '.'`.  Sprint 9 only needs to update the
+  declaration; no file moves are required.
+
+### End state for legacy resolver behavior
+
+- The rglob fallback in `PackResolver._resolve_content_roots` and the
+  module-level `iter_executor_roots` / `iter_orchestrator_roots` helpers
+  remains available through Sprint 9.
+- Sprint 8 adds two deprecation warnings:
+  - `PackResolver._warn_undeclared_content` surfaces a finding when a
+    pack does not declare `content.executors` / `content.orchestrators`.
+  - `PackValidator._validate_components` warns when `content.<key>` is
+    `'.'` (flat layout).
+- These warnings will fire for `builtin`, `iteration`, `external`, and
+  `upload` until each pack migrates.  The noise is intentional and
+  documented in `MIGRATION_NOTES.md`.
+- After Sprint 9 completes portfolio rationalization, undeclared content
+  roots and flat-layout declarations become hard errors and the rglob
+  fallback is removed.  At that point every shipped pack uses the same
+  contract as user-installed external packs.

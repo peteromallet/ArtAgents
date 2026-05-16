@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         training_log.write_text("(dry-run)\n", encoding="utf-8")
         return 0
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[5]
 
     # Kick off training (blocking — ai-toolkit streams its log to stdout, which we capture).
     train_inner = (

@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.aitoolkit_stage",
   "name": "Seinfeld AI Toolkit Stage",
   "kind": "built_in",
@@ -18,11 +19,24 @@
     {"name": "ui_url", "type": "file", "path_template": "{out}/produces/ui_url.txt"},
     {"name": "dataset_upload", "type": "file", "path_template": "{out}/produces/dataset_upload.json"}
   ],
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.seinfeld.executors.aitoolkit_stage.run",
+        "--manifest", "{manifest}",
+        "--vocabulary", "{vocabulary}",
+        "--produces-dir", "{out}/produces"
+      ]
+    }
+  },
   "command": {
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.seinfeld.aitoolkit_stage.run",
+      "astrid.packs.seinfeld.executors.aitoolkit_stage.run",
       "--manifest", "{manifest}",
       "--vocabulary", "{vocabulary}",
       "--produces-dir", "{out}/produces"
@@ -31,7 +45,7 @@
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": true},
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.aitoolkit_stage.run",
+    "runtime_module": "astrid.packs.seinfeld.executors.aitoolkit_stage.run",
     "runtime_file": "run.py"
   }
 }

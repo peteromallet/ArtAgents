@@ -8,7 +8,7 @@ can read the upstream config schema without depending on a live pod.
 **Invocation (standalone)**:
 
 ```bash
-python3 -m astrid.packs.seinfeld.repo_setup.run --out /tmp/repo_setup_test
+python3 -m astrid.packs.seinfeld.executors.repo_setup.run --out /tmp/repo_setup_test
 ```
 
 **Invocation via orchestrator**:

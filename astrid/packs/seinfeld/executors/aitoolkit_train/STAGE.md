@@ -5,7 +5,7 @@ Runs ai-toolkit training on the live RunPod pod against `/workspace/config.yaml`
 **Invocation**:
 
 ```bash
-python3 -m astrid.packs.seinfeld.aitoolkit_train.run \
+python3 -m astrid.packs.seinfeld.executors.aitoolkit_train.run \
   --pod-handle runs/seinfeld-lora/000-provision/produces/pod_handle.json \
   --produces-dir runs/seinfeld-lora/020-train/produces
 ```

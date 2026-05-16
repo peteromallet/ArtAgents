@@ -487,6 +487,21 @@ class PackValidator:
         if self._pack_data is None:
             return
 
+        # Sprint 8 deprecation: flat layout (content.<key> == '.') falls back
+        # to the resolver's legacy rglob scan.  Surface a warning so builders
+        # see the migration path alongside other validation feedback.  After
+        # Sprint 9 portfolio rationalization, flat layout becomes a hard
+        # error.  The warning is expected to fire on `builtin`, `iteration`,
+        # `external`, and `upload` packs until they migrate in Sprint 9.
+        for content_key in ("executors", "orchestrators"):
+            value = content.get(content_key)
+            if isinstance(value, str) and value.strip() == ".":
+                self.warnings.append(
+                    f"{self._rel(self.pack_root / 'pack.yaml')}: "
+                    f"content.{content_key} is '.' (flat layout) — migrate "
+                    f"to a subdirectory like '{content_key}'"
+                )
+
         # Executors
         exec_root_rel = content.get("executors", "executors")
         if isinstance(exec_root_rel, str) and exec_root_rel.strip():

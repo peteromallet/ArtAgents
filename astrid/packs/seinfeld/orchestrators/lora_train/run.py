@@ -29,8 +29,8 @@ DEFAULT_GPU = "NVIDIA RTX 6000 Ada Generation"
 DEFAULT_CONTAINER_DISK_GB = 200
 DEFAULT_MAX_RUNTIME = 43200  # 12h ceiling
 DEFAULT_BASE_MODEL = "Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors"
-PACK_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(__file__).resolve().parents[4]
+PACK_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[5]
 
 
 def _abs(p: str | Path) -> str:
@@ -118,7 +118,7 @@ def _invoke_repo_setup(out: Path) -> int:
     produces = out / "repo_setup"
     produces.mkdir(parents=True, exist_ok=True)
     return _run([
-        sys.executable, "-m", "astrid.packs.seinfeld.repo_setup.run",
+        sys.executable, "-m", "astrid.packs.seinfeld.executors.repo_setup.run",
         "--produces-dir", _abs(produces),
     ])
 
@@ -146,7 +146,7 @@ def _stage(args: argparse.Namespace, out: Path, pod_handle: Path) -> int:
     produces = out / "stage"
     produces.mkdir(parents=True, exist_ok=True)
     argv = [
-        sys.executable, "-m", "astrid.packs.seinfeld.aitoolkit_stage.run",
+        sys.executable, "-m", "astrid.packs.seinfeld.executors.aitoolkit_stage.run",
         "--manifest", _abs(args.manifest),
         "--vocabulary", _abs(args.vocabulary),
         "--produces-dir", _abs(produces),
@@ -172,7 +172,7 @@ def _train(args: argparse.Namespace, out: Path, pod_handle: Path) -> int:
     produces = out / "train"
     produces.mkdir(parents=True, exist_ok=True)
     argv = [
-        sys.executable, "-m", "astrid.packs.seinfeld.aitoolkit_train.run",
+        sys.executable, "-m", "astrid.packs.seinfeld.executors.aitoolkit_train.run",
         "--pod-handle", _abs(pod_handle),
         "--produces-dir", _abs(produces),
     ]
@@ -208,7 +208,7 @@ def _eval_grid(
     produces = out / "eval_grid"
     produces.mkdir(parents=True, exist_ok=True)
     argv = [
-        sys.executable, "-m", "astrid.packs.seinfeld.lora_eval_grid.run",
+        sys.executable, "-m", "astrid.packs.seinfeld.executors.lora_eval_grid.run",
         "--pod-handle", _abs(pod_handle),
         "--checkpoint-manifest", _abs(checkpoint_manifest),
         "--vocabulary", _abs(args.vocabulary),
@@ -233,7 +233,7 @@ def _register(args: argparse.Namespace, out: Path, chosen: Path, lora_source: Pa
     produces = out / "register"
     produces.mkdir(parents=True, exist_ok=True)
     return _run([
-        sys.executable, "-m", "astrid.packs.seinfeld.lora_register.run",
+        sys.executable, "-m", "astrid.packs.seinfeld.executors.lora_register.run",
         "--chosen-checkpoint", _abs(chosen),
         "--lora-source", _abs(lora_source),
         "--staged-config", _abs(staged_config),
@@ -320,7 +320,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         produces = out / "stage"
         produces.mkdir(parents=True, exist_ok=True)
         stage_argv = [
-            sys.executable, "-m", "astrid.packs.seinfeld.aitoolkit_stage.run",
+            sys.executable, "-m", "astrid.packs.seinfeld.executors.aitoolkit_stage.run",
             "--manifest", _abs(args.manifest),
             "--vocabulary", _abs(args.vocabulary),
             "--produces-dir", _abs(produces),
@@ -396,7 +396,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         f"Training samples (per-step × per-prompt with auto-captions): {collage_index}\n"
         f"Eval grid (inference clips on candidate checkpoints): {eval_index}\n"
         f"\nWhen ready, run:\n"
-        f"  python3 -m astrid.packs.seinfeld.lora_train.run resume "
+        f"  python3 -m astrid.packs.seinfeld.orchestrators.lora_train.run resume "
         f"--out {out} --pick <step> --notes '<why this step>'\n"
         "================================\n",
         flush=True,

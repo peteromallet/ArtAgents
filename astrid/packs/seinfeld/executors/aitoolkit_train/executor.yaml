@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.aitoolkit_train",
   "name": "Seinfeld AI Toolkit Train",
   "kind": "built_in",
@@ -14,11 +15,23 @@
     {"name": "checkpoint_manifest", "type": "file", "path_template": "{out}/produces/checkpoint_manifest.json"},
     {"name": "training_log", "type": "file", "path_template": "{out}/produces/training.log"}
   ],
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.seinfeld.executors.aitoolkit_train.run",
+        "--pod-handle", "{pod_handle}",
+        "--produces-dir", "{out}/produces"
+      ]
+    }
+  },
   "command": {
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.seinfeld.aitoolkit_train.run",
+      "astrid.packs.seinfeld.executors.aitoolkit_train.run",
       "--pod-handle", "{pod_handle}",
       "--produces-dir", "{out}/produces"
     ]
@@ -26,7 +39,7 @@
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": true},
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.aitoolkit_train.run",
+    "runtime_module": "astrid.packs.seinfeld.executors.aitoolkit_train.run",
     "runtime_file": "run.py"
   }
 }

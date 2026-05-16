@@ -32,8 +32,8 @@ HIVEMIND_DEFAULTS = {
     "base_model_default": "Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors",
 }
 
-TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "lora_train" / "config_template.yaml"
-REPO_ROOT = Path(__file__).resolve().parents[4]
+TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "orchestrators" / "lora_train" / "config_template.yaml"
+REPO_ROOT = Path(__file__).resolve().parents[5]
 
 
 def _load_yaml(path: Path) -> dict:

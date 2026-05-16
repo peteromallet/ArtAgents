@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from astrid.packs.seinfeld.lora_train import run as lora_run
+from astrid.packs.seinfeld.orchestrators.lora_train import run as lora_run
 
 from ._fixtures import make_dataset, make_vocab
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from astrid.packs.seinfeld.lora_register import run as reg_run
+from astrid.packs.seinfeld.executors.lora_register import run as reg_run
 
 from ._fixtures import make_vocab
 

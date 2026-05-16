@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.lora_register",
   "name": "Seinfeld LoRA Register",
   "kind": "built_in",
@@ -15,11 +16,26 @@
   "outputs": [
     {"name": "registered_lora", "type": "file", "path_template": "{out}/produces/registered_lora.json"}
   ],
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.seinfeld.executors.lora_register.run",
+        "--chosen-checkpoint", "{chosen_checkpoint}",
+        "--lora-source", "{lora_source}",
+        "--staged-config", "{staged_config}",
+        "--vocabulary", "{vocabulary}",
+        "--produces-dir", "{out}/produces"
+      ]
+    }
+  },
   "command": {
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.seinfeld.lora_register.run",
+      "astrid.packs.seinfeld.executors.lora_register.run",
       "--chosen-checkpoint", "{chosen_checkpoint}",
       "--lora-source", "{lora_source}",
       "--staged-config", "{staged_config}",
@@ -30,7 +46,7 @@
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": false},
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.lora_register.run",
+    "runtime_module": "astrid.packs.seinfeld.executors.lora_register.run",
     "runtime_file": "run.py"
   }
 }

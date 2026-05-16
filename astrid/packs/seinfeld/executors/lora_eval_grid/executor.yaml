@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.lora_eval_grid",
   "name": "Seinfeld LoRA Eval Grid",
   "kind": "built_in",
@@ -14,11 +15,25 @@
   "outputs": [
     {"name": "eval_grid_index", "type": "file", "path_template": "{out}/produces/eval_grid/index.html"}
   ],
+  "runtime": {
+    "type": "command",
+    "command": {
+      "argv": [
+        "{python_exec}",
+        "-m",
+        "astrid.packs.seinfeld.executors.lora_eval_grid.run",
+        "--pod-handle", "{pod_handle}",
+        "--checkpoint-manifest", "{checkpoint_manifest}",
+        "--vocabulary", "{vocabulary}",
+        "--produces-dir", "{out}/produces"
+      ]
+    }
+  },
   "command": {
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.seinfeld.lora_eval_grid.run",
+      "astrid.packs.seinfeld.executors.lora_eval_grid.run",
       "--pod-handle", "{pod_handle}",
       "--checkpoint-manifest", "{checkpoint_manifest}",
       "--vocabulary", "{vocabulary}",
@@ -28,7 +43,7 @@
   "cache": {"mode": "none"},
   "isolation": {"mode": "subprocess", "network": true},
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.lora_eval_grid.run",
+    "runtime_module": "astrid.packs.seinfeld.executors.lora_eval_grid.run",
     "runtime_file": "run.py"
   }
 }

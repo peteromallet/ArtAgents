@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[5]
     # Prevent runpod exec from uploading the repository cwd for each eval sample.
     empty_local_root = grid_dir / "_empty_local_root"
     empty_local_root.mkdir(parents=True, exist_ok=True)

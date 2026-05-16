@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.lora_train",
   "name": "Seinfeld LoRA Train",
   "kind": "built_in",
@@ -7,12 +8,13 @@
   "description": "Provisions a RunPod GPU, stages the dataset_build manifest + an ai-toolkit (ostris) config, runs training, generates an eval sample grid, gates on human checkpoint selection (exit 0 + PAUSED status in last_run.json), then `resume --pick <step>` tears down the pod and registers the chosen LoRA.",
   "keywords": ["seinfeld", "lora", "training", "ai-toolkit", "runpod", "ltx"],
   "runtime": {
+    "type": "command",
     "kind": "command",
     "command": {
       "argv": [
         "{python_exec}",
         "-m",
-        "astrid.packs.seinfeld.lora_train.run",
+        "astrid.packs.seinfeld.orchestrators.lora_train.run",
         "{orchestrator_args}"
       ]
     }
@@ -32,7 +34,7 @@
     "mode": "none"
   },
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.lora_train.run",
+    "runtime_module": "astrid.packs.seinfeld.orchestrators.lora_train.run",
     "runtime_file": "run.py"
   }
 }

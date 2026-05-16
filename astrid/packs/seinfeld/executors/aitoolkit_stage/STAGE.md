@@ -7,7 +7,7 @@ Dataset upload runs after the config/bootstrap `external.runpod.exec` call succe
 **Invocation**:
 
 ```bash
-python3 -m astrid.packs.seinfeld.aitoolkit_stage.run \
+python3 -m astrid.packs.seinfeld.executors.aitoolkit_stage.run \
   --manifest runs/seinfeld-dataset/provisional.manifest.json \
   --vocabulary astrid/packs/seinfeld/vocabulary.yaml \
   --produces-dir runs/seinfeld-lora/010-stage/produces \

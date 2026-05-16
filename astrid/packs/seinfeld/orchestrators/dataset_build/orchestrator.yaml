@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "seinfeld.dataset_build",
   "name": "Seinfeld Dataset Build",
   "kind": "built_in",
@@ -7,12 +8,13 @@
   "description": "Reads the locked-vocabulary criteria element, searches YouTube, downloads video, segments scenes, VLM-judges each clip into a vocabulary bucket, VLM-captions it against the locked template, human-reviews a sample, exports the training manifest. Runs until per-bucket targets are met.",
   "keywords": ["seinfeld", "dataset", "lora", "training", "youtube", "vlm", "captioning"],
   "runtime": {
+    "type": "command",
     "kind": "command",
     "command": {
       "argv": [
         "{python_exec}",
         "-m",
-        "astrid.packs.seinfeld.dataset_build.run",
+        "astrid.packs.seinfeld.orchestrators.dataset_build.run",
         "{orchestrator_args}"
       ]
     }
@@ -28,7 +30,7 @@
     "mode": "none"
   },
   "metadata": {
-    "runtime_module": "astrid.packs.seinfeld.dataset_build.run",
+    "runtime_module": "astrid.packs.seinfeld.orchestrators.dataset_build.run",
     "runtime_file": "run.py"
   }
 }

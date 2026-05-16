@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from astrid.packs.seinfeld.aitoolkit_stage import run as stage_run
+from astrid.packs.seinfeld.executors.aitoolkit_stage import run as stage_run
 
 from ._fixtures import make_dataset, make_vocab
 

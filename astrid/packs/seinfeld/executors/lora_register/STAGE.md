@@ -5,7 +5,7 @@ Pure-local finalize step that runs after pod teardown. Reads `chosen_checkpoint.
 **Invocation**:
 
 ```bash
-python3 -m astrid.packs.seinfeld.lora_register.run \
+python3 -m astrid.packs.seinfeld.executors.lora_register.run \
   --chosen-checkpoint runs/seinfeld-lora/chosen_checkpoint.json \
   --lora-source runs/seinfeld-lora/020-train/produces/step_1500.safetensors \
   --staged-config runs/seinfeld-lora/010-stage/produces/staged_config.yaml \

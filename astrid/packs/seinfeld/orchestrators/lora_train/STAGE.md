@@ -50,7 +50,7 @@ is the only guardrail — pick your checkpoint promptly). The user reviews
 ### Resume subcommand
 
 ```bash
-python3 -m astrid.packs.seinfeld.lora_train.run resume \
+python3 -m astrid.packs.seinfeld.orchestrators.lora_train.run resume \
   --out runs/seinfeld-lora \
   --pick 1500 \
   --notes "step 1500: cleanest character identity, no over-fit"

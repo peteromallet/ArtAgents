@@ -5,7 +5,7 @@ Builds a fixed 3-6 prompt set from `vocabulary.yaml` (covering both scenes and a
 **Invocation**:
 
 ```bash
-python3 -m astrid.packs.seinfeld.lora_eval_grid.run \
+python3 -m astrid.packs.seinfeld.executors.lora_eval_grid.run \
   --pod-handle runs/seinfeld-lora/000-provision/produces/pod_handle.json \
   --checkpoint-manifest runs/seinfeld-lora/020-train/produces/checkpoint_manifest.json \
   --vocabulary astrid/packs/seinfeld/vocabulary.yaml \

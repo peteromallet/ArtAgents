@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from astrid.packs.seinfeld.repo_setup import run as setup_run
+from astrid.packs.seinfeld.executors.repo_setup import run as setup_run
 
 
 def test_idempotent_second_invocation_no_op(

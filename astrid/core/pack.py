@@ -157,6 +157,7 @@ class PackResolver:
                     )
                 seen[pack.id] = self_manifest
                 all_packs.append(pack)
+                self._warn_undeclared_content(pack)
                 continue  # don't scan children — it's a leaf pack
 
             # -- Case 2: root is a container of pack sub-directories ----------
@@ -184,10 +185,28 @@ class PackResolver:
                     )
                 seen[pack.id] = manifest_path
                 all_packs.append(pack)
+                self._warn_undeclared_content(pack)
 
         all_packs.sort(key=lambda p: p.id)
         self._packs = tuple(all_packs)
         self._packs_by_id = {p.id: p for p in all_packs}
+
+    def _warn_undeclared_content(self, pack: PackDefinition) -> None:
+        """Emit deprecation findings for packs without declared content roots.
+
+        Sprint 8: shipped packs that have not migrated to the structured
+        layout fall back to the legacy ``rglob`` scan.  Surface a finding so
+        builders see the deprecation alongside other resolver warnings.
+        After Sprint 9 portfolio rationalization, undeclared packs become a
+        hard error.
+        """
+        for content_key in ("executors", "orchestrators"):
+            if content_key not in pack.declared_content:
+                self._findings.append(
+                    f"pack {pack.id!r}: content.{content_key} not declared "
+                    f"in pack.yaml — using legacy rglob scan; declare "
+                    f"content.{content_key} in pack.yaml"
+                )
 
     def _resolve_content_roots(
         self,
@@ -311,12 +330,26 @@ def validate_element_pack_id(
 
 
 def iter_executor_roots(pack: PackDefinition) -> tuple[Path, ...]:
+    if "executors" not in pack.declared_content:
+        print(
+            f"WARNING: pack {pack.id!r}: content.executors not declared in "
+            f"pack.yaml — using legacy rglob scan; declare content.executors "
+            f"in pack.yaml",
+            file=sys.stderr,
+        )
     return _content_roots(
         pack.root, EXECUTOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"}
     )
 
 
 def iter_orchestrator_roots(pack: PackDefinition) -> tuple[Path, ...]:
+    if "orchestrators" not in pack.declared_content:
+        print(
+            f"WARNING: pack {pack.id!r}: content.orchestrators not declared in "
+            f"pack.yaml — using legacy rglob scan; declare content.orchestrators "
+            f"in pack.yaml",
+            file=sys.stderr,
+        )
     return _content_roots(
         pack.root, ORCHESTRATOR_MANIFEST_NAMES, excluded_parts={"elements", "ai_toolkit"}
     )

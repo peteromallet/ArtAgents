@@ -3,5 +3,6 @@ name: Seinfeld Scene Generator
 version: 0.1.0
 schema_version: 1
 content:
-  executors: '.'
-  orchestrators: '.'
+  executors: executors
+  orchestrators: orchestrators
+  schemas: schemas
