@@ -324,7 +324,7 @@ def _upload_dataset(args: argparse.Namespace, produces: Path, pod_handle: dict) 
     exec_produces = produces / "_dataset_exec_produces"
     exec_produces.mkdir(parents=True, exist_ok=True)
     exec_argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
         "--produces-dir", str(exec_produces),
         "--pod-handle", str(args.pod_handle),
         "--local-root", str(dataset_staging),
@@ -409,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     exec_produces = produces / "_exec_produces"
     exec_produces.mkdir(parents=True, exist_ok=True)
     exec_argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
         "--produces-dir", str(exec_produces),
         "--pod-handle", str(args.pod_handle),
         "--local-root", str(upload_dir),

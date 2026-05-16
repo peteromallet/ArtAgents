@@ -1,0 +1,65 @@
+schema_version: 1
+id: external.runpod.teardown
+name: RunPod Teardown
+kind: external
+version: 0.1.0
+description: Terminate a RunPod pod by pod_handle. Idempotent — 'not found' is a no-op.
+short_description: Terminate a RunPod pod. Idempotent.
+keywords:
+  - runpod
+  - gpu
+  - teardown
+  - terminate
+  - stop
+  - cleanup
+cache:
+  mode: none
+command:
+  argv:
+    - '{python_exec}'
+    - -m
+    - astrid.packs.external.executors.runpod.run
+    - teardown
+    - --produces-dir
+    - '{out}/produces'
+conditions:
+  - input: pod_handle
+    kind: requires_input
+graph:
+  consumes:
+    - pod_handle
+  provides:
+    - teardown_receipt
+    - cost
+inputs:
+  - name: pod_handle
+    description: Path to the pod_handle.json from a prior provision step.
+    required: true
+    type: file
+isolation:
+  mode: subprocess
+  network: true
+  requirements:
+    - runpod-lifecycle>=0.3
+metadata:
+  catalog_source: none_declared
+  cli_module: runpod_lifecycle.cli
+  command_names:
+    - provision
+    - exec
+    - teardown
+    - session
+  homepage: https://github.com/peteromallet/runpod-lifecycle
+  network_behavior:
+    provision: true
+    exec: true
+    teardown: true
+    session: true
+  nodes: []
+  pack_id: runpod
+  prompts: []
+  requirements:
+    - runpod-lifecycle>=0.3
+  requirements_source: requirements.txt
+  runtime_file: run.py
+  runtime_module: astrid.packs.external.executors.runpod.run

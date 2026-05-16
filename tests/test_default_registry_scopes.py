@@ -21,8 +21,8 @@ class DefaultRegistryScopeTest(unittest.TestCase):
         self.assertEqual(youtube.metadata["source"], "pack")
         self.assertEqual(youtube.metadata["source_pack"], "upload")
         self.assertNotIn("pack_id", youtube.metadata)
-        self.assertTrue(youtube.metadata["executor_root"].endswith("astrid/packs/upload/youtube"))
-        self.assertTrue(youtube.metadata["manifest_file"].endswith("astrid/packs/upload/youtube/executor.yaml"))
+        self.assertTrue(youtube.metadata["executor_root"].endswith("astrid/packs/upload/executors/youtube"))
+        self.assertTrue(youtube.metadata["manifest_file"].endswith("astrid/packs/upload/executors/youtube/executor.yaml"))
 
         for executor_id, folder in (
             ("builtin.audio_understand", "audio_understand"),
@@ -42,7 +42,7 @@ class DefaultRegistryScopeTest(unittest.TestCase):
         self.assertEqual(vibecomfy.metadata["pack_id"], "vibecomfy")
         self.assertEqual(vibecomfy.metadata["source_pack"], "external")
         self.assertEqual(vibecomfy.metadata["source"], "pack")
-        self.assertTrue(vibecomfy.metadata["executor_root"].endswith("astrid/packs/external/vibecomfy"))
+        self.assertTrue(vibecomfy.metadata["executor_root"].endswith("astrid/packs/external/executors/vibecomfy"))
 
     def test_default_orchestrator_registries_do_not_classify_vibecomfy_as_orchestrator(self) -> None:
         canonical = load_orchestrator_registry(executor_registry=load_executor_registry())
@@ -64,9 +64,9 @@ class DefaultRegistryScopeTest(unittest.TestCase):
     def test_external_executor_roots_are_pack_native(self) -> None:
         registry = load_executor_registry()
 
-        self.assertTrue(registry.get("external.moirae").metadata["executor_root"].endswith("astrid/packs/external/moirae"))
+        self.assertTrue(registry.get("external.moirae").metadata["executor_root"].endswith("astrid/packs/external/executors/moirae"))
         self.assertTrue(
-            registry.get("external.vibecomfy.run").metadata["executor_root"].endswith("astrid/packs/external/vibecomfy")
+            registry.get("external.vibecomfy.run").metadata["executor_root"].endswith("astrid/packs/external/executors/vibecomfy")
         )
 
 

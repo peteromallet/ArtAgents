@@ -217,7 +217,17 @@ def _parse_executor(raw: Any) -> ExecutorDefinition:
 
     inputs = tuple(_parse_port(item, f"executor.inputs[{index}]") for index, item in enumerate(_optional_list(data, "inputs", "executor.inputs")))
     outputs = tuple(_parse_output(item, f"executor.outputs[{index}]") for index, item in enumerate(_optional_list(data, "outputs", "executor.outputs")))
-    command = _parse_command(data.get("command"), "executor.command")
+    # v1 external manifests place argv under runtime.command when
+    # runtime.type == "command".  Prefer that location, but fall back to the
+    # legacy top-level executor.command during the migration window.
+    runtime_raw = data.get("runtime")
+    runtime_command: Any = None
+    if isinstance(runtime_raw, dict) and runtime_raw.get("type") == "command":
+        runtime_command = runtime_raw.get("command")
+    if runtime_command is not None:
+        command = _parse_command(runtime_command, "executor.runtime.command")
+    else:
+        command = _parse_command(data.get("command"), "executor.command")
     cache = _parse_cache(data.get("cache", {}), "executor.cache")
     conditions = tuple(
         _parse_condition(item, f"executor.conditions[{index}]")

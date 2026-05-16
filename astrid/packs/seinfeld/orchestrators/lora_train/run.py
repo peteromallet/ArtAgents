@@ -127,7 +127,7 @@ def _provision(args: argparse.Namespace, out: Path) -> tuple[int, Path | None]:
     produces = out / "provision"
     produces.mkdir(parents=True, exist_ok=True)
     argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "provision",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "provision",
         "--produces-dir", _abs(produces),
         "--image", args.image,
         "--ports", args.ports,
@@ -223,7 +223,7 @@ def _teardown(out: Path, pod_handle: Path) -> int:
     produces = out / "teardown"
     produces.mkdir(parents=True, exist_ok=True)
     return _run([
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "teardown",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "teardown",
         "--produces-dir", _abs(produces),
         "--pod-handle", _abs(pod_handle),
     ])
@@ -436,7 +436,7 @@ def cmd_resume(args: argparse.Namespace) -> int:
     register_src.mkdir(parents=True, exist_ok=True)
     local_lora = register_src / Path(match["remote_path"]).name
     pull_argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
         "--pod-handle", _abs(pod_handle),
         "--produces-dir", _abs(register_src),
         "--remote-script", f"cat {match['remote_path']}",

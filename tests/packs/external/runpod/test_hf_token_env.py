@@ -7,7 +7,7 @@ import sys
 import types
 from pathlib import Path
 
-from astrid.packs.external.runpod import run as runpod_run
+from astrid.packs.external.executors.runpod import run as runpod_run
 
 
 def test_host_hf_token_env_vars(monkeypatch) -> None:

@@ -137,7 +137,7 @@ def step_prompts(args: argparse.Namespace, out: Path, manifest: dict[str, Any]) 
 def _foley_one(clip: Path, prompt: str, out_audio: Path, env_file: Path | None,
                 dry_run: bool) -> None:
     cmd = [
-        sys.executable, "-m", "astrid.packs.external.fal_foley.run",
+        sys.executable, "-m", "astrid.packs.external.executors.fal_foley.run",
         "--clip", str(clip),
         "--prompt", prompt,
         "--out", str(out_audio),

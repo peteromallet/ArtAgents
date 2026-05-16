@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     empty_local_root = produces / "_empty_local_root"
     empty_local_root.mkdir(parents=True, exist_ok=True)
     exec_argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
         "--produces-dir", str(exec_produces),
         "--pod-handle", str(args.pod_handle),
         "--local-root", str(empty_local_root),
@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
     list_produces = produces / "_exec_list"
     list_produces.mkdir(parents=True, exist_ok=True)
     list_argv = [
-        sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+        sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
         "--produces-dir", str(list_produces),
         "--pod-handle", str(args.pod_handle),
         "--local-root", str(empty_local_root),

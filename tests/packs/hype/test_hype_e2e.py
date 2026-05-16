@@ -305,7 +305,7 @@ def test_dynamic_add_step_into_group(tmp_path: Path) -> None:
             "--run-id", "run-hype-1",
             "--step-id", "extra_render",
             "--adapter", "local",
-            "--command", "python3 -m astrid.packs.external.runpod session --extra",
+            "--command", "python3 -m astrid.packs.external.executors.runpod session --extra",
             "--into", "hype",
         ],
         projects_root=tmp_path / "projects",

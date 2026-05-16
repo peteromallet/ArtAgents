@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "executors": [
     {
       "cache": {
@@ -8,7 +9,7 @@
         "argv": [
           "{python_exec}",
           "-m",
-          "astrid.packs.external.vibecomfy.run",
+          "astrid.packs.external.executors.vibecomfy.run",
           "run",
           "{workflow}"
         ]
@@ -74,7 +75,7 @@
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",
-        "runtime_module": "astrid.packs.external.vibecomfy.run",
+        "runtime_module": "astrid.packs.external.executors.vibecomfy.run",
         "vibecomfy_command": "run",
         "workflow_input_contract": {
           "description": "VibeComfy workflow JSON file.",
@@ -97,7 +98,7 @@
         "argv": [
           "{python_exec}",
           "-m",
-          "astrid.packs.external.vibecomfy.run",
+          "astrid.packs.external.executors.vibecomfy.run",
           "validate",
           "{workflow}"
         ]
@@ -162,7 +163,7 @@
         ],
         "requirements_source": "requirements.txt",
         "runtime_file": "run.py",
-        "runtime_module": "astrid.packs.external.vibecomfy.run",
+        "runtime_module": "astrid.packs.external.executors.vibecomfy.run",
         "vibecomfy_command": "validate",
         "workflow_input_contract": {
           "description": "VibeComfy workflow JSON file.",

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from astrid.packs.iteration.prepare import run as prepare
+from astrid.packs.iteration.executors.prepare import run as prepare
 
 
 THREAD_ID = "01ARZ3NDEKTSV4RRFFQ69G5FE0"

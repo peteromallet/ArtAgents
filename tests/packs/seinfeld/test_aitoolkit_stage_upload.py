@@ -53,7 +53,7 @@ def test_live_stage_uploads_smoke_dataset_after_bootstrap(
     assert bootstrap_call[:4] == [
         sys.executable,
         "-m",
-        "astrid.packs.external.runpod.run",
+        "astrid.packs.external.executors.runpod.run",
         "exec",
     ]
     assert _arg_value(bootstrap_call, "--remote-root") == "/workspace"

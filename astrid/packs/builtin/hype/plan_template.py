@@ -220,7 +220,7 @@ def _build_render_cmd(python_exec: str, run_root: Path) -> str:
     out = run_root / "steps" / "render" / "v1" / "produces"
     timeline = run_root / "steps" / "cut" / "v1" / "produces" / "hype.timeline.json"
     return (
-        f"{python_exec} -m astrid.packs.external.runpod session "
+        f"{python_exec} -m astrid.packs.external.executors.runpod session "
         f"--timeline {timeline} --out {out}"
     )
 

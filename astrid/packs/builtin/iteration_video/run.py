@@ -12,8 +12,8 @@ from typing import Any, Mapping
 
 from astrid._paths import REPO_ROOT
 from astrid import modalities
-from astrid.packs.iteration.assemble import run as assemble
-from astrid.packs.iteration.prepare import run as prepare
+from astrid.packs.iteration.executors.assemble import run as assemble
+from astrid.packs.iteration.executors.prepare import run as prepare
 from astrid.packs.builtin.render import run as render_executor
 from astrid.threads.ids import is_ulid
 from astrid.threads.index import ThreadIndexStore

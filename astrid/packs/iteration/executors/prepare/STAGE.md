@@ -30,5 +30,5 @@ python3 -m astrid executors run iteration.prepare --out runs/prepare --input tar
 Direct form:
 
 ```bash
-python3 -m astrid.packs.iteration.prepare.run --target-run-id <run-id> --out runs/prepare
+python3 -m astrid.packs.iteration.executors.prepare.run --target-run-id <run-id> --out runs/prepare
 ```

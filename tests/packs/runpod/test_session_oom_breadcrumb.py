@@ -50,7 +50,7 @@ def test_session_crashing_remote_script_leaves_breadcrumb() -> None:
                  patch("runpod_lifecycle.get_pod", AsyncMock(return_value=mock_pod)), \
                  patch("runpod_lifecycle.ship_and_run_detached", mock_detached), \
                  patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-                from astrid.packs.external.runpod.run import cmd_session
+                from astrid.packs.external.executors.runpod.run import cmd_session
 
                 pd = produces_dir  # capture for class body
 
@@ -139,7 +139,7 @@ def test_breadcrumb_written_before_exec_and_survives_process_crash() -> None:
                  patch("runpod_lifecycle.get_pod", AsyncMock(return_value=mock_pod)), \
                  patch("runpod_lifecycle.ship_and_run_detached", mock_detached), \
                  patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-                from astrid.packs.external.runpod.run import cmd_session
+                from astrid.packs.external.executors.runpod.run import cmd_session
 
                 pd2 = produces_dir  # capture for class body
 

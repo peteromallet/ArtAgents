@@ -286,11 +286,11 @@ def _dispatch(raw: list[str]) -> int:
 
         return publish.main(raw[1:])
     if raw and raw[0] == "publish-youtube":
-        from .packs.upload.youtube import run as publish_youtube
+        from .packs.upload.executors.youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "upload-youtube":
-        from .packs.upload.youtube import run as publish_youtube
+        from .packs.upload.executors.youtube import run as publish_youtube
 
         return publish_youtube.main(raw[1:])
     if raw and raw[0] == "skills":

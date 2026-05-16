@@ -3,4 +3,4 @@ name: Astrid Iteration
 version: 1.0.0
 schema_version: 1
 content:
-  executors: '.'
+  executors: executors

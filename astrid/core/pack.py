@@ -261,7 +261,7 @@ def discover_packs(root: str | Path | None = None) -> tuple[PackDefinition, ...]
 
 def load_pack_manifest(path: str | Path) -> PackDefinition:
     manifest_path = Path(path).expanduser().resolve()
-    raw = _load_manifest_payload(manifest_path)
+    raw = _load_yaml_payload(manifest_path)
     data = _require_mapping(raw, "pack")
     pack_id = _require_string(data, "id", "pack.id")
     _validate_pack_id(pack_id, "pack.id")
@@ -370,8 +370,8 @@ def _load_pack_manifest_resolver(path: Path) -> PackDefinition:
     """Load a pack manifest using yaml.safe_load for nested content support.
 
     This is the resolver-internal path.  The public ``load_pack_manifest``
-    still uses the flat parser for backward compatibility until T2 migrates
-    the manifests.
+    also uses ``_load_yaml_payload`` so nested ``content:`` blocks parse
+    correctly across all callers.
     """
     raw = _load_yaml_payload(path)
     data = _require_mapping(raw, "pack")
@@ -428,14 +428,17 @@ def _load_yaml_payload(path: Path) -> Any:
             raise PackValidationError(
                 f"invalid JSON pack manifest {path}: {exc.msg}"
             ) from exc
-    # Use yaml.safe_load for full YAML support (nested mappings, lists, etc.)
+    # Use yaml.safe_load for full YAML support (nested mappings, lists, etc.).
+    # PyYAML is a hard dependency (see requirements.txt), so we no longer fall
+    # back to a flat parser — surface the ImportError instead.
     try:
         import yaml as _yaml
 
         data = _yaml.safe_load(text)
-    except ImportError:
-        # Fall back to flat parser if yaml is not available
-        return _parse_flat_yaml(text, path=path)
+    except ImportError as exc:
+        raise PackValidationError(
+            f"pyyaml is required to parse pack manifest {path}"
+        ) from exc
     except Exception as exc:
         raise PackValidationError(
             f"invalid YAML pack manifest {path}: {exc}"
@@ -543,67 +546,6 @@ def _looks_like_pack_dir(path: Path) -> bool:
 # ---------------------------------------------------------------------------
 # Manifest payload loaders
 # ---------------------------------------------------------------------------
-
-
-def _load_manifest_payload(path: Path) -> Any:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise PackValidationError(f"pack manifest not found: {path}") from exc
-    if path.suffix.lower() == ".json":
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise PackValidationError(
-                f"invalid JSON pack manifest {path}: {exc.msg}"
-            ) from exc
-    return _parse_flat_yaml(text, path=path)
-
-
-def _parse_flat_yaml(text: str, *, path: Path) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    for line_number, raw_line in enumerate(text.splitlines(), start=1):
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if raw_line[: len(raw_line) - len(raw_line.lstrip())].strip():
-            raise PackValidationError(
-                f"{path}: invalid indentation at line {line_number}"
-            )
-        if ":" not in stripped:
-            raise PackValidationError(
-                f"{path}: expected key: value at line {line_number}"
-            )
-        key, value = stripped.split(":", 1)
-        key = key.strip()
-        value = _strip_comment(value.strip())
-        if not key:
-            raise PackValidationError(f"{path}: empty key at line {line_number}")
-        if value in {"", "{}"}:
-            data[key] = {}
-        else:
-            data[key] = _unquote(value)
-    if not data:
-        raise PackValidationError(f"{path}: empty pack manifest")
-    return data
-
-
-def _strip_comment(value: str) -> str:
-    in_quote: str | None = None
-    for index, char in enumerate(value):
-        if char in {"'", '"'} and (index == 0 or value[index - 1] != "\\"):
-            in_quote = (
-                None if in_quote == char else char if in_quote is None else in_quote
-            )
-        if char == "#" and in_quote is None and (index == 0 or value[index - 1].isspace()):
-            return value[:index].rstrip()
-    return value
-
-
-def _unquote(value: str) -> str:
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-        return value[1:-1]
-    return value
 
 
 def _require_mapping(raw: Any, path: str) -> dict[str, Any]:

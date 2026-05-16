@@ -69,7 +69,7 @@
     "requires_reachable_video_url": true,
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
-    "runtime_module": "astrid.packs.upload.youtube.run"
+    "runtime_module": "astrid.packs.upload.executors.youtube.run"
   },
   "name": "Upload to YouTube",
   "short_description": "Upload a finished video to YouTube via the shared banodoco-social Zapier integration.",

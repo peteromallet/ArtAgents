@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from astrid.packs.upload.youtube.src.social_publish import PublishError, publish_youtube_video
+from astrid.packs.upload.executors.youtube.src.social_publish import PublishError, publish_youtube_video
 
 
 def build_parser() -> argparse.ArgumentParser:

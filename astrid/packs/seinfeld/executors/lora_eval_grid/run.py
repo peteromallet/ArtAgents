@@ -125,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
             eval_produces.mkdir(parents=True, exist_ok=True)
             subprocess.run(
                 [
-                    sys.executable, "-m", "astrid.packs.external.runpod.run", "exec",
+                    sys.executable, "-m", "astrid.packs.external.executors.runpod.run", "exec",
                     "--produces-dir", str(eval_produces),
                     "--pod-handle", str(args.pod_handle),
                     "--local-root", str(empty_local_root),

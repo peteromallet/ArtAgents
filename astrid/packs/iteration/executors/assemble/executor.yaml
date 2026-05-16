@@ -6,7 +6,7 @@
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.iteration.assemble.run",
+      "astrid.packs.iteration.executors.assemble.run",
       "--prepare-dir",
       "{prepare_dir}",
       "--out",
@@ -56,7 +56,7 @@
   "metadata": {
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
-    "runtime_module": "astrid.packs.iteration.assemble.run"
+    "runtime_module": "astrid.packs.iteration.executors.assemble.run"
   },
   "name": "Iteration Assemble",
   "outputs": [

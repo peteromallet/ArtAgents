@@ -1,0 +1,116 @@
+schema_version: 1
+id: external.runpod.session
+name: RunPod Session
+kind: external
+version: 0.1.0
+description: Composite provision → exec → download → terminate session with guaranteed cleanup via try/finally. Writes pod_handle.json as a sweeper breadcrumb immediately after provision and deletes it on graceful teardown.
+short_description: Composite provision → exec → teardown session with guaranteed cleanup.
+keywords:
+  - runpod
+  - gpu
+  - session
+  - provision
+  - exec
+  - teardown
+  - composite
+cache:
+  mode: none
+command:
+  argv:
+    - '{python_exec}'
+    - -m
+    - astrid.packs.external.executors.runpod.run
+    - session
+    - --produces-dir
+    - '{out}/produces'
+conditions: []
+graph:
+  consumes: []
+  provides:
+    - exec_result
+    - artifact_dir
+    - cost
+inputs:
+  - name: gpu_type
+    description: GPU type to request (e.g. RTX 4090, A100).
+    required: false
+    type: string
+  - name: storage_name
+    description: Name of a pre-existing RunPod network storage volume.
+    required: false
+    type: string
+  - name: max_runtime_seconds
+    description: Maximum runtime in seconds before the pod guard triggers.
+    required: false
+    type: integer
+  - name: name_prefix
+    description: Name prefix for the pod.
+    required: false
+    type: string
+  - name: image
+    description: Docker image to run on the pod.
+    required: false
+    type: string
+  - name: container_disk_gb
+    description: Container disk size in GB.
+    required: false
+    type: integer
+  - name: datacenter_id
+    description: RunPod datacenter ID.
+    required: false
+    type: string
+  - name: ports
+    description: "Comma-separated port spec for the pod (default: '8888/http,22/tcp')."
+    required: false
+    type: string
+  - name: local_root
+    description: Local directory to upload to the pod.
+    required: false
+    type: path
+  - name: remote_root
+    description: Remote path on the pod where the script runs.
+    required: false
+    type: string
+  - name: remote_script
+    description: Path to the script to execute on the pod.
+    required: false
+    type: file
+  - name: timeout
+    description: Execution timeout in seconds.
+    required: false
+    type: integer
+  - name: upload_mode
+    description: 'Upload mode: sftp_walk or tarball.'
+    required: false
+    type: string
+  - name: excludes
+    description: Glob patterns to exclude from upload.
+    required: false
+    type: string
+isolation:
+  mode: subprocess
+  network: true
+  requirements:
+    - runpod-lifecycle>=0.3
+metadata:
+  catalog_source: none_declared
+  cli_module: runpod_lifecycle.cli
+  command_names:
+    - provision
+    - exec
+    - teardown
+    - session
+  homepage: https://github.com/peteromallet/runpod-lifecycle
+  network_behavior:
+    provision: true
+    exec: true
+    teardown: true
+    session: true
+  nodes: []
+  pack_id: runpod
+  prompts: []
+  requirements:
+    - runpod-lifecycle>=0.3
+  requirements_source: requirements.txt
+  runtime_file: run.py
+  runtime_module: astrid.packs.external.executors.runpod.run

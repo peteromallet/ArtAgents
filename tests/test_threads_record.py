@@ -101,7 +101,7 @@ def test_noop_gates_skip_run_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_upload_youtube_is_zero_artifact_noop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = _repo(tmp_path, monkeypatch)
     with mock.patch(
-        "astrid.packs.upload.youtube.src.social_publish.publish_youtube_video",
+        "astrid.packs.upload.executors.youtube.src.social_publish.publish_youtube_video",
         return_value={"url": "https://youtube.example/video"},
     ):
         result = run_executor(

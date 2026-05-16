@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "cache": {
     "mode": "none"
   },
@@ -6,7 +7,7 @@
     "argv": [
       "{python_exec}",
       "-m",
-      "astrid.packs.external.fal_foley.run"
+      "astrid.packs.external.executors.fal_foley.run"
     ]
   },
   "description": "Generate Foley audio for one short video clip via fal.ai's hunyuan-video-foley model. Takes a clip + text prompt, returns one audio file matched to the clip's duration.",
@@ -40,7 +41,7 @@
     "pricing": "$0.10 per 10s of input video",
     "runtime_entrypoint": "main",
     "runtime_file": "run.py",
-    "runtime_module": "astrid.packs.external.fal_foley.run"
+    "runtime_module": "astrid.packs.external.executors.fal_foley.run"
   },
   "name": "fal Hunyuan-Video Foley",
   "outputs": [

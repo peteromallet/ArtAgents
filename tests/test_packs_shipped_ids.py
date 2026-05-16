@@ -54,13 +54,14 @@ class ShippedPackAlignmentTest(unittest.TestCase):
             with self.subTest(executor_id=executor_id):
                 executor = registry.get(executor_id)
                 self.assertEqual(executor.metadata["source_pack"], pack)
+                root = str(executor.metadata["executor_root"]).rstrip("/")
+                tail = executor_id.split(".", 1)[1]
+                slug_head = tail.split(".")[0]
                 self.assertTrue(
-                    str(executor.metadata["executor_root"]).rstrip("/").endswith(
-                        f"astrid/packs/{pack}/{executor_id.split('.', 1)[1].split('.')[0]}"
-                    )
-                    or str(executor.metadata["executor_root"]).rstrip("/").endswith(
-                        f"astrid/packs/{pack}/{executor_id.split('.', 1)[1]}"
-                    ),
+                    root.endswith(f"astrid/packs/{pack}/{slug_head}")
+                    or root.endswith(f"astrid/packs/{pack}/{tail}")
+                    or root.endswith(f"astrid/packs/{pack}/executors/{slug_head}")
+                    or root.endswith(f"astrid/packs/{pack}/executors/{tail}"),
                     f"executor_root for {executor_id} did not land under packs/{pack}/",
                 )
 

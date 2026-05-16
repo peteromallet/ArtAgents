@@ -1,0 +1,89 @@
+schema_version: 1
+id: external.runpod.exec
+name: RunPod Exec
+kind: external
+version: 0.1.0
+description: Reattach to a provisioned pod, ship a script, execute it, and download artifacts. Leaves pod alive.
+short_description: Execute a script on an existing RunPod pod and download artifacts.
+keywords:
+  - runpod
+  - gpu
+  - exec
+  - execute
+  - script
+cache:
+  mode: none
+command:
+  argv:
+    - '{python_exec}'
+    - -m
+    - astrid.packs.external.executors.runpod.run
+    - exec
+    - --produces-dir
+    - '{out}/produces'
+conditions:
+  - input: pod_handle
+    kind: requires_input
+graph:
+  consumes:
+    - pod_handle
+  provides:
+    - exec_result
+    - artifact_dir
+    - cost
+inputs:
+  - name: pod_handle
+    description: Path to the pod_handle.json from a prior provision step.
+    required: true
+    type: file
+  - name: local_root
+    description: Local directory to upload to the pod.
+    required: false
+    type: path
+  - name: remote_root
+    description: Remote path on the pod where the script runs.
+    required: false
+    type: string
+  - name: remote_script
+    description: Path to the script to execute on the pod.
+    required: false
+    type: file
+  - name: timeout
+    description: Execution timeout in seconds.
+    required: false
+    type: integer
+  - name: upload_mode
+    description: 'Upload mode: sftp_walk or tarball.'
+    required: false
+    type: string
+  - name: excludes
+    description: Glob patterns to exclude from upload.
+    required: false
+    type: string
+isolation:
+  mode: subprocess
+  network: true
+  requirements:
+    - runpod-lifecycle>=0.3
+metadata:
+  catalog_source: none_declared
+  cli_module: runpod_lifecycle.cli
+  command_names:
+    - provision
+    - exec
+    - teardown
+    - session
+  homepage: https://github.com/peteromallet/runpod-lifecycle
+  network_behavior:
+    provision: true
+    exec: true
+    teardown: true
+    session: true
+  nodes: []
+  pack_id: runpod
+  prompts: []
+  requirements:
+    - runpod-lifecycle>=0.3
+  requirements_source: requirements.txt
+  runtime_file: run.py
+  runtime_module: astrid.packs.external.executors.runpod.run

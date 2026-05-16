@@ -32,7 +32,7 @@ def _run_provision(produces: Path, ports: str | None, mock_pod: MagicMock) -> di
     try:
         with patch("runpod_lifecycle.launch", mock_launch), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_provision
+            from astrid.packs.external.executors.runpod.run import cmd_provision
 
             class Args:
                 gpu_type = "NVIDIA GeForce RTX 4090"

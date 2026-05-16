@@ -160,7 +160,7 @@ def test_provision_writes_pod_handle_and_cost(
     with patch("runpod_lifecycle.launch", mock_launch), \
          patch("runpod_lifecycle.RunPodConfig", MagicMock()):
         # Import under patches so they take effect
-        from astrid.packs.external.runpod.run import cmd_provision
+        from astrid.packs.external.executors.runpod.run import cmd_provision
 
         class Args:
             gpu_type = "NVIDIA GeForce RTX 4090"
@@ -238,7 +238,7 @@ def test_exec_reads_handle_and_writes_result(
         with patch("runpod_lifecycle.get_pod", mock_get_pod), \
              patch("runpod_lifecycle.ship_and_run_detached", mock_ship_and_run_detached), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_exec
+            from astrid.packs.external.executors.runpod.run import cmd_exec
 
             class Args:
                 pod_handle = str(handle_path)
@@ -309,7 +309,7 @@ def test_teardown_terminates_and_writes_receipt(
     try:
         with patch("runpod_lifecycle.get_pod", mock_get_pod), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_teardown
+            from astrid.packs.external.executors.runpod.run import cmd_teardown
 
             class Args:
                 pod_handle = str(handle_path)
@@ -373,7 +373,7 @@ def test_teardown_idempotent_pod_not_found(
     try:
         with patch("runpod_lifecycle.get_pod", mock_get_pod_not_found), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_teardown
+            from astrid.packs.external.executors.runpod.run import cmd_teardown
 
             class Args:
                 pod_handle = str(handle_path)
@@ -411,7 +411,7 @@ def test_session_writes_breadcrumb_and_deletes_on_teardown(
              patch("runpod_lifecycle.get_pod", AsyncMock(return_value=mock_pod)), \
              patch("runpod_lifecycle.ship_and_run_detached", mock_ship_and_run_detached), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_session
+            from astrid.packs.external.executors.runpod.run import cmd_session
 
             class Args:
                 gpu_type = None
@@ -473,7 +473,7 @@ def test_session_breadcrumb_survives_on_crash(
              patch("runpod_lifecycle.get_pod", AsyncMock(return_value=mock_pod)), \
              patch("runpod_lifecycle.ship_and_run_detached", crash_mock), \
              patch("runpod_lifecycle.RunPodConfig", MagicMock()):
-            from astrid.packs.external.runpod.run import cmd_session
+            from astrid.packs.external.executors.runpod.run import cmd_session
 
             class Args:
                 gpu_type = None
@@ -520,7 +520,7 @@ def test_cost_summation_invariant() -> None:
     hourly_rate = 0.34
 
     # Simulate the three partial costs (using the _cost_amount + _cost_entry helpers)
-    from astrid.packs.external.runpod.run import _cost_amount, _cost_entry
+    from astrid.packs.external.executors.runpod.run import _cost_amount, _cost_entry
 
     prov_duration = 45.0
     exec_duration = 120.0
